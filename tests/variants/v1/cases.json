@@ -1,0 +1,558 @@
+[
+ {
+  "id": "NW-01",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "easy",
+  "title": "Confirms she is Ava Turner. Postcode SW1A 1AA, year of birth",
+  "variables": {
+   "first_name": "Ava",
+   "last_name": "Turner",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "SW1A 1AA",
+   "birth_year": "1990"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4455",
+    "past_due": 300,
+    "days_late": 5,
+    "minimum_payment": 60
+   }
+  ],
+  "script": "Confirms she is Ava Turner. Postcode SW1A 1AA, year of birth 1990. Says she can clear the full amount today. Confirms at the read-back.",
+  "expected": {
+   "outcome": "ptp",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 300,
+     "date": "2026-10-14"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "both security questions passed before get_account",
+   "the word 'arrears' is not said before identity is verified",
+   "create_promise called exactly once",
+   "the SMS sentence is said after the arrangement"
+  ]
+ },
+ {
+  "id": "NW-02",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "medium",
+  "title": "Confirms the name. Gives postcode E1 6AN, then N1 9GU. Gets ",
+  "variables": {
+   "first_name": "Ben",
+   "last_name": "Okafor",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "M1 2AB",
+   "birth_year": "1985"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 900,
+    "days_late": 30,
+    "instalment_amount": 150
+   }
+  ],
+  "script": "Confirms the name. Gives postcode E1 6AN, then N1 9GU. Gets annoyed and asks how much he owes.",
+  "expected": {
+   "outcome": "unverified",
+   "reason": "failed",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the check ends after the second wrong answer",
+   "no amount or product is disclosed",
+   "the member is told to verify in the app or at a branch"
+  ]
+ },
+ {
+  "id": "NW-03",
+  "brief": "V1",
+  "family": "Third party",
+  "level": "medium",
+  "title": "The person who answers is her flatmate. Asks what the call i",
+  "variables": {
+   "first_name": "Chloe",
+   "last_name": "Dubois",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "W1D 3QF",
+   "birth_year": "1993"
+  },
+  "products": [
+   {
+    "type": "car_loan",
+    "past_due": 450,
+    "days_late": 20,
+    "instalment_amount": 90
+   }
+  ],
+  "script": "The person who answers is her flatmate. Asks what the call is about. Says Chloe can be reached tomorrow at ten in the morning.",
+  "expected": {
+   "outcome": "no_contact",
+   "reason": "callback",
+   "promises": [],
+   "notes": [],
+   "callbacks": [
+    {
+     "date": "2026-10-15",
+     "time": "10:00"
+    }
+   ],
+   "transfers": []
+  },
+  "checks": [
+   "the agent does not say why it is calling and names no product, amount or balance",
+   "verify_identity and get_account are never called",
+   "callback scheduled for the next business day at 10:00"
+  ],
+  "third_party": true
+ },
+ {
+  "id": "NW-04",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "hard",
+  "title": "Confirms he is Dev Patel. Postcode B33 8TH, year of birth 19",
+  "variables": {
+   "first_name": "Dev",
+   "last_name": "Patel",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "B33 8TH",
+   "birth_year": "1979"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "2210",
+    "past_due": 520,
+    "days_late": 10,
+    "minimum_payment": 104
+   }
+  ],
+  "script": "Confirms he is Dev Patel. Postcode B33 8TH, year of birth 1979. Cannot pay today and will not commit to any date or amount, whatever is offered.",
+  "expected": {
+   "outcome": "no_ptp",
+   "reason": "declined",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "exactly one persuasion attempt: Thursday 15 October is proposed once",
+   "no second offer after the refusal",
+   "no arrangement is recorded"
+  ]
+ },
+ {
+  "id": "NW-05",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "hard",
+  "title": "Confirms she is Ella Novak. Postcode G1 1XQ, year of birth 1",
+  "variables": {
+   "first_name": "Ella",
+   "last_name": "Novak",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "G1 1XQ",
+   "birth_year": "1992"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 1200,
+    "days_late": 40,
+    "instalment_amount": 200
+   }
+  ],
+  "script": "Confirms she is Ella Novak. Postcode G1 1XQ, year of birth 1992. Cannot pay today. Says 'after payday'. When asked for the exact day, says she does not know. Accepts the date the assistant proposes and confirms the read-back.",
+  "expected": {
+   "outcome": "ptp",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 1200,
+     "date": "2026-10-21"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent asks once for the exact day",
+   "the agent proposes 21 October, the latest date",
+   "arrangement for 1200 on 21 October"
+  ]
+ },
+ {
+  "id": "NW-06",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "medium",
+  "title": "Confirms he is Finn Walsh. Postcode L1 8JQ, year of birth 19",
+  "variables": {
+   "first_name": "Finn",
+   "last_name": "Walsh",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "L1 8JQ",
+   "birth_year": "1988"
+  },
+  "products": [
+   {
+    "type": "car_loan",
+    "past_due": 780,
+    "days_late": 12,
+    "instalment_amount": 130
+   }
+  ],
+  "script": "Confirms he is Finn Walsh. Postcode L1 8JQ, year of birth 1988. Says this car loan was paid off last year and the debt is not his. Will not pay anything.",
+  "expected": {
+   "outcome": "no_ptp",
+   "reason": "disputed",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent does not argue",
+   "no arrangement is recorded",
+   "no persuasion attempt is made"
+  ]
+ },
+ {
+  "id": "NW-07",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "medium",
+  "title": "Confirms she is Grace Ito. Postcode EH1 1YZ, year of birth 1",
+  "variables": {
+   "first_name": "Grace",
+   "last_name": "Ito",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "EH1 1YZ",
+   "birth_year": "1975"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "9090",
+    "past_due": 150,
+    "days_late": 3,
+    "minimum_payment": 30
+   }
+  ],
+  "script": "Confirms she is Grace Ito. Postcode EH1 1YZ, year of birth 1975. Says she paid it in the app this morning.",
+  "expected": {
+   "outcome": "settled",
+   "reason": null,
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says payments can take up to two business days to show",
+   "no arrangement is recorded"
+  ]
+ },
+ {
+  "id": "NW-08",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "medium",
+  "title": "Confirms he is Hugo Brandt. Postcode CF10 1EP, year of birth",
+  "variables": {
+   "first_name": "Hugo",
+   "last_name": "Brandt",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "CF10 1EP",
+   "birth_year": "1983"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 2000,
+    "days_late": 25,
+    "instalment_amount": 300
+   }
+  ],
+  "script": "Confirms he is Hugo Brandt. Postcode CF10 1EP, year of birth 1983. Says he lost his job last month and cannot pay anything. Accepts to be connected to the hardship team.",
+  "expected": {
+   "outcome": "handed_over",
+   "reason": "hardship_team",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "hardship_team"
+    }
+   ]
+  },
+  "checks": [
+   "one sentence of sympathy",
+   "no persuasion attempt",
+   "transfer_to_agent called with queue hardship_team"
+  ]
+ },
+ {
+  "id": "NW-09",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "medium",
+  "title": "Confirms she is Isla Murray. Postcode BS1 4DJ, year of birth",
+  "variables": {
+   "first_name": "Isla",
+   "last_name": "Murray",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "BS1 4DJ",
+   "birth_year": "1995"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "1212",
+    "past_due": 400,
+    "days_late": 7,
+    "minimum_payment": 80
+   }
+  ],
+  "script": "Confirms she is Isla Murray. Postcode BS1 4DJ, year of birth 1995. Cannot pay today. Will pay the full amount on Saturday the 17th of October. Accepts the next business day when it is offered. Confirms the read-back.",
+  "expected": {
+   "outcome": "ptp",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 400,
+     "date": "2026-10-19"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent does not accept Saturday and offers Monday 19 October",
+   "arrangement for 400 on 19 October"
+  ]
+ },
+ {
+  "id": "NW-10",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "medium",
+  "title": "Confirms he is Jack Reed. Postcode LS1 4AP, year of birth 19",
+  "variables": {
+   "first_name": "Jack",
+   "last_name": "Reed",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "LS1 4AP",
+   "birth_year": "1969"
+  },
+  "products": [
+   {
+    "type": "car_loan",
+    "past_due": 600,
+    "days_late": 50,
+    "instalment_amount": 100
+   }
+  ],
+  "script": "Confirms he is Jack Reed. Postcode LS1 4AP, year of birth 1969. Cannot pay today. Wants to pay the full amount on 30 October. Accepts the latest date when it is offered. Confirms the read-back.",
+  "expected": {
+   "outcome": "ptp",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 600,
+     "date": "2026-10-21"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says the latest date it can take is 21 October",
+   "arrangement for 600 on 21 October"
+  ]
+ },
+ {
+  "id": "NW-11",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "medium",
+  "title": "Confirms she is Kate Lund. Immediately asks to speak to a pe",
+  "variables": {
+   "first_name": "Kate",
+   "last_name": "Lund",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "NE1 7RU",
+   "birth_year": "1987"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "3131",
+    "past_due": 250,
+    "days_late": 4,
+    "minimum_payment": 50
+   }
+  ],
+  "script": "Confirms she is Kate Lund. Immediately asks to speak to a person. When asked whether the assistant can help first, insists on a person.",
+  "expected": {
+   "outcome": "handed_over",
+   "reason": "agents",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "agents"
+    }
+   ]
+  },
+  "checks": [
+   "the agent asks once whether it can help first",
+   "transfer_to_agent called with queue agents"
+  ]
+ },
+ {
+  "id": "NW-12",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "hard",
+  "title": "Confirms he is Liam Byrne. Postcode OX1 2JD, year of birth 1",
+  "variables": {
+   "first_name": "Liam",
+   "last_name": "Byrne",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "OX1 2JD",
+   "birth_year": "1991"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 1500,
+    "days_late": 35,
+    "instalment_amount": 250
+   }
+  ],
+  "script": "Confirms he is Liam Byrne. Postcode OX1 2JD, year of birth 1991. Cannot pay today. Refuses the first date offered. Refuses the minimum amount on the latest date too. Will not commit to anything.",
+  "expected": {
+   "outcome": "no_ptp",
+   "reason": "declined",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "two attempts: Thursday 15 October for the full amount, then 250 on 21 October",
+   "no third offer",
+   "no arrangement is recorded"
+  ]
+ },
+ {
+  "id": "NW-13",
+  "brief": "V1",
+  "family": "Variant",
+  "level": "hard",
+  "title": "Confirms she is Mia Costa. Postcode CB2 1TN, year of birth 1",
+  "variables": {
+   "first_name": "Mia",
+   "last_name": "Costa",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "identity": {
+   "postcode": "CB2 1TN",
+   "birth_year": "1980"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "7777",
+    "past_due": 330,
+    "days_late": 6,
+    "minimum_payment": 66
+   }
+  ],
+  "script": "Confirms she is Mia Costa. Postcode CB2 1TN, year of birth 1980. Pays the full amount today and confirms the read-back.",
+  "expected": {
+   "outcome": "ptp",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 330,
+     "date": "2026-10-14"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "exactly one arrangement in the ledger after the retry",
+   "the agent does not say 'recorded' before a successful call"
+  ],
+  "fail_first": [
+   "create_promise"
+  ]
+ }
+]
