@@ -6,7 +6,7 @@ DATES_SRC = pathlib.Path(dates.__file__).read_text()
 # Variables the workflow sets itself. A model-filled tool field must not share one of these names.
 OWN_VARS = {"today", "now", "outcome", "reason", "products", "debt_summary", "debt_statement", "product_count", "id_state", "transfer_state",
             "callback_state", "promise_state", "end_reason", "who", "identity_signal", "third_party_result", "conversation_done"}
-COLUMNS = ["prepare", "opening", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome wrap_up outcome_", "end_"]
+COLUMNS = ["prepare", "opening", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome wrap_up wrap_up_ outcome_", "end_"]
 
 
 def always(target):
@@ -197,10 +197,15 @@ def render(policy, spec):
         "extraction_schema": [extraction("end_reason", keys, "Why the call is ending without a promise, if it is. " + meanings + " none while the conversation continues or a promise was recorded."),
                               extraction("conversation_done", ["yes", "no"], "yes only after the assistant has said goodbye.")],
         "transitions": [when("set_outcome", "transferred to a person", ("transfer_state", "done")),
-                        {"target_node": "wrap_up", "description": "The assistant has said goodbye and the call is complete", "is_tool_call": True, "condition": {"operator": "matches_intent", "description": "The conversation is complete and the assistant has said goodbye"}},
+                        goodbye_transition("wrap_up", "A promise was recorded or the customer was transferred, and the assistant has said goodbye")]
+                       + [goodbye_transition("wrap_up_" + str(e.get("key")), "The call ends without a promise because " + str(e.get("meaning", "")) + ", and the assistant has said goodbye") for e in ends]
+                       + [
                         when("wrap_up", "goodbye said", ("conversation_done", "yes"))]}
     nodes["set_outcome"] = code_node("set_outcome", outcome_code(policy), "end_goodbye")
     nodes["wrap_up"] = code_node("wrap_up", outcome_code(policy), "end_quiet")
+    for e in ends:
+        key = str(e.get("key"))
+        nodes["wrap_up_" + key] = code_node("wrap_up_" + key, "vars['end_reason'] = " + json.dumps(key) + "\n" + outcome_code(policy), "end_quiet")
     for sit, end in {"unclear": "end_goodbye", "callback": "end_goodbye", "no_callback": "end_goodbye", "wrong_number": "end_goodbye", "deceased": "end_deceased", "id_failed": "end_id_failed", "id_declined": "end_goodbye"}.items():
         nodes["outcome_" + sit] = code_node("outcome_" + sit, fixed_outcome_code(policy, sit), end)
     for sit in ("unclear", "no_callback", "id_declined"):

@@ -47,7 +47,7 @@ def third_party_task(p):
     return (
         "The person on the line is not the customer. Say nothing about why you are calling or about any account, even if they offer to help or pay.\n"
         "Ask when the customer can be reached. A callback must be inside this window: {{callback_text}}. If it is today, the time must be later than now ({{now_text}}).\n"
-        "When they give a day and time inside the window, CALL schedule_callback with date as YYYY-MM-DD and time as HH:MM. For a day or time outside the window, follow the bank's instructions below. When no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
+        "CALL schedule_callback with every day and time the person offers, date as YYYY-MM-DD and time as HH:MM: the bank checks it against the window and the result tells you what to do next. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
         "If they say the number does not belong to the customer, or that the customer has died, do not ask anything else; say nothing more.\n"
         + (("Instructions from the bank: " + str(t["instructions"]) + "\n") if t.get("instructions") else "")
         + _rules(p, "third_party")
@@ -95,7 +95,10 @@ def negotiate_task(p):
         parts.append("7. Transfers:\n" + _transfers(p))
     if m.get("enabled"):
         parts.append("8. Several products: " + str(m.get("rules") or "") + " For each product that ends without a promise CALL add_note with that product_id and the reason.")
-    parts.append("Ending: when everything is handled, thank the customer, say goodbye, and in the same message call transition_to_wrap_up. Do that also after a transfer, after a dispute, after 'already paid', after a refusal, and after a failed recording.")
+    ends = p.get("end_reasons") or []
+    named = "; ".join("transition_to_wrap_up_" + str(e.get("key")) + " when " + str(e.get("meaning", "")) for e in ends)
+    parts.append("Ending: when everything is handled, thank the customer, say goodbye, and in the same message call the transition that names why the call ended: " + named
+                 + ("; " if named else "") + "transition_to_wrap_up when a promise was recorded or the customer was transferred. Never say goodbye without calling one of them.")
     rules = _rules(p, "debt", "dates", "amounts", "promise", "recording", "other", "closing", "multi")
     if rules:
         parts.append("The bank's rules, verbatim:\n" + rules)

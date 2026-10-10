@@ -79,6 +79,26 @@ class Rendered(unittest.TestCase):
             else:
                 self.assertEqual(config["body"]["date"], date); self.assertEqual(vars["promise_block"], "")
 
+    def test_callback_pre_hook_checks_the_window_and_counts(self):
+        import datetime
+        pre = self.wf["nodes"]["third_party"]["tools"][0]["pre_process_code"]
+        base = {"today": "2026-10-14", "now_time": "11:00", "callback_next_business_day": "2026-10-15", "callback_text": "window"}
+        for date, time, inside in (("2026-10-14", "21:00", False), ("2026-10-18", "10:00", False), ("2026-10-14", "10:30", False), ("2026-10-15", "11:00", True), ("2026-10-14", "15:00", True)):
+            vars = dict(base); config = {"body": {"date": date, "time": time}}
+            exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
+            self.assertEqual(bool(config["body"]), inside, date + " " + time)
+        vars = dict(base)
+        for n in (1, 2):
+            config = {"body": {"date": "2026-10-18", "time": "10:00"}}
+            exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
+        self.assertIn("transition_to_outcome_no_callback_quiet", vars["callback_block"])
+
+    def test_wrap_up_per_end_reason(self):
+        n = self.wf["nodes"]
+        self.assertTrue({"wrap_up", "wrap_up_refused", "wrap_up_dispute", "wrap_up_paid"} <= set(n))
+        self.assertIn("transition_to_wrap_up_dispute when", n["negotiate"]["task_message"])
+        self.assertIn("STOP", n["account_facts"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"])
+
     def test_close_call_recomputes_outcome_for_a_verified_call(self):
         pre = self.wf["tools"][0]["pre_process_code"]
         vars = {"id_state": "verified", "outcome": "no_promise", "reason": "refused", "promises_recorded": json.dumps([{"product_id": "p1", "amount": 1, "date": "2026-10-14"}]), "transfer_state": "none"}

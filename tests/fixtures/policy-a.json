@@ -8,7 +8,7 @@
  "robot_answer": "say that you are Freya Bank's digital assistant and continue.",
  "scam_answer": "say they can verify the call by phoning Freya Bank's customer service number, and continue.",
  "third_party": {"instructions": "Do not say why you are calling. Say nothing beyond the opening sentence. A relative may not answer the security questions and may not be told anything about the account, even if they offer to pay.", "deceased_sentence": "I am sorry for your loss."},
- "callback": {"days": ["today", "next_business_day"], "from": "10:00", "to": "19:00"},
+ "callback": {"days": ["today", "next_business_day"], "from": "10:00", "to": "19:00", "max_asks": 1},
  "identity": {
   "questions": [{"field": "date_of_birth", "ask": "What is your date of birth?", "format": "YYYY-MM-DD, whatever way the customer said it; a date given only as numbers is day, then month, then year"},
                 {"field": "phone_last4", "ask": "What are the last four digits of the phone number on file?", "format": "four digits"}],

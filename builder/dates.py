@@ -172,10 +172,16 @@ def product_facts(products, policy, now_value):
              "days_late": p.get("days_late"), "band": band.get("name", ""), "attempts": int(band.get("attempts", 1)),
              "deadline": deadline.isoformat(), "floor": floor, "attempt1_date": first.isoformat() if first else ""}
         facts.append(f)
+        attempts = f["attempts"]
+        if attempts <= 0:
+            offers = "no persuasion attempt: after a refusal, stop, thank the customer and say goodbye"
+        elif attempts == 1:
+            offers = ("one persuasion attempt only: after a flat refusal propose " + (say(first) if first else "the latest allowed date") + " for the amount in play; if that is refused too, STOP: make no further offer of any amount or date, thank the customer and say goodbye")
+        else:
+            offers = ("persuasion attempts: after a flat refusal propose " + (say(first) if first else "the latest allowed date") + " for the amount in play; after a second flat refusal propose the floor amount " + money(floor) + " on " + say(deadline)
+                      + "; after that STOP: make no further offer, thank the customer and say goodbye")
         lines.append("Product " + str(i + 1) + ": id " + f["product_id"] + ", " + name + ", past due " + money(f["past_due"]) + ", " + str(f["days_late"])
                      + " days late, band " + f["band"] + ", floor amount " + money(floor) + ", latest allowed date " + say(deadline)
-                     + " (propose this when the customer gives a vague period and no exact day, or asks for a later date)"
-                     + ", persuasion attempts allowed " + str(f["attempts"]) + ", attempt 1 date " + (say(first) if first else "none")
-                     + " (propose this only after a flat refusal or a non-answer)")
+                     + " (propose this when the customer gives a vague period and no exact day, or asks for a later date); " + offers + ".")
         spoken.append("Your " + name + " is " + money(f["past_due"]) + " past due and " + str(f["days_late"]) + " days late.")
     return {"facts": facts, "summary": "\n".join(lines), "count": len(facts), "spoken": " ".join(spoken)}

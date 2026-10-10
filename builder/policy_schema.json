@@ -8,7 +8,7 @@
  "robot_answer": "<what to say if asked whether the caller is a robot or an AI, as an instruction>",
  "scam_answer": "<what to say if asked whether this is a scam, as an instruction>",
  "third_party": {"instructions": "<the brief's rules when someone other than the customer answers, in full>", "deceased_sentence": "<the exact sentence to say when told the customer has died, if the brief gives one>"},
- "callback": {"days": ["<which days a callback may be booked on, as tokens from: today, next_business_day>"], "from": "<HH:MM window start>", "to": "<HH:MM window end>"},
+ "callback": {"days": ["<which days a callback may be booked on, as tokens from: today, next_business_day>"], "from": "<HH:MM window start>", "to": "<HH:MM window end>", "max_asks": "<integer: how many times to ask for another time when the offered one is outside the window>"},
  "identity": {
   "questions": [{"field": "<field name exactly as in the tool API enum>", "ask": "<how to ask it>", "format": "<format the tool needs, in words, plus any parsing rule from the brief>"}],
   "max_wrong_total": "<integer: wrong answers in total that end the check>",

@@ -206,11 +206,44 @@ except Exception:
     pass
 """
 
+CALLBACK_PRE = """import json, datetime
+__COMMON__
+CB = __CALLBACK__
+try:
+    b = config.get('body') if isinstance(config, dict) else None
+    vars['callback_block'] = ''
+    if isinstance(b, dict) and (CB.get('days') or CB.get('from') or CB.get('to')):
+        today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
+        nb = datetime.date.fromisoformat(str(vars.get('callback_next_business_day') or vars.get('next_business_day'))[:10])
+        day = datetime.date.fromisoformat(str(b.get('date'))[:10])
+        t, now_t, days = str(b.get('time') or ''), str(vars.get('now_time') or ''), CB.get('days') or []
+        frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')
+        ok_day = (day == today and 'today' in days) or (day == nb and 'next_business_day' in days)
+        ok_time = (not frm or t >= frm) and (not to or t <= to) and not (day == today and now_t and t <= now_t)
+        if not (ok_day and ok_time):
+            n = _count('callback_outside')
+            limit = int(float(CB.get('max_asks') or 1))
+            if n <= limit:
+                vars['callback_block'] = 'NOT booked: ' + day.isoformat() + ' at ' + t + ' is outside the callback window (' + str(vars.get('callback_text') or '') + '). Ask for another day and time inside it, then CALL schedule_callback again.'
+            else:
+                vars['callback_block'] = 'NOT booked: that is outside the window again. Do not book anything. Thank the person, say goodbye, and in the same message call transition_to_outcome_no_callback_quiet.'
+            config['body'] = dict()
+except Exception:
+    pass
+"""
+
 CALLBACK_POST = """import json
 __COMMON__
 try:
     d = _d(result)
-    if d is not None and _flag(d.get('ok')):
+    block = str(vars.get('callback_block') or '')
+    if d is None and isinstance(result, dict):
+        result['data'] = d = dict()
+    if block:
+        vars['callback_block'] = ''
+        if d is not None:
+            d['what_to_do_next'] = block
+    elif d is not None and _flag(d.get('ok')):
         vars['callback_state'] = 'done'
         d['what_to_do_next'] = 'Callback booked. Thank the person and say goodbye.'
     elif d is not None:
@@ -251,6 +284,6 @@ def all_hooks(policy, recompute=""):
         ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next)),
         ("add_note", "pre"): NOTE_PRE, ("add_note", "post"): fill(NOTE_POST, common=COMMON),
         ("transfer_to_agent", "pre"): TRANSFER_PRE, ("transfer_to_agent", "post"): fill(TRANSFER_POST, common=COMMON),
-        ("schedule_callback", "post"): fill(CALLBACK_POST, common=COMMON),
+        ("schedule_callback", "pre"): fill(CALLBACK_PRE, common=COMMON, callback=policy.get("callback") or {}), ("schedule_callback", "post"): fill(CALLBACK_POST, common=COMMON),
         ("close_call", "pre"): fill(CLOSE_PRE, recompute=recompute or "", no_reason=policy.get("no_reason_outcomes") or [], default_outcome=json.dumps(default_outcome)),
     }
