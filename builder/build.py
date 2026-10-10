@@ -25,11 +25,14 @@ def main(argv):
     trace = logger(log_path)
     trace("start " + time.strftime("%Y-%m-%dT%H:%M:%S%z") + " | briefs " + " ".join(briefs) + " | tool api " + spec_path + " | slot " + slot)
     left = lambda: BUDGET_S - (time.time() - start)
+    given = json.loads(pathlib.Path(opts["policy"]).read_text()) if opts["policy"] else None   # read before the work folder is wiped
     workdir = isolate(slot, briefs, spec_path)
     spec = json.loads(pathlib.Path(spec_path).read_text())
     ask = lambda prompt, wd, tr, purpose: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120))
 
-    policy = read_policy(opts, briefs, spec_path, workdir, trace, ask)
+    policy = given if given is not None else read_policy(opts, briefs, spec_path, workdir, trace, ask)
+    if given is not None:
+        trace("normalize: skipped, policy from " + opts["policy"])
     (workdir / "policy.json").write_text(json.dumps(policy, indent=1))
     try:
         workflow = render.render(policy, spec)
@@ -62,9 +65,6 @@ def main(argv):
 
 def read_policy(opts, briefs, spec_path, workdir, trace, ask):
     """The policy from --policy, or from the normalize stage. On a total failure, an empty policy still yields a saved agent."""
-    if opts["policy"]:
-        trace("normalize: skipped, policy from " + opts["policy"])
-        return json.loads(pathlib.Path(opts["policy"]).read_text())
     texts = [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
     try:
         policy = normalize.normalize(texts, pathlib.Path(spec_path).read_text(), workdir, trace, ask, llm.parse_json)
