@@ -1,0 +1,23 @@
+# secrets and local state
+env.sh
+.freya-agents.json
+.personas.json
+.claude/settings.local.json
+
+# run outputs
+results/
+traces/
+out/
+
+# python
+__pycache__/
+*.pyc
+
+# os and archives
+.DS_Store
+freya-workspace.zip
+env
+.env
+.venv/
+work/
+*.workflow.json
