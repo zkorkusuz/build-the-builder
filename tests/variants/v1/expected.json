@@ -1,0 +1,118 @@
+{
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "from": "09:00",
+  "to": "18:00"
+ },
+ "identity.questions.fields": [
+  "postcode",
+  "birth_year"
+ ],
+ "identity.max_wrong_total": 2,
+ "identity.hint_value": "",
+ "calendar.holidays": [
+  "2026-11-02",
+  "2026-11-05",
+  "2026-12-24",
+  "2026-12-25",
+  "2026-12-26",
+  "2027-01-01"
+ ],
+ "bands": [
+  {
+   "days_late_min": 1,
+   "days_late_max": 14,
+   "deadline_business_days": 10,
+   "attempts": 1
+  },
+  {
+   "days_late_min": 15,
+   "days_late_max": 60,
+   "deadline_business_days": 5,
+   "attempts": 2
+  }
+ ],
+ "attempt1_rule.rule": "next_business_day",
+ "outcomes": {
+  "unclear": [
+   "no_contact",
+   "unclear"
+  ],
+  "callback": [
+   "no_contact",
+   "callback"
+  ],
+  "no_callback": [
+   "no_contact",
+   "no_callback"
+  ],
+  "wrong_number": [
+   "no_contact",
+   "wrong_number"
+  ],
+  "deceased": [
+   "no_contact",
+   "deceased"
+  ],
+  "id_failed": [
+   "unverified",
+   "failed"
+  ],
+  "id_declined": [
+   "unverified",
+   "refused"
+  ],
+  "promise": [
+   "ptp",
+   ""
+  ]
+ },
+ "end_reasons": {
+  "refused": [
+   "no_ptp",
+   "declined"
+  ],
+  "hardship": [
+   "no_ptp",
+   "hardship"
+  ],
+  "dispute": [
+   "no_ptp",
+   "disputed"
+  ],
+  "paid": [
+   "settled",
+   ""
+  ],
+  "service_error": [
+   "no_ptp",
+   "system_error"
+  ]
+ },
+ "transfers": {
+  "plans": [
+   "handed_over",
+   "plans"
+  ],
+  "agents": [
+   "handed_over",
+   "agents"
+  ],
+  "hardship_team": [
+   "handed_over",
+   "hardship_team"
+  ]
+ },
+ "no_reason_outcomes": [
+  "ptp",
+  "settled"
+ ],
+ "sentences.after_promise": "We will send you an SMS to confirm this arrangement.",
+ "sentences.first_ask": "Can you clear this today?",
+ "sentences.confirm_question": "Is that right?",
+ "third_party.deceased_sentence": "Please accept our condolences.",
+ "multi_product.enabled": false
+}

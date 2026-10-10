@@ -18,7 +18,7 @@ BUDGET_S = 27 * 60          # the rule is 30 minutes; keep a margin for the expo
 def main(argv):
     opts, files = parse(argv)
     briefs, spec_path = files[:-1], files[-1]
-    slot = pathlib.Path(briefs[0]).stem
+    slot = "_".join(pathlib.Path(b).stem for b in briefs)      # one slot per brief set; the same set updates the same workflow
     start = time.time()
     ROOT.joinpath("traces").mkdir(exist_ok=True)
     log_path = ROOT / "traces" / (slot + "-" + time.strftime("%Y%m%d-%H%M%S") + ".log")
