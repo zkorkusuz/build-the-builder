@@ -206,35 +206,98 @@ except Exception:
     pass
 """
 
-CALLBACK_PRE = """import json, datetime
+CALLBACK_PRE = """import json, datetime, re
 __COMMON__
 CB = __CALLBACK__
+WORDS = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12, 'noon': 12, 'midday': 12, 'midnight': 0}
+DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+def _day(text, today):
+    t = str(text or '').strip().lower()
+    m = re.search(r'(\\d{4})-(\\d{2})-(\\d{2})', t)
+    if m:
+        return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    if 'today' in t or 'tonight' in t or 'this evening' in t or 'this afternoon' in t or 'this morning' in t or t in ('now', 'later'):
+        return today
+    if 'day after tomorrow' in t:
+        return today + datetime.timedelta(days=2)
+    if 'tomorrow' in t:
+        return today + datetime.timedelta(days=1)
+    for i, name in enumerate(DAYS):
+        if name in t or name[:3] in t.split():
+            ahead = (i - today.weekday()) % 7
+            if 'next' in t:
+                ahead = ahead + 7 if ahead else 7
+            return today + datetime.timedelta(days=ahead)
+    m = re.search(r'(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:of\\s*)?([a-z]+)?', t)
+    if m and m.group(1):
+        d = int(m.group(1))
+        months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+        mon = next((k + 1 for k, n in enumerate(months) if m.group(2) and n.startswith(m.group(2)[:3])), today.month)
+        try:
+            cand = datetime.date(today.year, mon, d)
+            return cand if cand >= today else datetime.date(today.year + 1, mon, d)
+        except ValueError:
+            pass
+    return None
+def _time(text):
+    t = str(text or '').strip().lower().replace('.', ':')
+    extra = 0
+    if 'half past' in t:
+        t, extra = t.replace('half past', ''), 30
+    elif 'quarter past' in t:
+        t, extra = t.replace('quarter past', ''), 15
+    elif 'quarter to' in t:
+        t, extra = t.replace('quarter to', ''), -15
+    m = re.search(r'(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|a\\.m|p\\.m)?', t)
+    h, mi = None, 0
+    if m:
+        h, mi = int(m.group(1)), int(m.group(2) or 0)
+        if m.group(3) and m.group(3).startswith('p') and h < 12:
+            h += 12
+        if m.group(3) and m.group(3).startswith('a') and h == 12:
+            h = 0
+    else:
+        for w, n in WORDS.items():
+            if re.search(r'\\b' + w + r'\\b', t):
+                h = n
+                break
+    if h is None:
+        return None
+    if not m or not m.group(3):
+        if ('evening' in t or 'tonight' in t or 'afternoon' in t or 'pm' in t) and h < 12:
+            h += 12
+        elif 1 <= h <= 6 and 'morning' not in t and 'am' not in t.split():
+            h += 12
+    mi += extra
+    if mi < 0:
+        h, mi = h - 1, mi + 60
+    if h > 23 or h < 0:
+        return None
+    return '%02d:%02d' % (h, mi)
 try:
     b = config.get('body') if isinstance(config, dict) else None
     vars['callback_block'] = ''
     if isinstance(b, dict) and (CB.get('days') or CB.get('from') or CB.get('to')):
         today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
         nb = datetime.date.fromisoformat(str(vars.get('callback_next_business_day') or vars.get('next_business_day'))[:10])
-        t, now_t, days = str(b.get('time') or ''), str(vars.get('now_time') or ''), CB.get('days') or []
-        try:
-            day = datetime.date.fromisoformat(str(b.get('date'))[:10])
-            if len(t) != 5 or t[2] != ':':
-                raise ValueError('time')
-        except Exception:
-            vars['callback_block'] = 'NOT booked: the call needs date as YYYY-MM-DD and time as HH:MM. Today is ' + today.isoformat() + ', the next business day is ' + nb.isoformat() + '. Convert what the person offered yourself using the weekday table in your instructions (tonight means today; use the 24-hour clock); do not ask the person for a date. Then CALL schedule_callback again with both fields.'
-            config['body'] = dict()
-            raise ValueError('stop')
+        day, t = _day(b.get('date'), today), _time(str(b.get('time') or '') + ' ' + str(b.get('date') or ''))
+        now_t, days = str(vars.get('now_time') or ''), CB.get('days') or []
         frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')
-        ok_day = (day == today and 'today' in days) or (day == nb and 'next_business_day' in days)
-        ok_time = (not frm or t >= frm) and (not to or t <= to) and not (day == today and now_t and t <= now_t)
-        if not (ok_day and ok_time):
-            n = _count('callback_outside')
-            limit = int(float(CB.get('max_asks') or 1))
-            if n <= limit:
-                vars['callback_block'] = 'NOT booked: ' + day.isoformat() + ' at ' + t + ' is outside the callback window (' + str(vars.get('callback_text') or '') + '). Ask for another day and time inside it, then CALL schedule_callback again.'
-            else:
-                vars['callback_block'] = 'NOT booked: that is outside the window again. Do not book anything. Thank the person, say goodbye, and in the same message call transition_to_outcome_no_callback_quiet.'
+        if day is None or t is None:
+            vars['callback_block'] = 'NOT booked: the day or the time could not be read. CALL schedule_callback again with date as the day the person said (today, tomorrow, a weekday name, or YYYY-MM-DD) and time as they said it (for example 9pm or 10:30); today is ' + today.isoformat() + ' and the next business day is ' + nb.isoformat() + '. Do not ask the person for a date.'
             config['body'] = dict()
+        else:
+            b['date'], b['time'] = day.isoformat(), t
+            ok_day = (day == today and 'today' in days) or (day == nb and 'next_business_day' in days)
+            ok_time = (not frm or t >= frm) and (not to or t <= to) and not (day == today and now_t and t <= now_t)
+            if not (ok_day and ok_time):
+                n = _count('callback_outside')
+                limit = int(float(CB.get('max_asks') or 1))
+                if n <= limit:
+                    vars['callback_block'] = 'NOT booked: ' + day.isoformat() + ' at ' + t + ' is outside the callback window (' + str(vars.get('callback_text') or '') + '). Ask for another day and time inside it, then CALL schedule_callback again.'
+                else:
+                    vars['callback_block'] = 'NOT booked: that is outside the window again. Do not book anything and do not ask again. Thank the person, say goodbye, and in the same message call transition_to_outcome_no_callback_quiet.'
+                config['body'] = dict()
 except Exception:
     pass
 """

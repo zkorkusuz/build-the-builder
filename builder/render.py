@@ -6,7 +6,7 @@ DATES_SRC = pathlib.Path(dates.__file__).read_text()
 # Variables the workflow sets itself. A model-filled tool field must not share one of these names.
 OWN_VARS = {"today", "now", "outcome", "reason", "products", "debt_summary", "debt_statement", "product_count", "id_state", "transfer_state",
             "callback_state", "promise_state", "end_reason", "who", "identity_signal", "third_party_result", "conversation_done"}
-COLUMNS = ["prepare", "opening", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_"]
+COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_"]
 
 
 def always(target):
@@ -162,15 +162,30 @@ def render(policy, spec):
     T = lambda name, **kw: tool(spec, name, hook_map, desc, **kw)
     nodes = {}
     nodes["prepare"] = code_node("prepare", facts_code(policy, "unclear"), "opening")
-    nodes["opening"] = {"name": "opening", "node_type": "conversation", "task_message": prompts.opening_task(policy),
-        "on_enter": {"type": "tts", "text": (str(policy.get("opening_sentence") or "") + " " + str(policy.get("confirm_question") or "")).replace("{title}", "{{title}}").replace("{last_name}", "{{last_name}}").strip()},
-        "on_enter_first_entry_only": True, "max_node_turns": 6, "max_turn_transition": "outcome_unclear",
-        "extraction_schema": [extraction("who", ["customer", "other_person", "wrong_number", "deceased", "unclear"], "Who is on the line. customer only if they clearly confirmed being the customer (yes, that's me, speaking, their own name). other_person if someone else answered or the customer is not available. wrong_number if the number does not belong to the customer. deceased if the customer has died. unclear otherwise."),
-                              extraction("confirm_failed_twice", ["yes", "no"], "yes only when the assistant has asked " + str((policy.get("confirmation") or {}).get("max_asks") or 2) + " times whether it is speaking with the customer and the latest answer is still not a clear confirmation.")],
-        "transitions": [when("mark_confirmed", "the customer confirmed", ("who", "customer")), when("third_party_prep", "someone else answered", ("who", "other_person")),
-                        when("outcome_wrong_number", "wrong number", ("who", "wrong_number")), when("outcome_deceased", "customer has died", ("who", "deceased")),
-                        when("outcome_unclear", "unclear after two asks", ("confirm_failed_twice", "yes")),
-                        goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed after two asks and the assistant has said goodbye")]}
+    c = policy.get("confirmation") or {}
+    q = str(policy.get("confirm_question") or "").replace("{title}", "{{title}}").replace("{last_name}", "{{last_name}}")
+    who = extraction("who", ["customer", "other_person", "wrong_number", "deceased", "unclear"], "Who is on the line. customer only if they clearly confirmed being the customer (yes, that's me, speaking, their own name). other_person if someone else answered or the customer is not available. wrong_number if the number does not belong to the customer. deceased if the customer has died. unclear otherwise.")
+    routes = lambda: [when("mark_confirmed", "the customer confirmed", ("who", "customer")), when("third_party_prep", "someone else answered", ("who", "other_person")),
+                      when("outcome_wrong_number", "wrong number", ("who", "wrong_number")), when("outcome_deceased", "customer has died", ("who", "deceased"))]
+    asks = max(int(c.get("max_asks") or 2), 1)
+    chain = ["opening"] + ["opening_again" + (str(k) if k > 1 else "") for k in range(1, asks)]
+    for i, name in enumerate(chain):
+        last = i == len(chain) - 1
+        node = {"name": name, "node_type": "conversation", "extraction_schema": [who], "transitions": routes()}
+        if i == 0:
+            node["on_enter"] = {"type": "tts", "text": (str(policy.get("opening_sentence") or "") + " " + q).strip()}
+            node["on_enter_first_entry_only"] = True
+            node["task_message"] = prompts.opening_task(policy)
+        else:
+            node["task_message"] = ("The person has not clearly confirmed being the customer, {{title}} {{last_name}}. First answer any question they asked in one short sentence, without saying why you are calling, then ask exactly once: \"" + q + "\".\n"
+                                    + ("If the reply is still not a clear confirmation, say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never ask again and never say goodbye without calling it.\n" if last else "")
+                                    + "Do not say why you are calling. If the person says the customer is not available, is someone else, the number is wrong, or the customer has died, say nothing more; the next step is handled for you.")
+        if last:
+            node["max_node_turns"], node["max_turn_transition"] = 1, "outcome_unclear"
+            node["transitions"].append(goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed after the allowed asks and the assistant has said goodbye"))
+        else:
+            node["transitions"].append(always(chain[i + 1]))
+        nodes[name] = node
     nodes["third_party_prep"] = code_node("third_party_prep", facts_code(policy, "no_callback"), "third_party")
     nodes["third_party"] = {"name": "third_party", "node_type": "conversation", "task_message": prompts.third_party_task(policy), "max_node_turns": 6, "max_turn_transition": "outcome_no_callback",
         "tools": [T("schedule_callback")],

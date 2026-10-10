@@ -18,7 +18,7 @@ class Rendered(unittest.TestCase):
     def test_shape(self):
         n = self.wf["nodes"]
         self.assertEqual(self.wf["initial_node"], "prepare")
-        self.assertEqual([k for k, v in n.items() if v["node_type"] == "conversation"], ["opening", "third_party", "identity", "negotiate"])
+        self.assertEqual([k for k, v in n.items() if v["node_type"] == "conversation"], ["opening", "opening_again", "third_party", "identity", "negotiate"])
         self.assertEqual(sorted(t["function"]["name"] for t in n["negotiate"]["tools"]), ["create_promise", "transfer_to_agent"])
         self.assertEqual(n["account"]["pre_actions"][0]["function"]["name"], "get_account")
         self.assertEqual(self.wf["tools"][0]["config"]["alwaysRunsAt"], ["end_of_call"])

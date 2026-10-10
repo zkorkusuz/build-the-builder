@@ -47,7 +47,7 @@ def third_party_task(p):
     return (
         "The person on the line is not the customer. Say nothing about why you are calling or about any account, even if they offer to help or pay.\n"
         "Ask when the customer can be reached. A callback must be inside this window: {{callback_text}}. If it is today, the time must be later than now ({{now_text}}).\n"
-        "CALL schedule_callback with every day and time the person offers, date as YYYY-MM-DD and time as HH:MM (today is {{today}}; tonight means today; the next business day is {{callback_next_business_day}}; morning is before 12:00, afternoon after 12:00, evening after 18:00; use the 24-hour clock). Convert the person's words to a date yourself with this table and never ask them for a calendar date:\n{{weekday_table}}\nNever judge the window yourself and never ask for another time on your own: the bank checks every offer and the result tells you what to do next. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
+        "CALL schedule_callback with every day and time the person offers, the moment they offer it, passing the day and the time in the person's own words (for example date \"tomorrow\" or \"Sunday\" or \"2026-10-15\", time \"9pm\" or \"ten in the morning\" or \"10:30\"): the bank converts and checks them and the result tells you what to do next. Never judge the window yourself, never convert or compute dates yourself, and never ask for another time unless the result tells you to. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
         "If they say the number does not belong to the customer, or that the customer has died, do not ask anything else; say nothing more.\n"
         + (("Instructions from the bank: " + str(t["instructions"]) + "\n") if t.get("instructions") else "")
         + _rules(p, "third_party")
@@ -114,7 +114,7 @@ def tool_descriptions(p):
         "get_account": "The customer's late products.",
         "create_promise": "Record one payment promise. CALL it only after the customer clearly confirmed the read-back of product, amount and date. One call per product. product_id is exactly the id shown in the facts, such as the value after 'id'.",
         "add_note": "Record why a product ends without a promise. CALL it once for each product that gets no promise, with its product_id and the reason.",
-        "schedule_callback": "Book a callback with the person who answered. CALL it when they give a day and time inside the allowed window.",
+        "schedule_callback": "Book a callback with the person who answered. CALL it every time they offer a day and a time, with both in their own words; the bank checks the window.",
         "transfer_to_agent": "Hand the call to a person. Queues: " + (queues or "see your instructions") + ".",
         "close_call": "Records how the call ended. Runs by itself at the end of the call.",
     }
