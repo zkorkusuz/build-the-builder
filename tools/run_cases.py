@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tools"))
 import freya
 from score import http, score_ledger
 
+NOW_OVERRIDE = None
 PERSONA = """OUTPUT RULE: Write only the words you say on the phone. No stage directions, no brackets. One or two short sentences per turn, then wait for the other side.
 
 WHO YOU ARE: {who}
@@ -47,10 +48,14 @@ def persona_for(case, ident, style=None):
     return {"name": case["id"] + " " + case["title"] + (f" [{style}]" if style else ""), "prompt": text, "successCriteria": "All of these are true:\n- " + "\n- ".join(case["checks"]), "tags": ["hackathon", "brief-" + case["brief"]]}
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("agent_id"); ap.add_argument("--brief"); ap.add_argument("--cases", default=str(ROOT / "public-test-set.json")); ap.add_argument("--out"); ap.add_argument("--only"); ap.add_argument("--reps", type=int, default=1); ap.add_argument("--style", choices=sorted(STYLES)); ap.add_argument("--rerun-if-slow", type=int, default=0)
+    ap = argparse.ArgumentParser(); ap.add_argument("agent_id"); ap.add_argument("--brief"); ap.add_argument("--cases", default=str(ROOT / "public-test-set.json")); ap.add_argument("--out"); ap.add_argument("--only"); ap.add_argument("--reps", type=int, default=1); ap.add_argument("--style", choices=sorted(STYLES)); ap.add_argument("--rerun-if-slow", type=int, default=0); ap.add_argument("--now", help="override the call variable now, e.g. 2026-10-16T11:00 (expectations must match that day)")
     a = ap.parse_args()
     cases = [c for c in json.load(open(a.cases)) if (not a.brief or c["brief"] == a.brief) and (not a.only or c["id"] in a.only.split(","))]
-    ident = {c["id"]: {"identity": c.get("identity", {})} for c in cases}   # the public test set keeps the answers in the script text
+    public = {c["id"]: c for c in json.load(open(ROOT / "public-test-set.json"))} if (ROOT / "public-test-set.json").exists() else {}
+    for c in cases:                                              # an extra case reuses a practice customer and inherits its security answers
+        if "identity" not in c and c.get("session_case") in public and "identity" in public[c["session_case"]]: c["identity"] = public[c["session_case"]]["identity"]
+    ident = {c["id"]: {"identity": c.get("identity", {})} for c in cases}   # this kit's public test set keeps the answers in the script text
+    global NOW_OVERRIDE; NOW_OVERRIDE = a.now
     store = ROOT / ".personas.json"; ids = json.load(open(store)) if store.exists() else {}
     # a persona is recreated whenever its text changes, so an edited case never runs with a stale customer
     spec = {c["id"]: persona_for(c, ident[c["id"]], a.style) for c in cases}
@@ -84,6 +89,8 @@ def main():
 def run_once(agent_id, cases, ids):
     """One simulation: every case once. Returns the scored rows."""
     sessions = {c["id"]: http("/v1/practice/sessions", {"case": c.get("session_case", c["id"])})["variables"] for c in cases}   # extra cases reuse a practice customer
+    if NOW_OVERRIDE:
+        for v in sessions.values(): v["now"] = NOW_OVERRIDE
     t0 = time.time()
     sim_id, it_id, status = freya.run_simulation(agent_id, f"cases {time.strftime('%H:%M:%S')}", {ids[c["id"]]: sessions[c["id"]] for c in cases})
     took = time.time() - t0

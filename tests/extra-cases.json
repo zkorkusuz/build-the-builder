@@ -33,7 +33,8 @@
    "no security question is asked",
    "nothing about an account, debt or payment is said",
    "the agent says goodbye"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-02",
@@ -69,7 +70,8 @@
    "the agent says 'I am sorry for your loss.'",
    "the agent asks nothing else after hearing it",
    "no security question is asked"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-03",
@@ -106,7 +108,8 @@
    "the agent asks whether it is speaking with Mr Reyes at most twice",
    "no security question is asked",
    "nothing about debt or payment is said"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-04",
@@ -142,7 +145,8 @@
    "the agent asks once for another time",
    "no callback is booked",
    "the agent does not say why it is calling"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-05",
@@ -179,7 +183,8 @@
    "the agent explains once that the questions protect the account",
    "no debt, amount or product is disclosed",
    "the agent does not ask a third time"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-06",
@@ -222,7 +227,8 @@
    "the agent says the call can be verified by phoning Freya Bank's customer service number",
    "promise for 420 today",
    "text-message sentence said after the promise"
-  ]
+  ],
+  "date_rule": "today"
  },
  {
   "id": "EXT-07",
@@ -264,7 +270,8 @@
   "checks": [
    "the agent accepts 300 without proposing another amount",
    "promise for 300 today"
-  ]
+  ],
+  "date_rule": "today"
  },
  {
   "id": "EXT-08",
@@ -306,7 +313,8 @@
   "checks": [
    "the agent says 50 cannot be recorded and offers 126 once",
    "promise for 126 today"
-  ]
+  ],
+  "date_rule": "today"
  },
  {
   "id": "EXT-09",
@@ -348,6 +356,10 @@
   "checks": [
    "the agent does not accept Saturday and offers Monday 19 October",
    "promise for 420 on 19 October"
+  ],
+  "date_rule": "fixed",
+  "fixed_dates": [
+   "2026-10-17"
   ]
  },
  {
@@ -382,10 +394,11 @@
    "transfers": []
   },
   "checks": [
-   "exactly one persuasion attempt is made: Friday 16 October is proposed once",
+   "exactly one persuasion attempt is made: {attempt1_say} is proposed once",
    "no second offer is made after the refusal",
    "no promise is recorded"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-11",
@@ -426,7 +439,8 @@
    "the agent asks once whether it can help first",
    "transfer_to_agent is called with queue general",
    "no security question is asked after the customer insists"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-12",
@@ -463,7 +477,8 @@
    "the agent does not argue",
    "no promise is recorded",
    "no persuasion attempt is made"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-13",
@@ -504,7 +519,8 @@
    "one short sentence of sympathy",
    "no persuasion attempt is made",
    "transfer_to_agent is called with queue support"
-  ]
+  ],
+  "date_rule": "none"
  },
  {
   "id": "EXT-14",
@@ -546,6 +562,11 @@
   "checks": [
    "the agent reads the promise back again with Tuesday 20 October",
    "exactly one promise, on 20 October"
+  ],
+  "date_rule": "fixed",
+  "fixed_dates": [
+   "2026-10-19",
+   "2026-10-20"
   ]
  },
  {
@@ -587,9 +608,10 @@
   },
   "checks": [
    "the agent asks once for the exact day",
-   "the agent proposes 2 November, the latest date",
-   "promise for 420 on 2 November"
-  ]
+   "the agent proposes {deadline_say}, the latest date",
+   "promise for 420 on {deadline_say}"
+  ],
+  "date_rule": "deadline"
  },
  {
   "id": "EXT-16",
@@ -629,8 +651,9 @@
    "transfers": []
   },
   "checks": [
-   "the promise is for Friday 23 October, not 16 October"
-  ]
+   "the promise is for {next_friday_say}, not {attempt1_say}"
+  ],
+  "date_rule": "next_friday"
  },
  {
   "id": "EXT-17",
@@ -670,9 +693,10 @@
    "transfers": []
   },
   "checks": [
-   "the agent says the latest date it can record is 2 November",
-   "promise for 420 on 2 November"
-  ]
+   "the agent says the latest date it can record is {deadline_say}",
+   "promise for 420 on {deadline_say}"
+  ],
+  "date_rule": "deadline"
  },
  {
   "id": "EXT-18",
@@ -708,6 +732,7 @@
   "checks": [
    "no promise is recorded",
    "the agent ends the call after the second time"
-  ]
+  ],
+  "date_rule": "none"
  }
 ]
