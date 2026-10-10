@@ -22,5 +22,5 @@ def adapt(workflow, policy, workdir, trace, ask, parse_json):
         extra = str(additions.get(n) or "").strip()
         if extra:
             workflow["nodes"][n]["task_message"] += "\n\nAlso:\n" + extra
-            trace("adapt: added " + str(len(extra)) + " chars to " + n)
+            trace("adapt: added to " + n + ": " + " ".join(extra.split()))
     return workflow

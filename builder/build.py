@@ -40,6 +40,7 @@ def main(argv):
         trace("render: FAILED on this policy, " + str(e)[:200] + "; rendering the bare template")
         workflow = render.render({}, spec)
     trace("render: " + str(len(workflow["nodes"])) + " steps, " + str(count_tools(workflow)) + " tools, lint " + (" | ".join(lint.check(workflow)) or "clean"))
+    trace("render: steps " + ", ".join(workflow["nodes"]) + "; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts")
     saved = save(slot, workflow, trace)           # a valid agent exists from here on
 
     if not opts["no_adapt"] and not opts["policy"] and left() > 6 * 60:
@@ -73,7 +74,33 @@ def read_policy(opts, briefs, spec_path, workdir, trace, ask):
         policy = {}
     trace("normalize: policy with " + str(len(policy.get("rules", []))) + " rules, " + str(len(policy.get("bands", []))) + " bands, "
           + str(len(policy.get("identity", {}).get("questions", []))) + " identity questions, " + str(len(policy.get("end_reasons", []))) + " end reasons")
+    for line in summary(policy):
+        trace("policy: " + line)
     return policy
+
+
+def summary(p):
+    """The policy's structured facts, one line each, so a reviewer can check the trace against the brief without the JSON."""
+    g = lambda *ks: _dig(p, ks)
+    lines = ["identity questions in order: " + ", ".join(str(q.get("field")) for q in g("identity", "questions") or []) + "; wrong answers that end the check: " + str(g("identity", "max_wrong_total")),
+             "calendar: business weekdays " + str(g("calendar", "business_weekdays")) + ", holidays " + ", ".join(g("calendar", "holidays") or []),
+             "callback window: " + str(g("callback", "days")) + " " + str(g("callback", "from")) + "-" + str(g("callback", "to")) + ", asks for another time: " + str(g("callback", "max_asks")),
+             "confirmation asks allowed: " + str(g("confirmation", "max_asks")), "attempt-1 rule: " + str(g("attempt1_rule", "rule"))]
+    for b in g("bands") or []:
+        lines.append("band " + str(b.get("name")) + ": " + str(b.get("days_late_min")) + "-" + str(b.get("days_late_max")) + " days late, latest date the " + str(b.get("deadline_business_days")) + "th business day, " + str(b.get("attempts")) + " attempt(s)")
+    lines.append("outcomes: " + "; ".join(k + " -> " + str(v.get("outcome")) + ("/" + str(v.get("reason")) if v.get("reason") else "") for k, v in (g("outcomes") or {}).items()))
+    lines.append("end reasons: " + "; ".join(str(e.get("key")) + " -> " + str(e.get("outcome")) + ("/" + str(e.get("reason")) if e.get("reason") else "") + (" note " + str(e.get("note_reason")) if e.get("note_reason") else "") for e in g("end_reasons") or []))
+    lines.append("transfers: " + "; ".join(str(t.get("queue")) + " -> " + str(t.get("outcome")) + ("/" + str(t.get("reason")) if t.get("reason") else "") for t in g("transfers") or []))
+    lines.append("multi-product: " + str(g("multi_product", "enabled")) + "; floor fields: " + str(g("floor_field")) + "; no-reason outcomes: " + str(g("no_reason_outcomes")))
+    for a in g("ambiguities") or []:
+        lines.append("ambiguity: " + str(a))
+    return lines
+
+
+def _dig(d, keys):
+    for k in keys:
+        d = d.get(k) if isinstance(d, dict) else None
+    return d
 
 
 def parse(argv):

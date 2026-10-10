@@ -41,5 +41,6 @@
  "no_reason_outcomes": ["<outcome values that take no reason>"],
  "multi_product": {"enabled": "<true when customers can have several late products>", "rules": "<every rule for several products, in full, or empty>"},
  "goodbye": "<a closing sentence that thanks the customer and says goodbye>",
+ "ambiguities": ["<anything the briefs leave unclear or contradictory, and how you resolved it; empty list if nothing>"],
  "rules": [{"id": "<rule number or label>", "section": "<one of: opening, third_party, identity, debt, dates, amounts, promise, recording, other, closing, multi>", "text": "<the rule verbatim>"}]
 }
