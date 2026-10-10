@@ -47,7 +47,7 @@ def third_party_task(p):
     return (
         "The person on the line is not the customer. Say nothing about why you are calling or about any account, even if they offer to help or pay.\n"
         "Ask when the customer can be reached. A callback must be inside this window: {{callback_text}}. If it is today, the time must be later than now ({{now_text}}).\n"
-        "CALL schedule_callback with every day and time the person offers, date as YYYY-MM-DD and time as HH:MM: the bank checks it against the window and the result tells you what to do next. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
+        "CALL schedule_callback with every day and time the person offers, date as YYYY-MM-DD and time as HH:MM (today is {{today}}; tonight means today; the next business day is {{callback_next_business_day}}; morning is before 12:00, afternoon after 12:00, evening after 18:00; use the 24-hour clock). Never judge the window yourself and never ask for another time on your own: the bank checks every offer and the result tells you what to do next. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
         "If they say the number does not belong to the customer, or that the customer has died, do not ask anything else; say nothing more.\n"
         + (("Instructions from the bank: " + str(t["instructions"]) + "\n") if t.get("instructions") else "")
         + _rules(p, "third_party")

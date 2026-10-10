@@ -215,8 +215,15 @@ try:
     if isinstance(b, dict) and (CB.get('days') or CB.get('from') or CB.get('to')):
         today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
         nb = datetime.date.fromisoformat(str(vars.get('callback_next_business_day') or vars.get('next_business_day'))[:10])
-        day = datetime.date.fromisoformat(str(b.get('date'))[:10])
         t, now_t, days = str(b.get('time') or ''), str(vars.get('now_time') or ''), CB.get('days') or []
+        try:
+            day = datetime.date.fromisoformat(str(b.get('date'))[:10])
+            if len(t) != 5 or t[2] != ':':
+                raise ValueError('time')
+        except Exception:
+            vars['callback_block'] = 'NOT booked: the call needs date as YYYY-MM-DD and time as HH:MM. Today is ' + today.isoformat() + ', the next business day is ' + nb.isoformat() + '. Convert what the person offered (tonight means today; use the 24-hour clock) and CALL schedule_callback again with both fields.'
+            config['body'] = dict()
+            raise ValueError('stop')
         frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')
         ok_day = (day == today and 'today' in days) or (day == nb and 'next_business_day' in days)
         ok_time = (not frm or t >= frm) and (not to or t <= to) and not (day == today and now_t and t <= now_t)
