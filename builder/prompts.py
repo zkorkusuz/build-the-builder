@@ -22,7 +22,7 @@ def system_prompt(p):
         "- Call one tool per message. Never say something is recorded, booked or transferred unless the tool result said so.\n"
         + ("- Before identity is verified, never mention " + forbidden + " or any account detail, to anyone.\n" if forbidden else "")
         + "- Never invent figures, dates or reasons. If you do not have the information from your instructions or a tool, say you do not have it.\n"
-        "- Never offer anything that is not in your instructions: no discount, waiver, plan or new term.\n"
+        "- Never offer anything that is not in your instructions.\n"
         + ("- If asked whether you are a robot or an AI: " + str(p["robot_answer"]) + "\n" if p.get("robot_answer") else "")
         + ("- If asked whether this is a scam: " + str(p["scam_answer"]) + "\n" if p.get("scam_answer") else "")
     )
@@ -47,7 +47,7 @@ def third_party_task(p):
     return (
         "The person on the line is not the customer. Say nothing about why you are calling or about any account, even if they offer to help or pay.\n"
         "Ask when the customer can be reached. A callback must be inside this window: {{callback_text}}. If it is today, the time must be later than now ({{now_text}}).\n"
-        "When they give a day and time inside the window, CALL schedule_callback with date as YYYY-MM-DD and time as HH:MM. If they give a day or time outside the window, ask once for another; if that is also outside, do not book: say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
+        "When they give a day and time inside the window, CALL schedule_callback with date as YYYY-MM-DD and time as HH:MM. For a day or time outside the window, follow the bank's instructions below. When no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
         "If they say the number does not belong to the customer, or that the customer has died, do not ask anything else; say nothing more.\n"
         + (("Instructions from the bank: " + str(t["instructions"]) + "\n") if t.get("instructions") else "")
         + _rules(p, "third_party")
@@ -61,7 +61,7 @@ def identity_task(p):
     return (
         "The customer confirmed who they are. Thank them and run the security check: ask these questions one at a time, in this order, and CALL verify_identity with each answer. Do not ask the next question before the tool has answered.\n"
         + qtext + "\n"
-        "Move to the next question only when the tool result says Correct. If the result says the answer was wrong, ask the same question again. If it could not be read, ask the customer to repeat it.\n"
+        "After each tool result do exactly what what_to_do_next says: it tells you whether to ask the next question, repeat one, or stop.\n"
         "If the customer gives only part of an answer, ask for the rest before calling the tool. Convert what they say into the required format yourself.\n"
         "Say nothing about why the bank is calling until the check is complete.\n"
         + (("If the customer does not want to answer, or asks what the call is about instead of answering: " + str(i["decline_rule"]) + "\n") if i.get("decline_rule") else "")
@@ -94,7 +94,7 @@ def negotiate_task(p):
     if p.get("transfers"):
         parts.append("7. Transfers:\n" + _transfers(p))
     if m.get("enabled"):
-        parts.append("8. Several products: " + str(m.get("rules") or "") + " For each product that ends without a promise CALL add_note with that product_id and the reason. Never add a note before or after any transfer.")
+        parts.append("8. Several products: " + str(m.get("rules") or "") + " For each product that ends without a promise CALL add_note with that product_id and the reason.")
     parts.append("Ending: when everything is handled, thank the customer, say goodbye, and in the same message call transition_to_wrap_up. Do that also after a transfer, after a dispute, after 'already paid', after a refusal, and after a failed recording.")
     rules = _rules(p, "debt", "dates", "amounts", "promise", "recording", "other", "closing", "multi")
     if rules:
@@ -109,7 +109,7 @@ def tool_descriptions(p):
         "verify_identity": "Check one security answer. CALL it every time the customer gives an answer to a security question, with the field name and the answer in the required format.",
         "get_account": "The customer's late products.",
         "create_promise": "Record one payment promise. CALL it only after the customer clearly confirmed the read-back of product, amount and date. One call per product. product_id is exactly the id shown in the facts, such as the value after 'id'.",
-        "add_note": "Record why a product ends without a promise. CALL it once for each product that gets no promise, with its product_id and the reason." + (" Never after a transfer." if m.get("enabled") else ""),
+        "add_note": "Record why a product ends without a promise. CALL it once for each product that gets no promise, with its product_id and the reason.",
         "schedule_callback": "Book a callback with the person who answered. CALL it when they give a day and time inside the allowed window.",
         "transfer_to_agent": "Hand the call to a person. Queues: " + (queues or "see your instructions") + ".",
         "close_call": "Records how the call ended. Runs by itself at the end of the call.",

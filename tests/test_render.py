@@ -1,5 +1,5 @@
 """Render the Brief A fixture policy and check the workflow locally. Run: .venv/bin/python -m unittest tests.test_render"""
-import json, pathlib, sys, unittest
+import json, pathlib, re, sys, unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from builder import render, lint
@@ -59,6 +59,36 @@ class Rendered(unittest.TestCase):
         self.assertTrue(vars["debt_statement"].startswith("I am calling from the collections team") and vars["debt_statement"].endswith("Can you make this payment today?"))
         facts = json.loads(vars["product_facts_json"])
         self.assertEqual([f["deadline"] for f in facts], ["2026-11-02", "2026-10-23"])
+
+    def test_every_named_transition_tool_exists(self):
+        text = json.dumps(self.wf)
+        targets = {t["target_node"] for n in self.wf["nodes"].values() for t in n.get("transitions", []) if t.get("is_tool_call")}
+        for name in set(re.findall(r"transition_to_(\w+)", text)):
+            self.assertIn(name, targets, "prompt or hook names transition_to_" + name)
+
+    def test_promise_pre_hook_blocks_bad_dates_and_amounts(self):
+        import datetime
+        pre = next(t for t in self.wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "create_promise")["pre_process_code"]
+        facts = json.dumps([{"product_id": "p1", "deadline": "2026-10-23", "floor": 126, "words": "credit card ending 4821"}])
+        for date, amount, expect_block in (("2026-10-31", 200, "after the latest allowed date"), ("2026-10-17", 200, "not a business day"), ("2026-10-16", 50, "below the floor"), ("2026-10-16", 200, "")):
+            vars = {"today": "2026-10-14", "product_facts_json": facts}
+            config = {"body": {"product_id": "p1", "amount": amount, "date": date}}
+            exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
+            if expect_block:
+                self.assertEqual(config["body"], {}, date); self.assertIn(expect_block, vars["promise_block"])
+            else:
+                self.assertEqual(config["body"]["date"], date); self.assertEqual(vars["promise_block"], "")
+
+    def test_close_call_recomputes_outcome_for_a_verified_call(self):
+        pre = self.wf["tools"][0]["pre_process_code"]
+        vars = {"id_state": "verified", "outcome": "no_promise", "reason": "refused", "promises_recorded": json.dumps([{"product_id": "p1", "amount": 1, "date": "2026-10-14"}]), "transfer_state": "none"}
+        config = {"body": {"outcome": "{{outcome}}", "reason": "{{reason}}"}}
+        exec(pre, {"vars": vars, "config": config, "json": json})
+        self.assertEqual(config["body"], {"outcome": "promise"})
+        vars = {"id_state": "pending", "outcome": "not_reached", "reason": "callback"}
+        config = {"body": {"outcome": "", "reason": ""}}
+        exec(pre, {"vars": vars, "config": config, "json": json})
+        self.assertEqual(config["body"], {"outcome": "not_reached", "reason": "callback"})
 
     def test_no_null_anywhere(self):
         self.assertNotIn("null", json.dumps(self.wf))

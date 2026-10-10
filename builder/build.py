@@ -31,7 +31,11 @@ def main(argv):
 
     policy = read_policy(opts, briefs, spec_path, workdir, trace, ask)
     (workdir / "policy.json").write_text(json.dumps(policy, indent=1))
-    workflow = render.render(policy, spec)
+    try:
+        workflow = render.render(policy, spec)
+    except Exception as e:
+        trace("render: FAILED on this policy, " + str(e)[:200] + "; rendering the bare template")
+        workflow = render.render({}, spec)
     trace("render: " + str(len(workflow["nodes"])) + " steps, " + str(count_tools(workflow)) + " tools, lint " + (" | ".join(lint.check(workflow)) or "clean"))
     saved = save(slot, workflow, trace)           # a valid agent exists from here on
 
@@ -66,7 +70,7 @@ def read_policy(opts, briefs, spec_path, workdir, trace, ask):
         policy = normalize.normalize(texts, pathlib.Path(spec_path).read_text(), workdir, trace, ask, llm.parse_json)
     except Exception as e:
         trace("normalize: FAILED, " + str(e)[:300] + "; rendering from whatever came back")
-        policy = getattr(e, "partial", None) or {}
+        policy = {}
     trace("normalize: policy with " + str(len(policy.get("rules", []))) + " rules, " + str(len(policy.get("bands", []))) + " bands, "
           + str(len(policy.get("identity", {}).get("questions", []))) + " identity questions, " + str(len(policy.get("end_reasons", []))) + " end reasons")
     return policy

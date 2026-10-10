@@ -73,7 +73,8 @@ try:
             d['what_to_do_next'] = 'The identity check has failed. Do not mention any account or debt. ' + ('Tell the customer: ' + str(P.get('on_fail_sentence')) + ' ' if P.get('on_fail_sentence') else '') + 'Then thank them and say goodbye.'
         else:
             field = str(vars.get('id_current_field') or 'the same field')
-            d['what_to_do_next'] = 'WRONG ANSWER for ' + field + '. ' + str(left) + ' wrong answers left in total. Do NOT move to the next question. Tell the customer the answer did not match and ask the SAME question (' + field + ') again, then CALL verify_identity with field ' + field + ' and the new answer.'
+            rule = str(P.get('on_wrong') or 'Follow your instructions for a wrong answer, then CALL verify_identity again.')
+            d['what_to_do_next'] = 'WRONG ANSWER for ' + field + '. ' + str(left) + ' wrong answers left in total. ' + rule + ' (The field just checked was ' + field + '.)'
 except Exception:
     pass
 """
@@ -103,18 +104,20 @@ try:
             today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
             day = datetime.date.fromisoformat(str(b.get('date'))[:10])
             deadline = datetime.date.fromisoformat(str(f.get('deadline'))[:10])
-            note = ''
+            why, offer = '', day
             if day < today:
-                day, note = today, 'moved to today, the earliest date allowed'
-            if day > deadline:
-                day, note = deadline, 'moved to the latest date allowed, ' + deadline.isoformat()
-            for _ in range(10):
-                if _biz(day) or day >= deadline:
-                    break
-                day += datetime.timedelta(days=1)
-                note = 'moved to the next business day, ' + day.isoformat()
-            b['date'] = day.isoformat()
-            vars['promise_date_note'] = note
+                why, offer = 'is in the past', today
+            elif day > deadline:
+                why, offer = 'is after the latest allowed date for this product', deadline
+            elif not _biz(day):
+                why, offer = 'is not a business day', day
+                for _ in range(10):
+                    if _biz(offer) or offer >= deadline:
+                        break
+                    offer += datetime.timedelta(days=1)
+            if why:
+                vars['promise_block'] = 'NOT recorded: the date ' + day.isoformat() + ' ' + why + '. Offer ' + offer.strftime('%A %d %B %Y') + ' (' + offer.isoformat() + ') instead, as your instructions say, read the promise back again with the new date, and CALL create_promise only after the customer confirms it.'
+                config['body'] = dict()
 except Exception:
     pass
 """
@@ -138,10 +141,7 @@ try:
         vars['promises_recorded'] = json.dumps(done)
         vars['promise_failures'] = '0'
         vars['promise_state'] = 'recorded'
-        note = str(vars.get('promise_date_note') or '')
         text = 'Recorded: ' + str(attempt.get('words') or 'the product') + ', ' + str(attempt.get('amount')) + ' on ' + str(attempt.get('date')) + '.'
-        if note:
-            text += ' The date was ' + note + '; tell the customer the recorded date.'
         text += ' Tell the customer the promise is recorded' + (' and then say exactly: ' + json.dumps(sentence) if sentence else '') + '.'
         text += ' Then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
         d['what_to_do_next'] = text
@@ -199,7 +199,7 @@ try:
     d = _d(result)
     if d is not None and _flag(d.get('ok')):
         vars['transfer_state'] = 'done'
-        d['what_to_do_next'] = 'Transfer requested. Tell the customer you are connecting them now, thank them and say goodbye. Do not record any note after this.'
+        d['what_to_do_next'] = 'Transfer requested. Tell the customer you are connecting them now, thank them and say goodbye.'
     elif d is not None:
         d['what_to_do_next'] = 'The transfer failed. CALL transfer_to_agent once more with the same queue.' if _count('transfer_failures') < 2 else 'The transfer could not be made now. Tell the customer so, thank them and say goodbye. Do not promise any call back.'
 except Exception:
@@ -219,22 +219,26 @@ except Exception:
     pass
 """
 
-CLOSE_PRE = """try:
+CLOSE_PRE = """__RECOMPUTE__
+try:
     b = config.get('body') if isinstance(config, dict) else None
     NO_REASON = __NO_REASON__
     if isinstance(b, dict):
-        if not b.get('outcome'):
-            b['outcome'] = str(vars.get('outcome') or __DEFAULT_OUTCOME__)
-        if not b.get('reason'):
-            b['reason'] = str(vars.get('reason') or '')
-        if b.get('outcome') in NO_REASON or not b.get('reason'):
+        o, r = str(vars.get('outcome') or ''), str(vars.get('reason') or '')
+        if o:
+            b['outcome'] = o
+        elif not b.get('outcome') or '{' in str(b.get('outcome')):
+            b['outcome'] = __DEFAULT_OUTCOME__
+        if r:
+            b['reason'] = r
+        if b.get('outcome') in NO_REASON or not b.get('reason') or '{' in str(b.get('reason')):
             b.pop('reason', None)
 except Exception:
     pass
 """
 
 
-def all_hooks(policy):
+def all_hooks(policy, recompute=""):
     """Every hook's source, keyed by tool name and phase, filled from the policy."""
     ident, out = policy.get("identity") or {}, policy.get("outcomes") or {}
     default_outcome = (out.get("unclear") or {}).get("outcome", "")
@@ -248,5 +252,5 @@ def all_hooks(policy):
         ("add_note", "pre"): NOTE_PRE, ("add_note", "post"): fill(NOTE_POST, common=COMMON),
         ("transfer_to_agent", "pre"): TRANSFER_PRE, ("transfer_to_agent", "post"): fill(TRANSFER_POST, common=COMMON),
         ("schedule_callback", "post"): fill(CALLBACK_POST, common=COMMON),
-        ("close_call", "pre"): fill(CLOSE_PRE, no_reason=policy.get("no_reason_outcomes") or [], default_outcome=json.dumps(default_outcome)),
+        ("close_call", "pre"): fill(CLOSE_PRE, recompute=recompute or "", no_reason=policy.get("no_reason_outcomes") or [], default_outcome=json.dumps(default_outcome)),
     }

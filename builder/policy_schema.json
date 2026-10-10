@@ -12,6 +12,7 @@
  "identity": {
   "questions": [{"field": "<field name exactly as in the tool API enum>", "ask": "<how to ask it>", "format": "<format the tool needs, in words, plus any parsing rule from the brief>"}],
   "max_wrong_total": "<integer: wrong answers in total that end the check>",
+  "on_wrong": "<what to do after a wrong answer, as an instruction: repeat the same question, or move on, as the brief says>",
   "hint_value": "<value of the tool's hint field that the brief gives a rule for (from the API file), or empty>",
   "hint_instruction": "<what to do when that hint is returned, as an instruction, or empty>",
   "decline_rule": "<the brief's rule when the customer does not want to answer, in full>",
