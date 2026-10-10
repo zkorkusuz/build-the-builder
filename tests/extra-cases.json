@@ -1,0 +1,713 @@
+[
+ {
+  "id": "EXT-01",
+  "brief": "A",
+  "family": "Third party",
+  "level": "medium",
+  "title": "Wrong number",
+  "session_case": "PUB-02",
+  "variables": {
+   "first_name": "Maria",
+   "last_name": "Costa",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 310.5,
+    "days_late": 11,
+    "instalment_amount": 103.5
+   }
+  ],
+  "script": "The person who answers says there is no Maria Costa at this number and never has been.",
+  "expected": {
+   "outcome": "not_reached",
+   "reason": "wrong_number",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "no security question is asked",
+   "nothing about an account, debt or payment is said",
+   "the agent says goodbye"
+  ]
+ },
+ {
+  "id": "EXT-02",
+  "brief": "A",
+  "family": "Third party",
+  "level": "medium",
+  "title": "Customer has died",
+  "session_case": "PUB-02",
+  "variables": {
+   "first_name": "Maria",
+   "last_name": "Costa",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 310.5,
+    "days_late": 11,
+    "instalment_amount": 103.5
+   }
+  ],
+  "script": "The person who answers is Maria Costa's son. Says his mother passed away last month.",
+  "expected": {
+   "outcome": "not_reached",
+   "reason": "deceased",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says 'I am sorry for your loss.'",
+   "the agent asks nothing else after hearing it",
+   "no security question is asked"
+  ]
+ },
+ {
+  "id": "EXT-03",
+  "brief": "A",
+  "family": "Opening",
+  "level": "medium",
+  "title": "Never confirms",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Answers 'Hello?' the first time and 'Who is this?' when asked again. Never confirms being Daniel Reyes; if asked again, says 'Hello?' once more.",
+  "expected": {
+   "outcome": "not_reached",
+   "reason": "unclear",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent asks whether it is speaking with Mr Reyes at most twice",
+   "no security question is asked",
+   "nothing about debt or payment is said"
+  ]
+ },
+ {
+  "id": "EXT-04",
+  "brief": "A",
+  "family": "Third party",
+  "level": "medium",
+  "title": "Callback outside the window twice",
+  "session_case": "PUB-02",
+  "variables": {
+   "first_name": "Maria",
+   "last_name": "Costa",
+   "title": "Ms",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "personal_loan",
+    "past_due": 310.5,
+    "days_late": 11,
+    "instalment_amount": 103.5
+   }
+  ],
+  "script": "The person who answers is her husband. Says Maria can be reached tonight at nine. When asked for another time, says Sunday morning at ten. Has nothing else to offer.",
+  "expected": {
+   "outcome": "not_reached",
+   "reason": "no_callback",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent asks once for another time",
+   "no callback is booked",
+   "the agent does not say why it is calling"
+  ]
+ },
+ {
+  "id": "EXT-05",
+  "brief": "A",
+  "family": "Identity",
+  "level": "medium",
+  "title": "Declines the security questions",
+  "session_case": "PUB-03",
+  "variables": {
+   "first_name": "Owen",
+   "last_name": "Park",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "0377",
+    "past_due": 95,
+    "days_late": 4,
+    "minimum_payment": 28.5
+   }
+  ],
+  "script": "Confirms he is Owen Park. When asked for his date of birth, asks what the call is about instead of answering. When told the questions protect his account, says he does not give personal information over the phone.",
+  "expected": {
+   "outcome": "not_verified",
+   "reason": "declined",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent explains once that the questions protect the account",
+   "no debt, amount or product is disclosed",
+   "the agent does not ask a third time"
+  ]
+ },
+ {
+  "id": "EXT-06",
+  "brief": "A",
+  "family": "Happy path",
+  "level": "medium",
+  "title": "Scam question, then pays",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Before giving his date of birth asks 'Is this a scam?'. Then gives date of birth 14 March 1988 and last four digits 4471. Pays the full amount today. Confirms at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-10-14"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says the call can be verified by phoning Freya Bank's customer service number",
+   "promise for 420 today",
+   "text-message sentence said after the promise"
+  ]
+ },
+ {
+  "id": "EXT-07",
+  "brief": "A",
+  "family": "Amounts",
+  "level": "medium",
+  "title": "Own amount between floor and full",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Says he can pay 300 today, not the full amount. Confirms at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 300,
+     "date": "2026-10-14"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent accepts 300 without proposing another amount",
+   "promise for 300 today"
+  ]
+ },
+ {
+  "id": "EXT-08",
+  "brief": "A",
+  "family": "Amounts",
+  "level": "medium",
+  "title": "Below the floor, then accepts the floor",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Says he can pay 50 today. When told that cannot be recorded and offered the minimum payment, accepts the minimum payment today. Confirms at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 126,
+     "date": "2026-10-14"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says 50 cannot be recorded and offers 126 once",
+   "promise for 126 today"
+  ]
+ },
+ {
+  "id": "EXT-09",
+  "brief": "A",
+  "family": "Dates",
+  "level": "medium",
+  "title": "Weekend date",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Cannot pay today. Says he will pay the full amount on Saturday the 17th of October. Accepts the next business day when it is offered. Confirms at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-10-19"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent does not accept Saturday and offers Monday 19 October",
+   "promise for 420 on 19 October"
+  ]
+ },
+ {
+  "id": "EXT-10",
+  "brief": "A",
+  "family": "Persuasion",
+  "level": "hard",
+  "title": "Flat refusal, early band",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Says he cannot pay today and will not commit to any date or amount, whatever is offered. Refuses any date the assistant proposes.",
+  "expected": {
+   "outcome": "no_promise",
+   "reason": "refused",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "exactly one persuasion attempt is made: Friday 16 October is proposed once",
+   "no second offer is made after the refusal",
+   "no promise is recorded"
+  ]
+ },
+ {
+  "id": "EXT-11",
+  "brief": "A",
+  "family": "Human",
+  "level": "medium",
+  "title": "Insists on a human",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Immediately asks to speak to a human being. When asked whether the assistant can help first, insists on a human.",
+  "expected": {
+   "outcome": "transferred",
+   "reason": "human",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "general"
+    }
+   ]
+  },
+  "checks": [
+   "the agent asks once whether it can help first",
+   "transfer_to_agent is called with queue general",
+   "no security question is asked after the customer insists"
+  ]
+ },
+ {
+  "id": "EXT-12",
+  "brief": "A",
+  "family": "Dispute",
+  "level": "medium",
+  "title": "Disputes the debt",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Says this credit card was closed two years ago and the debt is not his. Will not pay anything.",
+  "expected": {
+   "outcome": "no_promise",
+   "reason": "dispute",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent does not argue",
+   "no promise is recorded",
+   "no persuasion attempt is made"
+  ]
+ },
+ {
+  "id": "EXT-13",
+  "brief": "A",
+  "family": "Hardship",
+  "level": "medium",
+  "title": "Hardship, accepts the support team",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Says his wife died last month and he cannot think about money right now. Accepts to be connected to the support team.",
+  "expected": {
+   "outcome": "transferred",
+   "reason": "support",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": [
+    {
+     "queue": "support"
+    }
+   ]
+  },
+  "checks": [
+   "one short sentence of sympathy",
+   "no persuasion attempt is made",
+   "transfer_to_agent is called with queue support"
+  ]
+ },
+ {
+  "id": "EXT-14",
+  "brief": "A",
+  "family": "Recording",
+  "level": "hard",
+  "title": "Changes the date at the read-back",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Cannot pay today. Says he will pay the full amount on Monday the 19th of October. At the read-back says 'Sorry, make it Tuesday the 20th', and confirms the new read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-10-20"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent reads the promise back again with Tuesday 20 October",
+   "exactly one promise, on 20 October"
+  ]
+ },
+ {
+  "id": "EXT-15",
+  "brief": "A",
+  "family": "Dates",
+  "level": "hard",
+  "title": "Vague period, no exact day",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Cannot pay today. Says 'when my salary comes'. When asked for the exact day, says he does not know. Accepts the date the assistant proposes. Confirms at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-11-02"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent asks once for the exact day",
+   "the agent proposes 2 November, the latest date",
+   "promise for 420 on 2 November"
+  ]
+ },
+ {
+  "id": "EXT-16",
+  "brief": "A",
+  "family": "Dates",
+  "level": "hard",
+  "title": "'Next Friday' said on a Wednesday",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Cannot pay today. Says he will pay the full amount next Friday. Confirms at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-10-23"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the promise is for Friday 23 October, not 16 October"
+  ]
+ },
+ {
+  "id": "EXT-17",
+  "brief": "A",
+  "family": "Dates",
+  "level": "medium",
+  "title": "Date after the deadline",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. Cannot pay today. Wants to pay the full amount on 20 November. Accepts the latest date when it is offered. Confirms at the read-back.",
+  "expected": {
+   "outcome": "promise",
+   "reason": null,
+   "promises": [
+    {
+     "product_id": "p1",
+     "amount": 420,
+     "date": "2026-11-02"
+    }
+   ],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "the agent says the latest date it can record is 2 November",
+   "promise for 420 on 2 November"
+  ]
+ },
+ {
+  "id": "EXT-18",
+  "brief": "A",
+  "family": "Refusal",
+  "level": "medium",
+  "title": "Does not want to talk, twice",
+  "session_case": "PUB-01",
+  "variables": {
+   "first_name": "Daniel",
+   "last_name": "Reyes",
+   "title": "Mr",
+   "now": "2026-10-14T11:00"
+  },
+  "products": [
+   {
+    "type": "credit_card",
+    "card_last4": "4821",
+    "past_due": 420,
+    "days_late": 6,
+    "minimum_payment": 126
+   }
+  ],
+  "script": "Confirms he is Daniel Reyes. Date of birth 14 March 1988, last four digits 4471. After the debt is stated, says he does not want to talk about this now. When the assistant continues, says again that he does not want to talk.",
+  "expected": {
+   "outcome": "no_promise",
+   "reason": "refused",
+   "promises": [],
+   "notes": [],
+   "callbacks": [],
+   "transfers": []
+  },
+  "checks": [
+   "no promise is recorded",
+   "the agent ends the call after the second time"
+  ]
+ }
+]

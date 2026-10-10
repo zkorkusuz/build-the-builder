@@ -1,9 +1,10 @@
 """Build a Freya phone agent from a bank's brief and its tool API file, with no manual step.
 
-    python3 builder/build.py <brief.md> [more brief files] <openapi.json> [--no-adapt] [--selftest <cases.json> --brief-id A]
+    python3 builder/build.py <brief.md> [more brief files] <openapi.json> [--no-adapt] [--policy <policy.json>] [--selftest <cases.json> --brief-id A]
 
 Stages: normalize (Claude) -> render (code) -> adapt (Claude) -> lint and dry run -> save and publish -> export -> optional self-test.
 Writes a plain-text trace to traces/<slot>-<start>.log. Stops itself well inside 30 minutes and always leaves a saved workflow.
+--policy skips the normalize stage and renders from a given policy file (for tests; never for a hidden brief).
 """
 import json, pathlib, shutil, subprocess, sys, time
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -26,19 +27,17 @@ def main(argv):
     left = lambda: BUDGET_S - (time.time() - start)
     workdir = isolate(slot, briefs, spec_path)
     spec = json.loads(pathlib.Path(spec_path).read_text())
-    texts = [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
+    ask = lambda prompt, wd, tr, purpose: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120))
 
-    policy = normalize.normalize(texts, pathlib.Path(spec_path).read_text(), workdir, trace, llm.ask, llm.parse_json)
+    policy = read_policy(opts, briefs, spec_path, workdir, trace, ask)
     (workdir / "policy.json").write_text(json.dumps(policy, indent=1))
-    trace("normalize: policy with " + str(len(policy.get("rules", []))) + " rules, " + str(len(policy.get("bands", []))) + " bands, " + str(len(policy.get("identity", {}).get("questions", []))) + " identity questions")
-
     workflow = render.render(policy, spec)
     trace("render: " + str(len(workflow["nodes"])) + " steps, " + str(count_tools(workflow)) + " tools, lint " + (" | ".join(lint.check(workflow)) or "clean"))
     saved = save(slot, workflow, trace)           # a valid agent exists from here on
 
-    if not opts["no_adapt"] and left() > 6 * 60:
+    if not opts["no_adapt"] and not opts["policy"] and left() > 6 * 60:
         try:
-            adapted = adapt.adapt(json.loads(json.dumps(workflow)), policy, workdir, trace, llm.ask, llm.parse_json)
+            adapted = adapt.adapt(json.loads(json.dumps(workflow)), policy, workdir, trace, ask, llm.parse_json)
             if not lint.check(adapted):
                 workflow, saved = adapted, save(slot, adapted, trace)
             else:
@@ -57,13 +56,28 @@ def main(argv):
     print(json.dumps({"slot": slot, "workflow_id": saved["workflow_id"], "agent_id": saved["agent_id"], "export": str(export_path), "trace": str(log_path)}))
 
 
+def read_policy(opts, briefs, spec_path, workdir, trace, ask):
+    """The policy from --policy, or from the normalize stage. On a total failure, an empty policy still yields a saved agent."""
+    if opts["policy"]:
+        trace("normalize: skipped, policy from " + opts["policy"])
+        return json.loads(pathlib.Path(opts["policy"]).read_text())
+    texts = [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
+    try:
+        policy = normalize.normalize(texts, pathlib.Path(spec_path).read_text(), workdir, trace, ask, llm.parse_json)
+    except Exception as e:
+        trace("normalize: FAILED, " + str(e)[:300] + "; rendering from whatever came back")
+        policy = getattr(e, "partial", None) or {}
+    trace("normalize: policy with " + str(len(policy.get("rules", []))) + " rules, " + str(len(policy.get("bands", []))) + " bands, "
+          + str(len(policy.get("identity", {}).get("questions", []))) + " identity questions, " + str(len(policy.get("end_reasons", []))) + " end reasons")
+    return policy
+
+
 def parse(argv):
-    opts, files, i = {"no_adapt": False, "selftest": None, "brief_id": None}, [], 0
+    opts, files, i = {"no_adapt": False, "selftest": None, "brief_id": None, "policy": None}, [], 0
     while i < len(argv):
         a = argv[i]
         if a == "--no-adapt": opts["no_adapt"] = True
-        elif a == "--selftest": opts["selftest"] = argv[i + 1]; i += 1
-        elif a == "--brief-id": opts["brief_id"] = argv[i + 1]; i += 1
+        elif a in ("--selftest", "--brief-id", "--policy"): opts[a[2:].replace("-", "_")] = argv[i + 1]; i += 1
         else: files.append(a)
         i += 1
     if len(files) < 2:
@@ -108,7 +122,11 @@ def selftest(agent_id, opts, trace):
     if opts["brief_id"]:
         cmd += ["--brief", opts["brief_id"]]
     trace("self-test: " + " ".join(cmd[1:]))
-    out = subprocess.run(cmd, capture_output=True, text=True, timeout=14 * 60).stdout
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=14 * 60).stdout
+    except subprocess.TimeoutExpired:
+        trace("self-test: stopped after 14 minutes without a result")
+        return
     for line in out.splitlines():
         if line.startswith(("PASS", "FAIL")) or "passed" in line:
             trace("self-test: " + line.strip()[:200])

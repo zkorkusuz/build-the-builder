@@ -9,6 +9,7 @@ POLICY = {
     "bands": [{"name": "early", "days_late_min": 1, "days_late_max": 7, "deadline_business_days": 12, "attempts": 1},
               {"name": "late", "days_late_min": 8, "days_late_max": 45, "deadline_business_days": 7, "attempts": 2}],
     "callback": {"days": ["today", "next_business_day"], "from": "10:00", "to": "19:00"},
+    "attempt1_rule": {"rule": "last_business_day_of_week", "n": 0},
     "floor_field": {"credit_card": "minimum_payment", "personal_loan": "instalment_amount", "car_loan": "instalment_amount"},
     "product_words": {"credit_card": "credit card ending {card_last4}", "personal_loan": "personal loan", "car_loan": "car loan"},
 }
@@ -67,6 +68,17 @@ class OtherDays(unittest.TestCase):
 
     def test_bad_now_does_not_raise(self):
         self.assertIn("today", dates.calendar_facts("garbage", POLICY))
+
+    def test_attempt1_by_other_rules(self):
+        cal, today = POLICY["calendar"], datetime.date(2026, 10, 14)
+        self.assertEqual(dates.attempt1_date(today, cal, {"rule": "next_business_day"}), datetime.date(2026, 10, 15))
+        self.assertEqual(dates.attempt1_date(today, cal, {"rule": "nth_business_day", "n": 3}), datetime.date(2026, 10, 19))
+        self.assertIsNone(dates.attempt1_date(today, cal, {"rule": "none"}))
+        self.assertIsNone(dates.attempt1_date(today, cal, {}))
+
+    def test_empty_policy_gives_facts_without_brief_values(self):
+        f = dates.calendar_facts(NOW, {})
+        self.assertEqual(f["attempt1_date"], ""); self.assertIn("no callback window", f["callback_text"])
 
 
 class ProductFacts(unittest.TestCase):

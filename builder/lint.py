@@ -28,8 +28,8 @@ def set_variables(wf):
                 names |= set(re.findall(r"vars\['([\w.]+)'\]\s*=", obj["code"]["default"]))
                 names |= set(re.findall(r"\('(\w+)',\s*'[^']*'\)", obj["code"]["default"]))
                 if "calendar_facts" in obj["code"]["default"]:
-                    names |= {"today", "today_text", "now_time", "now_text", "next_business_day", "attempt1_date", "attempt1_text", "weekday_table", "business_days_text", "holidays_text",
-                              "callback_next_business_day", "callback_text", "callback_from", "callback_to"}
+                    from builder import dates
+                    names |= set(dates.calendar_facts("2000-01-03T09:00", {}).keys())
     return names
 
 

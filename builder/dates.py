@@ -1,7 +1,7 @@
 """Calendar facts from the call's `now` and the policy. Pure functions, stdlib only.
 
 The same source runs inside Freya code steps (the renderer embeds this module), so it must import only
-json, re and datetime, never raise on bad input, and never contain two braces in a row.
+json, re and datetime, never raise on bad input, never contain two braces in a row, and hold no bank's values.
 """
 import datetime
 
@@ -20,7 +20,7 @@ def parse_now(value):
 
 
 def is_business_day(day, cal):
-    return day.weekday() in cal.get("business_weekdays", [0, 1, 2, 3, 4]) and day.isoformat() not in set(cal.get("holidays", []))
+    return day.weekday() in (cal.get("business_weekdays") or [0, 1, 2, 3, 4]) and day.isoformat() not in set(cal.get("holidays") or [])
 
 
 def next_business_day(day, cal, include_today=False):
@@ -54,19 +54,32 @@ def last_business_day_of_week(day, cal):
     return sunday
 
 
-def attempt1_date(today, cal):
-    """Last business day of this week, or of next week when that day is today or already past."""
-    d = last_business_day_of_week(today, cal)
-    if d <= today:
-        d = last_business_day_of_week(today + datetime.timedelta(days=7), cal)
-    return d
+def attempt1_date(today, cal, rule):
+    """The date the first persuasion attempt proposes, by the policy's rule. None when the policy gives none."""
+    kind, n = str((rule or {}).get("rule") or ""), int(float((rule or {}).get("n") or 0))
+    if kind == "last_business_day_of_week":
+        d = last_business_day_of_week(today, cal)
+        return d if d > today else last_business_day_of_week(today + datetime.timedelta(days=7), cal)
+    if kind == "next_business_day":
+        return next_business_day(today, cal)
+    if kind == "nth_business_day":
+        return nth_business_day_after(today, max(n, 1), cal)
+    return None
 
 
 def say(day):
     return day.strftime("%A %d %B %Y").replace(" 0", " ") + " (" + day.isoformat() + ")"
 
 
-def weekday_table(today, cal):
+def money(x):
+    try:
+        v = float(x)
+        return str(int(v)) if v == int(v) else ("%.2f" % v)
+    except (TypeError, ValueError):
+        return str(x)
+
+
+def weekday_table(today):
     """Lines for "this <weekday>" (current week) and "next <weekday>" (following calendar week)."""
     monday = today - datetime.timedelta(days=today.weekday())
     lines = []
@@ -99,51 +112,54 @@ def band_for(days_late, bands):
 
 
 def callback_window(now, cal, cb):
-    """Allowed callback days and times: today (if the window has not closed) and the next business day."""
-    today = now.date()
-    options = []
-    if "today" in cb.get("days", ["today", "next_business_day"]):
-        after = max(now.strftime("%H:%M"), cb.get("from", "10:00"))
-        if after < cb.get("to", "19:00"):
-            options.append("today, " + say(today) + ", from " + after + " to " + cb.get("to", "19:00"))
+    """Allowed callback days and times from the policy. Empty text when the policy gives no window."""
+    today, days, frm, to = now.date(), cb.get("days") or [], str(cb.get("from") or ""), str(cb.get("to") or "")
     nb = next_business_day(today, cal)
-    options.append(say(nb) + ", from " + cb.get("from", "10:00") + " to " + cb.get("to", "19:00"))
-    return {"next_business_day": nb.isoformat(), "text": " or ".join(options), "from": cb.get("from", "10:00"), "to": cb.get("to", "19:00")}
+    options = []
+    if "today" in days and frm and to:
+        after = max(now.strftime("%H:%M"), frm)
+        if after < to:
+            options.append("today, " + say(today) + ", from " + after + " to " + to)
+    if "next_business_day" in days:
+        options.append(say(nb) + (", from " + frm + " to " + to if frm and to else ""))
+    return {"next_business_day": nb.isoformat(), "text": " or ".join(options) or "no callback window is given in your instructions", "from": frm, "to": to}
 
 
 def calendar_facts(now_value, policy):
     """Variables for the prompts and routes that depend only on `now` and the policy."""
     now = parse_now(now_value) or datetime.datetime(2000, 1, 1, 9, 0)
-    today, cal = now.date(), policy.get("calendar", {})
-    bands = policy.get("bands", [])
+    today, cal = now.date(), policy.get("calendar") or {}
+    a1 = attempt1_date(today, cal, policy.get("attempt1_rule"))
     out = {
         "today": today.isoformat(), "today_text": say(today), "now_time": now.strftime("%H:%M"),
         "now_text": say(today) + " at " + now.strftime("%H:%M"),
         "next_business_day": next_business_day(today, cal).isoformat(),
-        "attempt1_date": attempt1_date(today, cal).isoformat(), "attempt1_text": say(attempt1_date(today, cal)),
-        "weekday_table": "\n".join(weekday_table(today, cal)),
+        "attempt1_date": a1.isoformat() if a1 else "", "attempt1_text": say(a1) if a1 else "the latest allowed date of the product",
+        "weekday_table": "\n".join(weekday_table(today)),
     }
-    for k, v in callback_window(now, cal, policy.get("callback", {})).items():
+    for k, v in callback_window(now, cal, policy.get("callback") or {}).items():
         out["callback_" + k] = v
     latest = today
-    for b in bands:
+    for b in policy.get("bands") or []:
         d = nth_business_day_after(today, int(b.get("deadline_business_days", 5)), cal)
         out["deadline_" + str(b.get("name", "band"))] = d.isoformat()
         latest = max(latest, d)
     out["business_days_text"] = "\n".join(say(d) for d in business_days_list(today, cal, latest))
-    out["holidays_text"] = ", ".join(cal.get("holidays", [])) or "none"
+    out["holidays_text"] = ", ".join(cal.get("holidays") or []) or "none"
     return out
 
 
 def product_facts(products, policy, now_value):
-    """Per-product band, deadline, floor, offers and words, plus a summary for the prompt."""
+    """Per-product band, deadline, floor, offers and words, plus a summary and a spoken debt statement."""
     now = parse_now(now_value) or datetime.datetime(2000, 1, 1, 9, 0)
-    today, cal = now.date(), policy.get("calendar", {})
-    words, floor_field = policy.get("product_words", {}), policy.get("floor_field", {})
-    facts, lines = [], []
+    today, cal = now.date(), policy.get("calendar") or {}
+    words, floor_field = policy.get("product_words") or {}, policy.get("floor_field") or {}
+    rule = policy.get("attempt1_rule") or {}
+    a1 = attempt1_date(today, cal, rule)
+    facts, lines, spoken = [], [], []
     for i, p in enumerate(products or []):
         ptype = str(p.get("type", ""))
-        band = band_for(p.get("days_late"), policy.get("bands", []))
+        band = band_for(p.get("days_late"), policy.get("bands") or [])
         deadline = nth_business_day_after(today, int(band.get("deadline_business_days", 5)), cal)
         floor = p.get(floor_field.get(ptype, ""), None)
         name = words.get(ptype, ptype.replace("_", " "))
@@ -151,11 +167,13 @@ def product_facts(products, policy, now_value):
             name = name.format(**{k: str(v) for k, v in p.items()})
         except (KeyError, IndexError, ValueError):
             pass
+        first = deadline if str(rule.get("rule")) == "deadline" else a1
         f = {"product_id": str(p.get("product_id", "")), "type": ptype, "words": name, "past_due": p.get("past_due"),
              "days_late": p.get("days_late"), "band": band.get("name", ""), "attempts": int(band.get("attempts", 1)),
-             "deadline": deadline.isoformat(), "floor": floor, "attempt1_date": attempt1_date(today, cal).isoformat()}
+             "deadline": deadline.isoformat(), "floor": floor, "attempt1_date": first.isoformat() if first else ""}
         facts.append(f)
-        lines.append("Product " + str(i + 1) + ": id " + f["product_id"] + ", " + name + ", past due " + str(f["past_due"]) + ", " + str(f["days_late"])
-                     + " days late, band " + f["band"] + ", floor amount " + str(floor) + ", latest promise date " + say(deadline)
-                     + ", persuasion attempts allowed " + str(f["attempts"]) + ", attempt 1 date " + say(attempt1_date(today, cal)))
-    return {"facts": facts, "summary": "\n".join(lines), "count": len(facts)}
+        lines.append("Product " + str(i + 1) + ": id " + f["product_id"] + ", " + name + ", past due " + money(f["past_due"]) + ", " + str(f["days_late"])
+                     + " days late, band " + f["band"] + ", floor amount " + money(floor) + ", latest promise date " + say(deadline)
+                     + ", persuasion attempts allowed " + str(f["attempts"]) + ", attempt 1 date " + (say(first) if first else "none"))
+        spoken.append("Your " + name + " is " + money(f["past_due"]) + " past due and " + str(f["days_late"]) + " days late.")
+    return {"facts": facts, "summary": "\n".join(lines), "count": len(facts), "spoken": " ".join(spoken)}

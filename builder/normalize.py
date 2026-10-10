@@ -2,15 +2,14 @@
 import json, pathlib
 
 SCHEMA = (pathlib.Path(__file__).parent / "policy_schema.json").read_text()
-REQUIRED = ["opening_sentence", "confirm_question", "identity", "calendar", "bands", "outcomes", "sentences", "queues", "product_words", "floor_field"]
-SITUATIONS = ["unclear", "callback", "no_callback", "wrong_number", "deceased", "id_failed", "id_declined", "promise", "paid",
-              "transfer_restructuring", "transfer_human", "transfer_support", "refused", "hardship", "dispute", "service_error"]
+REQUIRED = ["opening_sentence", "confirm_question", "identity", "calendar", "bands", "outcomes", "sentences", "product_words", "floor_field", "end_reasons"]
+SITUATIONS = ["unclear", "callback", "no_callback", "wrong_number", "deceased", "id_failed", "id_declined", "promise"]
 
 INSTRUCTIONS = """You are turning a bank's instructions for an outbound late-payment phone call into one JSON policy file.
 Read every brief document below completely, sentence by sentence. Later documents (memos, corrections) override earlier ones when they conflict.
 Fill every field of the schema from the briefs and the tool API file. Take tool field names, enum values, outcome names, reasons and queue names from the tool API file. Never invent a value: if the briefs do not give one, use an empty string, and for lists an empty list.
 Rules text fields (date_rules, amount_rules, persuasion_rules, special_rules, recording_rules, third_party.instructions, identity.decline_rule, multi_product.rules) must contain every rule of that kind, rewritten as instructions to the phone agent, complete and in the brief's own words where possible. Use the phrase "latest allowed date" for the per-product deadline and "floor" for the minimum amount; the agent receives the computed dates and amounts.
-The outcomes map: each situation key is the moment the call ends; fill the outcome and reason values the brief's closing table prescribes for it. no_reason_outcomes lists the outcome values the table shows with no reason.
+The outcomes map: each situation key is a moment the call ends before or without a payment conversation; fill the outcome and reason values the brief's closing table prescribes for it. end_reasons lists every way a verified call can end without a promise, with its outcome and reason from the table and the add_note reason value for it, if the brief uses notes. transfers lists every queue of the tool API with the situation that leads to it. no_reason_outcomes lists the outcome values the table shows with no reason. attempt1_rule encodes which date the first persuasion attempt proposes.
 rules: list every numbered or lettered rule in the briefs, verbatim, with its section.
 Answer with one JSON object in a ```json fence and nothing else. Integers must be JSON numbers, booleans JSON booleans."""
 
@@ -31,6 +30,15 @@ def problems(policy):
             out.append("outcome for " + s + " missing")
     if not policy.get("identity", {}).get("questions"):
         out.append("identity.questions empty")
+    for e in policy.get("end_reasons") or []:
+        if not e.get("key") or not e.get("outcome"):
+            out.append("end_reason without key or outcome: " + json.dumps(e)[:80])
+    for t in policy.get("transfers") or []:
+        if not t.get("queue") or not t.get("outcome"):
+            out.append("transfer without queue or outcome: " + json.dumps(t)[:80])
+    rule = policy.get("attempt1_rule")
+    if not isinstance(rule, dict) or str(rule.get("rule")) not in ("last_business_day_of_week", "next_business_day", "nth_business_day", "deadline", "none"):
+        out.append("attempt1_rule.rule must be one of last_business_day_of_week, next_business_day, nth_business_day, deadline, none")
     for b in policy.get("bands", []):
         for k in ("days_late_min", "days_late_max", "deadline_business_days", "attempts"):
             try:

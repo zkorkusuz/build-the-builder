@@ -4,8 +4,8 @@ import asyncio, json, os, re, time
 MODEL = os.environ.get("BUILDER_MODEL", "claude-opus-5-5")
 
 
-def ask(prompt, workdir, trace, purpose, system=None):
-    """Return the model's text answer. Logs model, purpose, duration and cost to the trace."""
+def ask(prompt, workdir, trace, purpose, system=None, timeout=300):
+    """Return the model's text answer within `timeout` seconds. Logs model, purpose, duration and cost to the trace."""
     from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, TextBlock, query
 
     async def run():
@@ -20,7 +20,7 @@ def ask(prompt, workdir, trace, purpose, system=None):
         return text, cost
 
     t0 = time.time()
-    text, cost = asyncio.run(run())
+    text, cost = asyncio.run(asyncio.wait_for(run(), timeout=max(30, timeout)))
     trace("model call: " + MODEL + " | " + purpose + " | " + str(round(time.time() - t0)) + " s | $" + str(round(cost, 3)) + " | " + str(len(text)) + " chars")
     return text
 
