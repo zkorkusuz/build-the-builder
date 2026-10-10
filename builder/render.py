@@ -168,24 +168,26 @@ def render(policy, spec):
     routes = lambda: [when("mark_confirmed", "the customer confirmed", ("who", "customer")), when("third_party_prep", "someone else answered", ("who", "other_person")),
                       when("outcome_wrong_number", "wrong number", ("who", "wrong_number")), when("outcome_deceased", "customer has died", ("who", "deceased"))]
     asks = max(int(c.get("max_asks") or 2), 1)
-    chain = ["opening"] + ["opening_again" + (str(k) if k > 1 else "") for k in range(1, asks)]
-    for i, name in enumerate(chain):
-        last = i == len(chain) - 1
-        node = {"name": name, "node_type": "conversation", "extraction_schema": [who], "transitions": routes()}
-        if i == 0:
-            node["on_enter"] = {"type": "tts", "text": (str(policy.get("opening_sentence") or "") + " " + q).strip()}
-            node["on_enter_first_entry_only"] = True
-            node["task_message"] = prompts.opening_task(policy)
-        else:
-            node["task_message"] = ("The person has not clearly confirmed being the customer, {{title}} {{last_name}}. First answer any question they asked in one short sentence, without saying why you are calling, then ask exactly once: \"" + q + "\".\n"
-                                    + ("If the reply is still not a clear confirmation, say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never ask again and never say goodbye without calling it.\n" if last else "")
-                                    + "Do not say why you are calling. If the person says the customer is not available, is someone else, the number is wrong, or the customer has died, say nothing more; the next step is handled for you.")
-        if last:
-            node["max_node_turns"], node["max_turn_transition"] = 1, "outcome_unclear"
-            node["transitions"].append(goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed after the allowed asks and the assistant has said goodbye"))
-        else:
-            node["transitions"].append(always(chain[i + 1]))
-        nodes[name] = node
+    nodes["opening"] = {"name": "opening", "node_type": "conversation", "extraction_schema": [who], "task_message": prompts.opening_task(policy),
+        "on_enter": {"type": "tts", "text": (str(policy.get("opening_sentence") or "") + " " + q).strip()}, "on_enter_first_entry_only": True,
+        "transitions": routes() + ([always("opening_again")] if asks > 1 else [goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed and the assistant has said goodbye")])}
+    if asks == 1:
+        nodes["opening"]["max_node_turns"], nodes["opening"]["max_turn_transition"] = 2, "outcome_unclear"
+    else:
+        # The reply that enters this step counts as its first turn, and the cap fires before the step's transitions once turns exceed it:
+        # a cap equal to the allowed asks lets the reply to the last ask route (confirmed, someone else, ...) and ends the call on the one after.
+        more = asks - 2
+        confirmed_now = extraction("confirmed_now", ["yes", "no"], "yes if this latest reply confirms that the person is the customer (yes, that's me, speaking, their own name, or any clear agreement). no otherwise.")
+        confirmed_now["min_confidence"] = 0.5
+        nodes["opening_again"] = {"name": "opening_again", "node_type": "conversation", "extraction_schema": [who, confirmed_now], "max_node_turns": asks, "max_turn_transition": "outcome_unclear",
+            "on_enter": {"type": "llm", "prompt": "The person has not clearly confirmed being the customer. If they asked a question, answer it in one short sentence without saying why you are calling. Then ask exactly: \"" + q + "\". Do not say goodbye and say nothing else."},
+            "on_enter_first_entry_only": True,
+            "task_message": ("You have just asked again whether you are speaking with the customer, {{title}} {{last_name}}.\n"
+                             + ("You may ask " + str(more) + " more time(s) if the reply is unclear; after that, " if more > 0 else "No further ask is allowed: ")
+                             + "if the reply is not a clear confirmation (" + ", ".join(c.get("accepted") or ["yes"]) + "), say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never say goodbye without calling it.\n"
+                             + "Do not say why you are calling. If the person says the customer is not available, is someone else, the number is wrong, or the customer has died, say nothing more; the next step is handled for you."),
+            "transitions": routes() + [when("mark_confirmed", "the customer confirmed", ("confirmed_now", "yes"))]
+                           + ([always("outcome_unclear")] if more == 0 else [goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed after the allowed asks and the assistant has said goodbye")])}
     nodes["third_party_prep"] = code_node("third_party_prep", facts_code(policy, "no_callback"), "third_party")
     nodes["third_party"] = {"name": "third_party", "node_type": "conversation", "task_message": prompts.third_party_task(policy), "max_node_turns": 6, "max_turn_transition": "outcome_no_callback",
         "tools": [T("schedule_callback")],
