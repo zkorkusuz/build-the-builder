@@ -651,7 +651,7 @@
    "transfers": []
   },
   "checks": [
-   "the promise is for {next_friday_say}, not {attempt1_say}"
+   "the promise is for {next_friday_say}, the Friday of the following calendar week"
   ],
   "date_rule": "next_friday"
  },
