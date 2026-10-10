@@ -221,7 +221,7 @@ try:
             if len(t) != 5 or t[2] != ':':
                 raise ValueError('time')
         except Exception:
-            vars['callback_block'] = 'NOT booked: the call needs date as YYYY-MM-DD and time as HH:MM. Today is ' + today.isoformat() + ', the next business day is ' + nb.isoformat() + '. Convert what the person offered (tonight means today; use the 24-hour clock) and CALL schedule_callback again with both fields.'
+            vars['callback_block'] = 'NOT booked: the call needs date as YYYY-MM-DD and time as HH:MM. Today is ' + today.isoformat() + ', the next business day is ' + nb.isoformat() + '. Convert what the person offered yourself using the weekday table in your instructions (tonight means today; use the 24-hour clock); do not ask the person for a date. Then CALL schedule_callback again with both fields.'
             config['body'] = dict()
             raise ValueError('stop')
         frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')

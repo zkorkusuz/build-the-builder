@@ -145,6 +145,12 @@ def calendar_facts(now_value, policy):
         out["deadline_" + str(b.get("name", "band"))] = d.isoformat()
         latest = max(latest, d)
     out["business_days_text"] = "\n".join(say(d) for d in business_days_list(today, cal, latest))
+    skipped, d = [], today
+    while d <= latest and len(skipped) < 40:
+        if not is_business_day(d, cal):
+            skipped.append(say(d) + " is not a business day; the next business day is " + say(next_business_day(d, cal)))
+        d += datetime.timedelta(days=1)
+    out["non_business_days_text"] = "\n".join(skipped) or "none before the latest allowed date"
     out["holidays_text"] = ", ".join(cal.get("holidays") or []) or "none"
     return out
 

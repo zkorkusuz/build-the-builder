@@ -35,8 +35,8 @@ def opening_task(p):
         "Your only job here is to find out whether the person on the line is the customer, {{title}} {{last_name}}. You have already said the opening line and asked.\n"
         + ("Only these count as confirmation: " + ", ".join(c.get("accepted") or []) + ". " if c.get("accepted") else "")
         + ("These do not: " + ", ".join(c.get("not_accepted") or []) + ".\n" if c.get("not_accepted") else "\n")
-        + "If the answer is unclear, answer any question first, then ask once more: \"" + q + "\". "
-        + "Ask at most " + str(c.get("max_asks") or 2) + " times in total. If it is still unclear after that, say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never say goodbye without calling it.\n"
+        + "The opening line already asked once. If the answer is unclear, answer any question first, then ask again: \"" + q + "\". "
+        + "You may ask " + str(max(int(c.get("max_asks") or 2) - 1, 0)) + " more time(s) in total after the opening line, so count: after the last allowed ask, if the answer is still unclear, say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never ask again after that and never say goodbye without calling it.\n"
         "Do not say why you are calling. If the person says the customer is not available, is someone else, says the number is wrong, or says the customer has died, say nothing more about the call; the next step is handled for you.\n"
         + _rules(p, "opening")
     )
@@ -47,7 +47,7 @@ def third_party_task(p):
     return (
         "The person on the line is not the customer. Say nothing about why you are calling or about any account, even if they offer to help or pay.\n"
         "Ask when the customer can be reached. A callback must be inside this window: {{callback_text}}. If it is today, the time must be later than now ({{now_text}}).\n"
-        "CALL schedule_callback with every day and time the person offers, date as YYYY-MM-DD and time as HH:MM (today is {{today}}; tonight means today; the next business day is {{callback_next_business_day}}; morning is before 12:00, afternoon after 12:00, evening after 18:00; use the 24-hour clock). Never judge the window yourself and never ask for another time on your own: the bank checks every offer and the result tells you what to do next. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
+        "CALL schedule_callback with every day and time the person offers, date as YYYY-MM-DD and time as HH:MM (today is {{today}}; tonight means today; the next business day is {{callback_next_business_day}}; morning is before 12:00, afternoon after 12:00, evening after 18:00; use the 24-hour clock). Convert the person's words to a date yourself with this table and never ask them for a calendar date:\n{{weekday_table}}\nNever judge the window yourself and never ask for another time on your own: the bank checks every offer and the result tells you what to do next. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
         "If they say the number does not belong to the customer, or that the customer has died, do not ask anything else; say nothing more.\n"
         + (("Instructions from the bank: " + str(t["instructions"]) + "\n") if t.get("instructions") else "")
         + _rules(p, "third_party")
@@ -80,6 +80,7 @@ def negotiate_task(p):
         "Late products:\n{{debt_summary}}",
         "Business days you may use for a promise, up to the latest allowed date:\n{{business_days_text}}",
         "Weekday names: {{weekday_table}}",
+        "Days that are not business days, with the day to offer instead:\n{{non_business_days_text}}",
         "Attempt 1 date: {{attempt1_text}}.",
         "",
         "How to run the conversation:",
