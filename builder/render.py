@@ -173,6 +173,7 @@ def render(policy, spec):
         "transitions": routes() + ([always("opening_again")] if asks > 1 else [goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed and the assistant has said goodbye")])}
     if asks == 1:
         nodes["opening"]["max_node_turns"], nodes["opening"]["max_turn_transition"] = 2, "outcome_unclear"
+        nodes["opening"]["task_message"] += "\nOnly one ask is allowed: if the reply is not a clear confirmation, say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet."
     else:
         # The reply that enters this step counts as its first turn, and the cap fires before the step's transitions once turns exceed it:
         # a cap equal to the allowed asks lets the reply to the last ask route (confirmed, someone else, ...) and ends the call on the one after.
@@ -183,8 +184,8 @@ def render(policy, spec):
             "on_enter": {"type": "llm", "prompt": "The person has not clearly confirmed being the customer. If they asked a question, answer it in one short sentence without saying why you are calling. Then ask exactly: \"" + q + "\". Do not say goodbye and say nothing else."},
             "on_enter_first_entry_only": True,
             "task_message": ("You have just asked again whether you are speaking with the customer, {{title}} {{last_name}}.\n"
-                             + ("You may ask " + str(more) + " more time(s) if the reply is unclear; after that, " if more > 0 else "No further ask is allowed: ")
-                             + "if the reply is not a clear confirmation (" + ", ".join(c.get("accepted") or ["yes"]) + "), say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never say goodbye without calling it.\n"
+                             + ("You may ask " + str(more) + " more time(s) if the reply is unclear; after that, if the reply is not a clear confirmation (" + ", ".join(c.get("accepted") or ["yes"]) + "), say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never say goodbye without calling it.\n"
+                                if more > 0 else "No further ask is allowed: a reply that is not a clear confirmation ends the call for you.\n")
                              + "Do not say why you are calling. If the person says the customer is not available, is someone else, the number is wrong, or the customer has died, say nothing more; the next step is handled for you."),
             "transitions": routes() + [when("mark_confirmed", "the customer confirmed", ("confirmed_now", "yes"))]
                            + ([always("outcome_unclear")] if more == 0 else [goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed after the allowed asks and the assistant has said goodbye")])}

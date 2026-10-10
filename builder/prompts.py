@@ -35,8 +35,7 @@ def opening_task(p):
         "Your only job here is to find out whether the person on the line is the customer, {{title}} {{last_name}}. You have already said the opening line and asked.\n"
         + ("Only these count as confirmation: " + ", ".join(c.get("accepted") or []) + ". " if c.get("accepted") else "")
         + ("These do not: " + ", ".join(c.get("not_accepted") or []) + ".\n" if c.get("not_accepted") else "\n")
-        + "The opening line already asked once. If the answer is unclear, answer any question first, then ask again: \"" + q + "\". "
-        + "You may ask " + str(max(int(c.get("max_asks") or 2) - 1, 0)) + " more time(s) in total after the opening line, so count: after the last allowed ask, if the answer is still unclear, say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never ask again after that and never say goodbye without calling it.\n"
+        + "The opening line already asked once. If this reply is unclear, answer any question in one short sentence without saying why you are calling; the next step asks again for you, so do not ask again yourself here.\n"
         "Do not say why you are calling. If the person says the customer is not available, is someone else, says the number is wrong, or says the customer has died, say nothing more about the call; the next step is handled for you.\n"
         + _rules(p, "opening")
     )
