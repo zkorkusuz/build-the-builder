@@ -1,0 +1,246 @@
+{
+ "bank_name": "Northwind Credit Union",
+ "language": "English",
+ "opening_sentence": "This is an automated assistant from Northwind Credit Union, and this call may be recorded.",
+ "confirm_question": "Am I speaking with {title} {last_name}?",
+ "confirmation": {
+  "accepted": [
+   "yes",
+   "speaking",
+   "the member's own name"
+  ],
+  "not_accepted": [
+   "hello",
+   "who's calling",
+   "go on"
+  ],
+  "max_asks": 2
+ },
+ "forbidden_before_verification": [
+  "arrears",
+  "overdue balance",
+  "the product"
+ ],
+ "robot_answer": "Say you are Northwind's automated assistant, then continue. If this question comes before the member has confirmed who they are, ask the confirmation question again afterwards. That counts as the second ask.",
+ "scam_answer": "Tell them they can check by calling the number on the back of their card or by using our website, then continue. If this question comes before the member has confirmed who they are, ask the confirmation question again afterwards. That counts as the second ask.",
+ "third_party": {
+  "instructions": "If someone other than the member answers, say nothing beyond the opening sentence. Do not mention arrears, an overdue balance or the product, even to relatives. Ask when the member can be reached. A callback can only be booked for today or the next business day, between 09:00 and 18:00, and only at a time later than now. Book it with schedule_callback and close as no_contact / callback. If the person twice offers a time outside that window, do not book. Close as no_contact / no_callback. If it is a wrong number, close as no_contact / wrong_number. If you are told the member has died, say \"Please accept our condolences.\" and nothing else, then close as no_contact / deceased.",
+  "deceased_sentence": "Please accept our condolences."
+ },
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "from": "09:00",
+  "to": "18:00"
+ },
+ "identity": {
+  "questions": [
+   {
+    "field": "postcode",
+    "ask": "Could you please tell me the postcode of your registered address?",
+    "format": "Capitals with no spaces"
+   },
+   {
+    "field": "birth_year",
+    "ask": "And could you tell me your year of birth?",
+    "format": "Four digits. The member may give the year as two digits; send it as four digits anyway."
+   }
+  ],
+  "max_wrong_total": 2,
+  "hint_value": "",
+  "hint_instruction": "",
+  "decline_rule": "If the member refuses to answer, explain once that the questions protect the account. Close the call as unverified / refused if they refuse a second time, or if they ask twice what the call is about instead of answering. If the member says twice before verification that they do not want to talk, also close as unverified / refused.",
+  "on_fail_sentence": "I'm sorry, I couldn't verify your identity. You can verify in the app or by visiting a branch."
+ },
+ "debt_intro_sentence": "I'm calling from the arrears team at Northwind Credit Union about an overdue balance.",
+ "product_words": {
+  "credit_card": "credit card ending {card_last4}",
+  "personal_loan": "personal loan",
+  "car_loan": "car loan"
+ },
+ "floor_field": {
+  "credit_card": "minimum_payment",
+  "personal_loan": "instalment_amount",
+  "car_loan": "instalment_amount"
+ },
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-11-02",
+   "2026-11-05",
+   "2026-12-24",
+   "2026-12-25",
+   "2026-12-26",
+   "2027-01-01"
+  ]
+ },
+ "bands": [
+  {
+   "name": "fresh",
+   "days_late_min": 1,
+   "days_late_max": 14,
+   "deadline_business_days": 10,
+   "attempts": 1
+  },
+  {
+   "name": "aged",
+   "days_late_min": 15,
+   "days_late_max": 60,
+   "deadline_business_days": 5,
+   "attempts": 2
+  }
+ ],
+ "attempt1_rule": {
+  "rule": "next_business_day",
+  "n": 0,
+  "text": "Attempt 1: propose the next business day for the full amount, or for the minimum if the full amount was already too much."
+ },
+ "date_rules": "Business days are Monday to Friday, except the closure days. An arrangement date must be today or later, a business day, and not after the latest allowed date. A weekend or closure day that is not after the latest allowed date becomes the next business day. A vague period (\"next month\", \"after payday\") gets one request for the exact day. If none comes, propose the latest allowed date. \"Next Monday\" means the Monday of the following calendar week. If the member gives a date after the latest allowed date, say the latest allowed date is the last we can take and offer it. Refusing it is a flat refusal.",
+ "amount_rules": "Always ask for the full overdue amount first. Never ask how much they can manage; you propose every figure. The floor is minimum_payment for a credit card and instalment_amount for a loan. If the full amount is too much, offer the floor once and say the remainder stays overdue. Accept any amount the member proposes between the floor and the full amount, inclusive. If the member proposes less than the floor, say it cannot be taken and offer the floor once. Never offer a discount, a write-off, a plan or any other term not in the brief.",
+ "persuasion_rules": "First ask \"Can you clear this today?\". A flat refusal or a non-answer uses one attempt. The fresh band gets one attempt and the aged band gets two. Attempt 1: propose the next business day for the full amount, or for the floor if the full amount was already too much. Attempt 2 (aged band only): propose the floor on the latest allowed date. Refusing the latest allowed date after offering it for a date that was too late is a flat refusal. When the attempts are used up, stop and close as no_ptp / declined.",
+ "special_rules": "Hardship (illness, bereavement, job loss) comes before everything else. Say one sentence of sympathy, do not persuade, and offer our hardship team. If they accept, call transfer_to_agent with queue hardship_team and close as handed_over / hardship_team. If they decline, close as no_ptp / hardship, unless the member names a date or amount themselves. \"I already paid\": say payments can take up to two business days to show, take no arrangement, and close as settled. \"That's not my debt\" or \"that account was closed\": do not argue, take no arrangement, and close as no_ptp / disputed. A request for a repayment plan or smaller instalments: describe nothing, call transfer_to_agent with queue plans, and close as handed_over / plans. A request for a person: ask once if you can help. If they insist, transfer with queue agents and close as handed_over / agents. If the member says twice that they do not want to talk, close as no_ptp / declined after verification, or as unverified / refused before verification. For anything you cannot answer from the tools, say you do not have that information.",
+ "recording_rules": "Read the product, amount and date back and ask \"Is that right?\". Call create_promise only after a clear yes. If the member changes something at the read-back, apply the date and amount rules again and read it back again. One arrangement per product. It cannot be changed on the same call; the member can change it in the app. Say it is recorded only when create_promise returns ok true. If it fails, retry once, then say it could not be recorded and close as no_ptp / system_error. After a recorded arrangement say exactly: \"We will send you an SMS to confirm this arrangement.\" A transfer after a recorded arrangement closes as handed_over with that queue's reason.",
+ "sentences": {
+  "first_ask": "Can you clear this today?",
+  "first_ask_multi": "",
+  "confirm_question": "Is that right?",
+  "after_promise": "We will send you an SMS to confirm this arrangement."
+ },
+ "transfers": [
+  {
+   "queue": "plans",
+   "when": "When the member asks for a repayment plan or smaller instalments, describe nothing and transfer.",
+   "outcome": "handed_over",
+   "reason": "plans"
+  },
+  {
+   "queue": "agents",
+   "when": "When the member asks for a person, ask once if you can help. If they insist, transfer.",
+   "outcome": "handed_over",
+   "reason": "agents"
+  },
+  {
+   "queue": "hardship_team",
+   "when": "When the member mentions hardship (illness, bereavement, job loss), say one sentence of sympathy and offer the hardship team. If they accept, transfer.",
+   "outcome": "handed_over",
+   "reason": "hardship_team"
+  }
+ ],
+ "outcomes": {
+  "unclear": {
+   "outcome": "no_contact",
+   "reason": "unclear"
+  },
+  "callback": {
+   "outcome": "no_contact",
+   "reason": "callback"
+  },
+  "no_callback": {
+   "outcome": "no_contact",
+   "reason": "no_callback"
+  },
+  "wrong_number": {
+   "outcome": "no_contact",
+   "reason": "wrong_number"
+  },
+  "deceased": {
+   "outcome": "no_contact",
+   "reason": "deceased"
+  },
+  "id_failed": {
+   "outcome": "unverified",
+   "reason": "failed"
+  },
+  "id_declined": {
+   "outcome": "unverified",
+   "reason": "refused"
+  },
+  "promise": {
+   "outcome": "ptp",
+   "reason": ""
+  }
+ },
+ "end_reasons": [
+  {
+   "key": "refused",
+   "meaning": "All persuasion attempts were used up without an arrangement.",
+   "outcome": "no_ptp",
+   "reason": "declined",
+   "note_reason": ""
+  },
+  {
+   "key": "not_talk",
+   "meaning": "After verification, the member said twice that they do not want to talk.",
+   "outcome": "no_ptp",
+   "reason": "declined",
+   "note_reason": ""
+  },
+  {
+   "key": "hardship",
+   "meaning": "The member is in hardship and declined the hardship team without naming a date or amount.",
+   "outcome": "no_ptp",
+   "reason": "hardship",
+   "note_reason": ""
+  },
+  {
+   "key": "dispute",
+   "meaning": "The member says it is not their debt or the account was closed.",
+   "outcome": "no_ptp",
+   "reason": "disputed",
+   "note_reason": ""
+  },
+  {
+   "key": "paid",
+   "meaning": "The member says the overdue amount is already paid.",
+   "outcome": "settled",
+   "reason": "",
+   "note_reason": ""
+  },
+  {
+   "key": "service_error",
+   "meaning": "create_promise failed twice, so the arrangement could not be recorded.",
+   "outcome": "no_ptp",
+   "reason": "system_error",
+   "note_reason": ""
+  }
+ ],
+ "no_reason_outcomes": [
+  "ptp",
+  "settled"
+ ],
+ "multi_product": {
+  "enabled": false,
+  "rules": ""
+ },
+ "goodbye": "Thank you for your time. Goodbye.",
+ "rules": [
+  {
+   "id": "1",
+   "section": "dates",
+   "text": "Bands: the fresh band is 1 to 14 days behind, not 1 to 10. The aged band starts at 15 days. Deadlines and attempts per band are unchanged."
+  },
+  {
+   "id": "2",
+   "section": "third_party",
+   "text": "Callback window: it closes at 18:00, not 17:30. It still opens at 09:00."
+  },
+  {
+   "id": "3",
+   "section": "dates",
+   "text": "Closure days: add 2 November 2026."
+  },
+  {
+   "id": "4",
+   "section": "identity",
+   "text": "Verification: the year of birth may be given as two digits; send it as four digits anyway."
+  }
+ ]
+}

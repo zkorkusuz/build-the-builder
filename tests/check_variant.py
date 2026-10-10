@@ -41,7 +41,8 @@ def main(folder):
     (folder / "policy.out.json").write_text(json.dumps(policy, indent=1))
     got, exp = flat(policy), json.loads((folder / "expected.json").read_text())
     exp["no_reason_outcomes"] = sorted(exp["no_reason_outcomes"]); exp["calendar.holidays"] = sorted(exp["calendar.holidays"])
-    bad = [k for k in exp if got.get(k) != exp[k]]
+    same = lambda k: all(got.get(k, {}).get(x) == v for x, v in exp[k].items()) if k in ("outcomes", "end_reasons", "transfers") else got.get(k) == exp[k]
+    bad = [k for k in exp if not same(k)]            # a keyed map may hold extra keys the brief defines; every expected key must match
     for k in bad:
         print("DIFF", k, "\n   got:     ", json.dumps(got.get(k))[:300], "\n   expected:", json.dumps(exp[k])[:300])
     print("\n".join(lines))

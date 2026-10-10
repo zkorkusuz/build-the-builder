@@ -36,7 +36,7 @@ def opening_task(p):
         + ("Only these count as confirmation: " + ", ".join(c.get("accepted") or []) + ". " if c.get("accepted") else "")
         + ("These do not: " + ", ".join(c.get("not_accepted") or []) + ".\n" if c.get("not_accepted") else "\n")
         + "If the answer is unclear, answer any question first, then ask once more: \"" + q + "\". "
-        + "Ask at most " + str(c.get("max_asks") or 2) + " times in total. If it is still unclear after that, say thank you and goodbye.\n"
+        + "Ask at most " + str(c.get("max_asks") or 2) + " times in total. If it is still unclear after that, say thank you and goodbye, and in the same message call transition_to_outcome_unclear_quiet. Never say goodbye without calling it.\n"
         "Do not say why you are calling. If the person says the customer is not available, is someone else, says the number is wrong, or says the customer has died, say nothing more about the call; the next step is handled for you.\n"
         + _rules(p, "opening")
     )
@@ -47,7 +47,7 @@ def third_party_task(p):
     return (
         "The person on the line is not the customer. Say nothing about why you are calling or about any account, even if they offer to help or pay.\n"
         "Ask when the customer can be reached. A callback must be inside this window: {{callback_text}}. If it is today, the time must be later than now ({{now_text}}).\n"
-        "When they give a day and time inside the window, CALL schedule_callback with date as YYYY-MM-DD and time as HH:MM. If they give a day or time outside the window, ask once for another; if that is also outside, do not book and say thank you and goodbye.\n"
+        "When they give a day and time inside the window, CALL schedule_callback with date as YYYY-MM-DD and time as HH:MM. If they give a day or time outside the window, ask once for another; if that is also outside, do not book: say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
         "If they say the number does not belong to the customer, or that the customer has died, do not ask anything else; say nothing more.\n"
         + (("Instructions from the bank: " + str(t["instructions"]) + "\n") if t.get("instructions") else "")
         + _rules(p, "third_party")
@@ -61,10 +61,12 @@ def identity_task(p):
     return (
         "The customer confirmed who they are. Thank them and run the security check: ask these questions one at a time, in this order, and CALL verify_identity with each answer. Do not ask the next question before the tool has answered.\n"
         + qtext + "\n"
+        "Move to the next question only when the tool result says Correct. If the result says the answer was wrong, ask the same question again. If it could not be read, ask the customer to repeat it.\n"
         "If the customer gives only part of an answer, ask for the rest before calling the tool. Convert what they say into the required format yourself.\n"
-        "You do not know why the bank is calling until the check is complete; if asked, say you can explain after the security check.\n"
-        + (("If the customer does not want to answer: " + str(i["decline_rule"]) + "\n") if i.get("decline_rule") else "")
+        "Say nothing about why the bank is calling until the check is complete.\n"
+        + (("If the customer does not want to answer, or asks what the call is about instead of answering: " + str(i["decline_rule"]) + "\n") if i.get("decline_rule") else "")
         + (("Transfers:\n" + _transfers(p) + "\n") if p.get("transfers") else "")
+        + "When the check cannot continue because the customer will not answer, thank them, say goodbye, and in the same message call transition_to_outcome_id_declined_quiet. Never say goodbye without calling it.\n"
         + _rules(p, "identity")
     )
 

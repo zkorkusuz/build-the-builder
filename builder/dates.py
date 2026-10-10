@@ -173,7 +173,9 @@ def product_facts(products, policy, now_value):
              "deadline": deadline.isoformat(), "floor": floor, "attempt1_date": first.isoformat() if first else ""}
         facts.append(f)
         lines.append("Product " + str(i + 1) + ": id " + f["product_id"] + ", " + name + ", past due " + money(f["past_due"]) + ", " + str(f["days_late"])
-                     + " days late, band " + f["band"] + ", floor amount " + money(floor) + ", latest promise date " + say(deadline)
-                     + ", persuasion attempts allowed " + str(f["attempts"]) + ", attempt 1 date " + (say(first) if first else "none"))
+                     + " days late, band " + f["band"] + ", floor amount " + money(floor) + ", latest allowed date " + say(deadline)
+                     + " (propose this when the customer gives a vague period and no exact day, or asks for a later date)"
+                     + ", persuasion attempts allowed " + str(f["attempts"]) + ", attempt 1 date " + (say(first) if first else "none")
+                     + " (propose this only after a flat refusal or a non-answer)")
         spoken.append("Your " + name + " is " + money(f["past_due"]) + " past due and " + str(f["days_late"]) + " days late.")
     return {"facts": facts, "summary": "\n".join(lines), "count": len(facts), "spoken": " ".join(spoken)}

@@ -147,6 +147,11 @@ def positions(nodes):
         rows[col] = rows.get(col, 0) + 1
 
 
+def goodbye_transition(target, description):
+    """A transition the dialogue model triggers itself, after it has said goodbye."""
+    return {"target_node": target, "description": description, "is_tool_call": True, "condition": {"operator": "matches_intent", "description": description}}
+
+
 def render(policy, spec):
     hook_map, desc = hooks.all_hooks(policy), prompts.tool_descriptions(policy)
     goodbye = str(policy.get("goodbye") or "Thank you. Goodbye.")
@@ -162,20 +167,23 @@ def render(policy, spec):
                               extraction("confirm_failed_twice", ["yes", "no"], "yes only when the assistant has asked twice whether it is speaking with the customer and the latest answer is still not a clear confirmation.")],
         "transitions": [when("mark_confirmed", "the customer confirmed", ("who", "customer")), when("third_party_prep", "someone else answered", ("who", "other_person")),
                         when("outcome_wrong_number", "wrong number", ("who", "wrong_number")), when("outcome_deceased", "customer has died", ("who", "deceased")),
-                        when("outcome_unclear", "unclear after two asks", ("confirm_failed_twice", "yes"))]}
+                        when("outcome_unclear", "unclear after two asks", ("confirm_failed_twice", "yes")),
+                        goodbye_transition("outcome_unclear_quiet", "The person could not be confirmed after two asks and the assistant has said goodbye")]}
     nodes["third_party_prep"] = code_node("third_party_prep", facts_code(policy, "no_callback"), "third_party")
     nodes["third_party"] = {"name": "third_party", "node_type": "conversation", "task_message": prompts.third_party_task(policy), "max_node_turns": 10, "max_turn_transition": "outcome_no_callback",
         "tools": [T("schedule_callback")],
         "extraction_schema": [extraction("third_party_result", ["none", "no_callback", "wrong_number", "deceased"], "no_callback only when the person has twice given a day or time outside the allowed window or refuses any callback. wrong_number if the number does not belong to the customer. deceased if the customer has died. none otherwise.")],
         "transitions": [when("outcome_callback", "callback booked", ("callback_state", "done")), when("outcome_no_callback", "no callback possible", ("third_party_result", "no_callback")),
-                        when("outcome_wrong_number", "wrong number", ("third_party_result", "wrong_number")), when("outcome_deceased", "customer has died", ("third_party_result", "deceased"))]}
+                        when("outcome_wrong_number", "wrong number", ("third_party_result", "wrong_number")), when("outcome_deceased", "customer has died", ("third_party_result", "deceased")),
+                        goodbye_transition("outcome_no_callback_quiet", "No callback could be booked and the assistant has said goodbye")]}
     nodes["mark_confirmed"] = code_node("mark_confirmed", facts_code(policy, "id_declined"), "identity")
     nodes["identity"] = {"name": "identity", "node_type": "conversation", "task_message": prompts.identity_task(policy), "max_node_turns": 14, "max_turn_transition": "outcome_id_declined",
         "tools": [T("verify_identity", mapping=[{"path": "data.all_verified", "variable": "id_all_verified"}])] + ([T("transfer_to_agent")] if policy.get("transfers") else []),
         "extraction_schema": [extraction("identity_signal", ["none", "declined"], "declined only when the customer has refused the security questions a second time, or has twice asked what the call is about instead of answering, or has said twice that they do not want to talk. none otherwise.")],
         "transitions": [when("account", "all security questions passed", ("id_state", "verified"), ("id_all_verified", "true"), ("verify_identity_response.data.all_verified", "true")),
                         when("outcome_id_failed", "too many wrong answers", ("id_state", "failed")), when("set_outcome", "transferred to a person", ("transfer_state", "done")),
-                        when("outcome_id_declined", "customer declined the check", ("identity_signal", "declined"))]}
+                        when("outcome_id_declined", "customer declined the check", ("identity_signal", "declined")),
+                        goodbye_transition("outcome_id_declined_quiet", "The customer will not answer the security questions and the assistant has said goodbye")]}
     nodes["account"] = {"name": "account", "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "account_facts", "on_enter": {"type": "silent"},
         "disable_inactivity_monitor": True, "suppress_tool_results": True, "pre_actions": [T("get_account", retries=2)],
         "response_mapping": [{"path": "data.products", "variable": "products"}], "transitions": [always("account_facts")]}
@@ -194,6 +202,8 @@ def render(policy, spec):
     nodes["set_outcome_quiet"] = code_node("set_outcome_quiet", outcome_code(policy), "end_quiet")
     for sit, end in {"unclear": "end_goodbye", "callback": "end_goodbye", "no_callback": "end_goodbye", "wrong_number": "end_goodbye", "deceased": "end_deceased", "id_failed": "end_id_failed", "id_declined": "end_goodbye"}.items():
         nodes["outcome_" + sit] = code_node("outcome_" + sit, fixed_outcome_code(policy, sit), end)
+    for sit in ("unclear", "no_callback", "id_declined"):
+        nodes["outcome_" + sit + "_quiet"] = code_node("outcome_" + sit + "_quiet", fixed_outcome_code(policy, sit), "end_quiet")
     nodes["end_goodbye"] = end_node("end_goodbye", goodbye)
     nodes["end_quiet"] = end_node("end_quiet", "")
     nodes["end_deceased"] = end_node("end_deceased", (str((policy.get("third_party") or {}).get("deceased_sentence") or "") + " " + goodbye).strip())

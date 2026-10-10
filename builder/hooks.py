@@ -43,6 +43,14 @@ def _count(name):
     return n
 """
 
+VERIFY_PRE = """try:
+    b = config.get('body') if isinstance(config, dict) else None
+    if isinstance(b, dict):
+        vars['id_current_field'] = str(b.get('field') or '')
+except Exception:
+    pass
+"""
+
 VERIFY_POST = """import json
 __COMMON__
 try:
@@ -64,7 +72,8 @@ try:
             vars['id_state'] = 'failed'
             d['what_to_do_next'] = 'The identity check has failed. Do not mention any account or debt. ' + ('Tell the customer: ' + str(P.get('on_fail_sentence')) + ' ' if P.get('on_fail_sentence') else '') + 'Then thank them and say goodbye.'
         else:
-            d['what_to_do_next'] = 'Wrong answer. ' + str(left) + ' wrong answers left in total. Ask the same question once more and CALL verify_identity again with the new answer.'
+            field = str(vars.get('id_current_field') or 'the same field')
+            d['what_to_do_next'] = 'WRONG ANSWER for ' + field + '. ' + str(left) + ' wrong answers left in total. Do NOT move to the next question. Tell the customer the answer did not match and ask the SAME question (' + field + ') again, then CALL verify_identity with field ' + field + ' and the new answer.'
 except Exception:
     pass
 """
@@ -233,7 +242,7 @@ def all_hooks(policy):
     note_value = next((e.get("note_reason") for e in policy.get("end_reasons") or [] if e.get("key") == "service_error" and e.get("note_reason")), "")
     service_next = ("CALL add_note for this product with reason " + json.dumps(note_value) + ", then continue.") if (multi and note_value) else "Then continue with the other products, or thank the customer and say goodbye."
     return {
-        ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
+        ("verify_identity", "pre"): VERIFY_PRE, ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
         ("create_promise", "pre"): fill(PROMISE_PRE, common=COMMON, cal=policy.get("calendar") or {}),
         ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next)),
         ("add_note", "pre"): NOTE_PRE, ("add_note", "post"): fill(NOTE_POST, common=COMMON),
