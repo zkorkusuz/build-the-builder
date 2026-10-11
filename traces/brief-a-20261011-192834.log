@@ -1,0 +1,40 @@
+19:28:34 start 2026-10-11T19:28:34+0300 | briefs briefs/brief-a.md | tool api tools/openapi.json | slot brief-a
+19:28:34 builder: commit 44e2f4e (clean tree) | python 3.14.6 | python3 builder/build.py briefs/brief-a.md tools/openapi.json
+19:29:53 model call: claude-opus-5-5 | normalize: briefs and tool API into policy.json | 79 s | $0.348 | 26961 chars
+19:29:53 normalize: policy with 50 rules, 2 bands, 2 identity questions, 5 end reasons
+19:29:53 policy: identity questions in order: date_of_birth, phone_last4; wrong answers that end the check: 3
+19:29:53 policy: calendar: business weekdays [0, 1, 2, 3, 4], holidays 2026-10-26, 2026-11-11, 2026-11-26, 2026-12-25, 2027-01-01
+19:29:53 policy: callback window: ['today', 'next_business_day'] 10:00-19:00, asks for another time: 1
+19:29:53 policy: confirmation asks allowed: 2
+19:29:53 policy: attempt-1 rule: last_business_day_of_week
+19:29:53 policy: band early: 1-7 days late, latest date the 12th business day, 1 attempt(s)
+19:29:53 policy: band late: 8-45 days late, latest date the 7th business day, 2 attempt(s)
+19:29:53 policy: outcomes: unclear -> not_reached/unclear; callback -> not_reached/callback; no_callback -> not_reached/no_callback; wrong_number -> not_reached/wrong_number; deceased -> not_reached/deceased; id_failed -> not_verified/failed; id_declined -> not_verified/declined; promise -> promise
+19:29:53 policy: end reasons: refused -> no_promise/refused; hardship -> no_promise/hardship; dispute -> no_promise/dispute; paid -> paid; service_error -> no_promise/service_error
+19:29:53 policy: transfers: restructuring -> transferred/restructuring; general -> transferred/human; support -> transferred/support
+19:29:53 policy: multi-product: False; floor fields: {'credit_card': 'minimum_payment', 'personal_loan': 'instalment_amount', 'car_loan': 'instalment_amount'}; no-reason outcomes: ['promise', 'paid']
+19:29:53 policy: ambiguity: Rule 1 describes the opening's content but gives no exact wording; composed it from the rule's words (digital assistant, Freya Bank, call is recorded).
+19:29:53 policy: ambiguity: The brief names no currency, so the debt line gives the amount as a bare number with no currency word, to avoid inventing one.
+19:29:53 policy: ambiguity: No exact sentence is given for the debt line or for a failed identity check; both were composed from the wording of rules 17 and 14.
+19:29:53 policy: ambiguity: Rule 12 ('a wrong answer may be asked again') was read as repeating the same question after a wrong answer, until three wrong answers in total.
+19:29:53 policy: ambiguity: An unreadable date of birth that verify_identity rejects (ok=false) does not count as a wrong answer, per the API file; ask again.
+19:29:53 policy: ambiguity: 'Nth business day after today' was read as not counting today.
+19:29:53 policy: ambiguity: A weekend day or holiday after the latest allowed date falls under rule 23 (offer the latest allowed date), not rule 20.
+19:29:53 policy: ambiguity: Rule 45 vs rule 15: before verification, saying twice that they do not want to talk closes as not_verified / declined; after verification, as no_promise / refused.
+19:29:53 policy: ambiguity: Brief A never uses add_note, so every note_reason is empty.
+19:29:53 policy: ambiguity: Rule 6 requires a callback time later than now as well as inside 10:00–19:00 today or next business day; a time that has already passed today counts as outside the window.
+19:29:53 render: 40 steps, 36 tools, lint clean
+19:29:53 render: steps prepare, opening, opening_again, third_party_prep, third_party, mark_confirmed, identity, account, account_facts, negotiate, set_outcome, stop_offers, offer_deadline, resolve_proposal, count_refusal, wrap_up, wrap_up_refused, wrap_up_hardship, wrap_up_dispute, wrap_up_paid, wrap_up_service_error, outcome_unclear, outcome_callback, outcome_no_callback, outcome_wrong_number, outcome_deceased, outcome_id_failed, outcome_id_declined, outcome_unclear_quiet, outcome_no_callback_quiet, outcome_id_declined_quiet, end_goodbye, end_quiet, end_deceased, end_id_failed, close, hang_up_goodbye, hang_up_quiet, hang_up_deceased, hang_up_id_failed; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts
+19:29:53 fields: "the role names, as in the practice file"
+19:29:54 dry run: the platform accepted the workflow
+19:29:56 freya: workflow 5ceda29d-3c6c-4781-891d-2922435e18f4 agent 70e93e68-4b92-4bdc-bd3d-9b7c64fff946 version 71
+19:30:12 model call: claude-opus-5-5 | adapt: rule-by-rule check of the prompts | 15 s | $0.156 | 1413 chars
+19:30:12 adapt: added to opening: If asked "Is this a scam?", say they can verify the call by phoning Freya Bank's customer service number. Do not say why you are calling.
+19:30:12 adapt: added to third_party: If the person says the customer has died, say exactly "I am sorry for your loss." and nothing else. Ask nothing more. If asked "Is this a scam?", say they can verify the call by phoning Freya Bank's customer service number. If asked whether you are a robot or an AI, say you are Freya Bank's digital assistant. Never use add_note.
+19:30:12 adapt: added to identity: A wrong answer may be asked again. Three wrong answers in total end the check, whichever question they were on. If the tool returns hint "day_month_swapped", ask the customer to say the month as a word. That retry is not a wrong answer. After three wrong answers, do not state the debt. Tell the customer to use the mobile app or a branch, then thank them and say goodbye. If asked whether you are a robot or an AI, say you are Freya Bank's digital assistant and continue. If asked "Is this a scam?", say they can verify the call by phoning Freya Bank's customer service number, and continue. If you cannot answer a question from the tools, say you do not have that information. Never invent figures, dates or reasons. Never use add_note.
+19:30:12 adapt: added to negotiate: If asked whether you are a robot or an AI, say you are Freya Bank's digital assistant and continue. Never use add_note.
+19:30:13 dry run: the platform accepted the workflow
+19:30:15 freya: workflow 5ceda29d-3c6c-4781-891d-2922435e18f4 agent 70e93e68-4b92-4bdc-bd3d-9b7c64fff946 version 72
+19:30:16 export: /Users/zehra/Downloads/build-the-builder/brief-a.workflow.json
+19:30:17 self-test: chat probe: the agent answered 'Hello?' after 1 s, names the customer: yes, said: Hello, this is Freya Bank's digital assistant calling from Freya Bank. This call is recorded. Am I speaking with Ms Customer?
+19:30:17 end 2026-10-11T19:30:17+0300 | 104 s | workflow 5ceda29d-3c6c-4781-891d-2922435e18f4 | agent 70e93e68-4b92-4bdc-bd3d-9b7c64fff946 | version 72 | 40 steps | 36 tools
