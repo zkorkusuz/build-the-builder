@@ -175,6 +175,11 @@ try:
                     _block(b)
                 else:
                     b['date'] = day.isoformat()
+                    done = _load('promises_recorded', [])
+                    # the bank would record a repeated identical promise twice, so a retry after a lost answer stops here
+                    if any(str(x.get('product_id')) == str(b.get('product_id')) and str(x.get('date')) == b['date'] and abs(float(x.get('amount') or 0) - float(b.get('amount') or 0)) < 0.005 for x in done):
+                        vars['promise_block'] = 'ALREADY recorded earlier in this call: ' + str(f.get('words') or 'this product') + ', ' + str(b.get('amount')) + ' on ' + b['date'] + '. Do not CALL create_promise again for it. Tell the customer it is recorded, then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
+                        _block(b)
 except Exception:
     pass
 """
