@@ -88,7 +88,7 @@ try:
                 vars['id_partial_' + field] = ''
             else:
                 vars['id_partial_' + field] = digits
-                vars['id_block'] = 'INCOMPLETE answer for ' + field + ': ' + str(len(digits)) + ' of ' + str(digits_needed) + ' digits so far. Ask the customer for the rest and CALL verify_identity again with just the remaining digits; the parts are combined for you. This is not a wrong answer.'
+                vars['id_block'] = 'INCOMPLETE answer for ' + field + ': ' + str(len(digits)) + ' of ' + str(digits_needed) + ' digits so far. Ask the customer for the rest and CALL verify_identity again with whatever digits they say next, even a single one; the parts are combined for you. This is not a wrong answer.'
                 _block(b)
 except Exception:
     pass
