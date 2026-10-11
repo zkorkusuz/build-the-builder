@@ -33,7 +33,7 @@ def main(argv):
     ask = lambda prompt, wd, tr, purpose: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120))
     texts = documents.folder_to_briefs(folder) if folder else [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
     if folder:
-        unread = [n for n, t in texts if t.lstrip("# Document: " + n).lstrip().startswith(("not readable", "pdf not readable", "skipped"))]
+        unread = [n for n, t in texts if t.removeprefix("# Document: " + n).lstrip().startswith(("not readable", "pdf not readable", "skipped"))]
         trace("documents: " + str(len(texts)) + " read in this order: " + ", ".join(n for n, _ in texts))
         trace("documents: " + ("NOT readable: " + ", ".join(unread) if unread else "every document readable") + " | image files listed, not read: " + str(len(documents.image_paths(folder))))
     spec = tool_spec(spec_path, mock_url, texts, workdir, trace, ask)
@@ -50,7 +50,10 @@ def main(argv):
         workflow = render.render({}, spec)
     trace("render: " + str(len(workflow["nodes"])) + " steps, " + str(count_tools(workflow)) + " tools, lint " + (" | ".join(lint.check(workflow)) or "clean"))
     trace("render: steps " + ", ".join(workflow["nodes"]) + "; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts")
-    trace("fields: " + json.dumps({t: {r: n for r, n in m.items() if n != r} for t, m in render.field_names(policy, spec).items() if any(n != r for r, n in m.items())} or "the role names, as in the practice file"))
+    try:
+        trace("fields: " + json.dumps({t: {r: n for r, n in m.items() if n != r} for t, m in render.field_names(policy, spec).items() if any(n != r for r, n in m.items())} or "the role names, as in the practice file"))
+    except Exception as e:                        # a malformed api_fields section must not stop the build before the save
+        trace("fields: could not be listed (" + str(e)[:120] + ")")
     try:
         saved = save(slot, workflow, trace, left)     # a valid agent exists from here on
     except Rejected as e:

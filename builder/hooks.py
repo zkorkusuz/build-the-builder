@@ -8,8 +8,21 @@ from builder.fields import default_fields
 
 
 def literal(value):
-    """A JSON literal safe for a Freya code string: indented so that no two braces touch."""
-    return json.dumps(value, indent=1).replace("}}", "} }").replace("{{", "{ {")
+    """A JSON literal safe for a Freya code string: indented so that no two braces touch, with no null or boolean, which Python cannot read."""
+    return json.dumps(plain(value), indent=1).replace("}}", "} }").replace("{{", "{ {")
+
+
+def plain(value):
+    """The value with every null as an empty string and every boolean as its word, so that it reads as Python."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, dict):
+        return {k: plain(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [plain(v) for v in value]
+    return value
 
 
 def fill(template, **values):
@@ -153,7 +166,10 @@ try:
             try:
                 left = int(float(left))
             except (TypeError, ValueError):
-                maxw = int(float(P.get('max_wrong_total') or 0))
+                try:
+                    maxw = int(float(P.get('max_wrong_total') or 0))
+                except (TypeError, ValueError):
+                    maxw = 0
                 left = maxw - n if maxw else None
             if left is not None and left <= 0:
                 vars['id_state'] = 'failed'

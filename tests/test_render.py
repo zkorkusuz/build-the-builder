@@ -263,6 +263,27 @@ class Rendered(unittest.TestCase):
         exec(verify["post_process_code"], {"vars": vars, "result": {"data": {"verified": "true"}}, "json": json})
         self.assertEqual(vars.get("id_state"), "verified")
 
+    def test_null_and_boolean_policy_values_still_render_running_code(self):
+        """A null or a boolean the model left in a policy section must not stop a code step before its try block."""
+        import datetime
+        policy = dict(POLICY, calendar=dict(POLICY["calendar"], note=None, strict=True), identity=dict(POLICY["identity"], hint_value=None))
+        wf = render.render(policy, SPEC)
+        self.assertNotIn("null", json.dumps(wf))
+        code = wf["nodes"]["prepare"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"]
+        vars = {"now": "2026-10-14T11:00"}
+        exec(code, {"vars": vars, "json": json, "datetime": datetime})
+        self.assertEqual(vars["today"], "2026-10-14")
+        verify = next(t for t in wf["nodes"]["identity"]["tools"] if t["function"]["name"] == "verify_identity")
+        vars, result = {"id_current_field": "date_of_birth"}, {"data": {"verified": "false"}}
+        exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertIn("WRONG ANSWER", result["data"]["what_to_do_next"])
+        # a maximum the model wrote in words does not silence the hook
+        wf = render.render(dict(POLICY, identity=dict(POLICY["identity"], max_wrong_total="three")), SPEC)
+        verify = next(t for t in wf["nodes"]["identity"]["tools"] if t["function"]["name"] == "verify_identity")
+        vars, result = {"id_current_field": "date_of_birth"}, {"data": {"verified": "false"}}
+        exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertIn("WRONG ANSWER", result["data"]["what_to_do_next"])
+
     def test_transfer_and_note_pre_hooks_keep_the_values(self):
         transfer = next(t for t in self.wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "transfer_to_agent")
         vars, config = {}, {"body": {"customer_id": "c1", "queue": "general"}}
