@@ -88,7 +88,7 @@ def check(wf):
             problems.append("workflow-level tool without alwaysRunsAt never runs: " + path)
     closers = [k for k, n in nodes.items() if any(t.get("function", {}).get("name") == "close_call" for t in n.get("pre_actions", []))]
     for key, n in nodes.items():
-        if n.get("node_type") == "end_call" and not any(t.get("target_node") == key for c in closers for t in nodes[c].get("transitions", [])) and closers:
+        if n.get("node_type") == "end_call" and closers and not any(t.get("target_node") == key for c in closers for t in nodes[c].get("transitions", [])):
             problems.append(key + ": an end node reachable without a close_call step before it")
     known = set_variables(wf)
     for key, n in nodes.items():

@@ -6,7 +6,7 @@ DATES_SRC = pathlib.Path(dates.__file__).read_text()
 # Variables the workflow sets itself. A model-filled tool field must not share one of these names.
 OWN_VARS = {"today", "now", "outcome", "reason", "products", "debt_summary", "debt_statement", "product_count", "id_state", "transfer_state",
             "callback_state", "promise_state", "end_reason", "who", "identity_signal", "third_party_result", "conversation_done"}
-COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "hang_up"]
+COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "close", "hang_up_"]
 
 
 def always(target):
@@ -236,14 +236,17 @@ def render(policy, spec):
         nodes["outcome_" + sit] = code_node("outcome_" + sit, fixed_outcome_code(policy, sit), end)
     for sit in ("unclear", "no_callback", "id_declined"):
         nodes["outcome_" + sit + "_quiet"] = code_node("outcome_" + sit + "_quiet", fixed_outcome_code(policy, sit), "end_quiet")
-    farewells = {"end_goodbye": goodbye, "end_quiet": "", "end_deceased": (str((policy.get("third_party") or {}).get("deceased_sentence") or "") + " " + goodbye).strip(),
-                 "end_id_failed": (str((policy.get("identity") or {}).get("on_fail_sentence") or "") + " " + goodbye).strip()}
-    for name, spoken in farewells.items():
-        # The farewell is spoken on entry, close_call runs as the step's own action, then the call hangs up: close_call is the last tool
-        # call and does not depend on the platform's post-call analysis, which sometimes never arrives.
-        nodes[name] = {"name": name, "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "hang_up", "disable_inactivity_monitor": True,
-                       "on_enter": {"type": "tts", "text": spoken} if spoken else {"type": "silent"}, "suppress_tool_results": True,
-                       "pre_actions": [T("close_call", lifecycle=None)], "transitions": [always("hang_up")]}
-    nodes["hang_up"] = end_node("hang_up", "")
+    farewells = {"goodbye": goodbye, "quiet": "", "deceased": (str((policy.get("third_party") or {}).get("deceased_sentence") or "") + " " + goodbye).strip(),
+                 "id_failed": (str((policy.get("identity") or {}).get("on_fail_sentence") or "") + " " + goodbye).strip()}
+    # A fixed line is spoken only by a step that waits for the customer or by the hang-up terminal, so every exit path runs through
+    # the silent close step and then a terminal that speaks the farewell: close_call is the last tool call and never depends on the
+    # platform's post-call analysis, which sometimes never arrives. Model-driven exits say goodbye before reaching here.
+    for kind in farewells:
+        nodes["end_" + kind] = code_node("end_" + kind, "vars['farewell'] = " + json.dumps(kind) + "\n", "close")
+    nodes["close"] = {"name": "close", "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "hang_up_goodbye", "disable_inactivity_monitor": True,
+                      "on_enter": {"type": "silent"}, "suppress_tool_results": True, "pre_actions": [T("close_call", lifecycle=None)],
+                      "transitions": [when("hang_up_" + kind, "farewell " + kind, ("farewell", kind)) for kind in farewells if kind != "goodbye"] + [always("hang_up_goodbye")]}
+    for kind, spoken in farewells.items():
+        nodes["hang_up_" + kind] = end_node("hang_up_" + kind, spoken)
     positions(nodes)
     return {"initial_node": "prepare", "system_prompt": prompts.system_prompt(policy), "nodes": nodes, "global_nodes": {}, "tools": []}
