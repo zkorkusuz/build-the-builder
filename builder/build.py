@@ -7,7 +7,7 @@ Stages: normalize (Claude) -> render (code) -> adapt (Claude) -> lint and dry ru
 Writes a plain-text trace to traces/<slot>-<start>.log. Stops itself well inside 30 minutes and always leaves a saved workflow.
 --policy skips the normalize stage and renders from a given policy file (for tests; never for a hidden brief).
 """
-import json, pathlib, shutil, subprocess, sys, time, urllib.request
+import json, pathlib, re, shutil, subprocess, sys, time, urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import freya
@@ -33,7 +33,9 @@ def main(argv):
     ask = lambda prompt, wd, tr, purpose: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120))
     texts = documents.folder_to_briefs(folder) if folder else [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
     if folder:
-        trace("documents: " + str(len(texts)) + " read in this order: " + ", ".join(n for n, _ in texts) + (" | images listed, not read: " + str(len(documents.image_paths(folder))) if documents.image_paths(folder) else ""))
+        unread = [n for n, t in texts if t.lstrip("# Document: " + n).lstrip().startswith(("not readable", "pdf not readable", "skipped"))]
+        trace("documents: " + str(len(texts)) + " read in this order: " + ", ".join(n for n, _ in texts))
+        trace("documents: " + ("NOT readable: " + ", ".join(unread) if unread else "every document readable") + " | image files listed, not read: " + str(len(documents.image_paths(folder))))
     spec = tool_spec(spec_path, mock_url, texts, workdir, trace, ask)
     (workdir / "openapi.json").write_text(json.dumps(spec, indent=1))
 
@@ -146,8 +148,9 @@ def tool_spec(spec_path, mock_url, texts, workdir, trace, ask):
         except Exception as e:
             spec = json.loads((ROOT / "tools" / "openapi.json").read_text())       # the kit's shapes keep the build alive; the trace says so
             trace("tool api: FAILED to read or derive one (" + str(e)[:120] + "); using the kit's tool shapes")
-    if not str((spec.get("servers") or [{}])[0].get("url") or "").startswith(base):
-        spec["servers"] = [{"url": base}]                            # the agent's tools call the mock, whatever the file says
+    given = str((spec.get("servers") or [{}])[0].get("url") or "")
+    if not given.startswith(base):                                  # the agent's tools call the mock, whatever the file says; a path prefix such as /v1 is kept
+        spec["servers"] = [{"url": base + (re.sub(r"^https?://[^/]*", "", given).rstrip("/") if "://" in given else "")}]
     return spec
 
 
@@ -165,6 +168,8 @@ def source(files):
     """The final's form (a folder of documents and the mock's address) or the practice form (brief files and an API file)."""
     folder = next((f for f in files if pathlib.Path(f).is_dir()), None)
     url = next((f for f in files if f.startswith(("http://", "https://"))), None)
+    if folder and not url and len(files) == 2:                      # a bare host is the mock's address without its scheme
+        url = "https://" + next(f for f in files if f != folder)
     if (folder is None) != (url is None):
         sys.exit("a folder of documents goes with the mock's address (python3 builder/build.py <folder> <mock url>)")
     return folder, url

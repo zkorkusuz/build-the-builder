@@ -6,7 +6,7 @@ One command turns a brief and its tool API file into a published Freya phone age
 
 ```bash
 cp env.example env.sh && source env.sh          # FREYA_API_KEY, FREYA_API_URL, FREYA_BANK_TEAM_KEY (any secret of 16+ characters)
-python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165 && source .venv/bin/activate   # Python 3.10 or newer (a Mac with an older python3: /opt/homebrew/bin/python3 -m venv .venv); needs a Claude login or ANTHROPIC_API_KEY
+python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165 pypdf==6.20.0 && source .venv/bin/activate   # Python 3.10 or newer (a Mac with an older python3: /opt/homebrew/bin/python3 -m venv .venv); needs a Claude login or ANTHROPIC_API_KEY
 python3 builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.log   # several brief files: list them all before the API file
 python3 builder/build.py briefs/final/ https://<worker>.<subdomain>.workers.dev 2>&1 | tee traces/final.log   # the final's form: a folder of documents (md, docx, xlsx, pdf, json) and the address of the bank mock in mock/ (see mock/README.md and docs/runbook-final.md)
 ```

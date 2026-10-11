@@ -175,3 +175,23 @@ class SandboxSafety(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TurkishWords(unittest.TestCase):
+    """The final case is in Turkish: day, month and time words translate before the parsers, and the debt line follows the brief's template."""
+
+    def test_turkish_days_and_months(self):
+        today = datetime.date(2026, 10, 14)
+        for words, expected in (("önümüzdeki cuma", "2026-10-23"), ("yarın", "2026-10-15"), ("öbür gün", "2026-10-16"), ("15 Ekim", "2026-10-15"),
+                                ("22 Ekim Perşembe", "2026-10-22"), ("bugün", "2026-10-14"), ("Cumartesi", "2026-10-17"), ("ayın 20'sinde", "2026-10-20")):
+            self.assertEqual(str(dates.parse_day_words(words, today)), expected, words)
+        for vague in ("haftaya", "gelecek hafta", "bir hafta sonra"):
+            self.assertIsNone(dates.parse_day_words(vague, today), vague)
+        self.assertEqual(dates.date_parts("14 Mart 1988"), {"day": 14, "month": 3, "year": 1988})
+        self.assertEqual(dates.parse_now("14.10.2026 11:00"), datetime.datetime(2026, 10, 14, 11, 0))
+
+    def test_debt_line_template(self):
+        tr = {"debt_line": "{product} için {amount} TL gecikmiş borcunuz var, {days_late} gündür gecikmede."}
+        self.assertEqual(dates.debt_line(tr, "kredi kartı", "420", "6"), "kredi kartı için 420 TL gecikmiş borcunuz var, 6 gündür gecikmede.")
+        self.assertEqual(dates.debt_line({}, "credit card", "420", "6"), "Your credit card is 420 past due and 6 days late.")
+        self.assertEqual(dates.debt_line({"debt_line": "{missing}"}, "x", "1", "2"), "Your x is 1 past due and 2 days late.")

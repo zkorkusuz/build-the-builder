@@ -110,7 +110,7 @@ def parse_day_words(text, today):
     for word, n in NUMBER_WORDS:                                  # "the twenty-second" is the 22nd
         t = t.replace(" " + word + " ", " " + str(n) + " ")
     # a time of day is not a day number
-    t = re.sub(r"\bat \d{1,2}(:\d{2})?\s*(am|pm)?|\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(am|pm)\b", " ", t)
+    t = re.sub(r"\bat \d{1,2}(:\d{2})?\s*(am|pm)?|\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(am|pm)\b|\b(am|pm)\s*\d{1,2}(:\d{2})?\b", " ", t)
     digits = [int(x) for x in re.findall(r"\d+", t)]
     if len(digits) >= 3 and "-" in t and digits[0] > 1900:
         try:
