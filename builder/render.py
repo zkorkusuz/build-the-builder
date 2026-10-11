@@ -26,7 +26,8 @@ def when(target, description, *pairs):
 
 def code_node(name, code, target, before=()):
     assert "{{" not in code and "}}" not in code, name
-    fn = {"type": "function", "function": {"name": "code_exec", "handler": "__function__:code_exec",
+    fn = {"type": "function", "config": {"timeoutMs": 12000, "maxRetries": 2},      # the sandbox service drops a connection now and then; a code step never raises on its own
+          "function": {"name": "code_exec", "handler": "__function__:code_exec",
           "parameters": {"type": "object", "properties": {"code": {"type": "string", "default": code}, "timeout_ms": {"type": "number", "default": 10000}}}}}
     return {"name": name, "node_type": "code", "passthrough": True, "passthrough_default_transition": target, "on_enter": {"type": "silent"},
             "disable_inactivity_monitor": True, "pre_actions": [fn], "transitions": list(before) + [always(target)]}
