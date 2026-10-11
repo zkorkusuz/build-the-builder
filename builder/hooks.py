@@ -28,6 +28,11 @@ def _d(result):
     return None
 def _flag(x):
     return str(x).lower() == 'true'
+def _ok(d, F):
+    # a service without a success flag answers 200 with data and names a failure in an error field
+    if F.get('ok') in d:
+        return _flag(d.get(F['ok']))
+    return not any(v for k, v in d.items() if 'error' in str(k).lower() or 'fail' in str(k).lower())
 def _load(name, default):
     try:
         v = vars.get(name)
@@ -125,17 +130,35 @@ try:
             d['what_to_do_next'] = 'All security questions passed. The identity check is complete.'
         elif hint and P.get('hint_value') and hint == str(P.get('hint_value')):
             d['what_to_do_next'] = str(P.get('hint_instruction') or 'The service returned the hint ' + hint + '. Follow your instructions for it and CALL verify_identity again with the same field.')
-        elif not _flag(d.get(F['ok'])):
+        elif not _ok(d, F):
             d['what_to_do_next'] = 'The answer could not be read in the required format (' + str(d.get(F['error']) or '') + '). Ask the customer to repeat it, then CALL verify_identity again with the same field. This is not counted as a wrong answer.'
         elif _flag(d.get(F['verified'])):
-            d['what_to_do_next'] = 'Correct. Now ask the next security question in the order of your instructions and CALL verify_identity with its answer. If there is no next question, wait: the check is complete.'
-        elif left is not None and int(float(left)) <= 0:
-            vars['id_state'] = 'failed'
-            d['what_to_do_next'] = 'The identity check has failed. Do not mention any account or debt. ' + ('Tell the customer: ' + str(P.get('on_fail_sentence')) + ' ' if P.get('on_fail_sentence') else '') + 'Then thank them and say goodbye.'
+            # a service without an all-verified flag: the check is complete once every question's field has passed
+            done = _load('id_verified_fields', [])
+            field = str(vars.get('id_current_field') or '')
+            if field and field not in done:
+                done.append(field)
+            vars['id_verified_fields'] = json.dumps(done)
+            needed = [str(q.get('field')) for q in (P.get('questions') or [])]
+            if needed and all(f in done for f in needed):
+                vars['id_state'] = 'verified'
+                d['what_to_do_next'] = 'All security questions passed. The identity check is complete.'
+            else:
+                d['what_to_do_next'] = 'Correct. Now ask the next security question in the order of your instructions and CALL verify_identity with its answer. If there is no next question, wait: the check is complete.'
         else:
-            field = str(vars.get('id_current_field') or 'the same field')
-            rule = str(P.get('on_wrong') or 'Follow your instructions for a wrong answer, then CALL verify_identity again.')
-            d['what_to_do_next'] = 'WRONG ANSWER for ' + field + '. ' + str(left) + ' wrong answers left in total. ' + rule + ' (The field just checked was ' + field + '.)'
+            n = _count('id_wrong_total')          # the hook's own count, for a service that does not say how many wrong answers are left
+            try:
+                left = int(float(left))
+            except (TypeError, ValueError):
+                maxw = int(float(P.get('max_wrong_total') or 0))
+                left = maxw - n if maxw else None
+            if left is not None and left <= 0:
+                vars['id_state'] = 'failed'
+                d['what_to_do_next'] = 'The identity check has failed. Do not mention any account or debt. ' + ('Tell the customer: ' + str(P.get('on_fail_sentence')) + ' ' if P.get('on_fail_sentence') else '') + 'Then thank them and say goodbye.'
+            else:
+                field = str(vars.get('id_current_field') or 'the same field')
+                rule = str(P.get('on_wrong') or 'Follow your instructions for a wrong answer, then CALL verify_identity again.')
+                d['what_to_do_next'] = 'WRONG ANSWER for ' + field + '. ' + (str(left) + ' wrong answers left in total. ' if left is not None else '') + rule + ' (The field just checked was ' + field + '.)'
 except Exception:
     pass
 """
@@ -212,7 +235,7 @@ try:
         vars['promise_block'] = ''
         if d is not None:
             d['what_to_do_next'] = block
-    elif d is not None and _flag(d.get(F['ok'])):
+    elif d is not None and _ok(d, F):
         vars['offer_now'] = ''
         done.append(attempt)
         vars['promises_recorded'] = json.dumps(done)
@@ -261,7 +284,7 @@ __COMMON__
 F = __FIELDS__
 try:
     d = _d(result)
-    if d is not None and _flag(d.get(F['ok'])):
+    if d is not None and _ok(d, F):
         notes = _load('notes_recorded', [])
         notes.append(_load('note_attempt', {}))
         vars['notes_recorded'] = json.dumps(notes)
@@ -286,7 +309,7 @@ __COMMON__
 F = __FIELDS__
 try:
     d = _d(result)
-    if d is not None and _flag(d.get(F['ok'])):
+    if d is not None and _ok(d, F):
         vars['transfer_state'] = 'done'
         d['what_to_do_next'] = 'Transfer requested. Tell the customer you are connecting them now, thank them and say goodbye.'
     elif d is not None:
@@ -408,7 +431,7 @@ try:
         vars['callback_block'] = ''
         if d is not None:
             d['what_to_do_next'] = block
-    elif d is not None and _flag(d.get(F['ok'])):
+    elif d is not None and _ok(d, F):
         vars['callback_state'] = 'done'
         d['what_to_do_next'] = 'Callback booked. Thank the person and say goodbye.'
     elif d is not None:

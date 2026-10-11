@@ -99,7 +99,7 @@ def facts_code(policy, situation, extra=""):
     pol = {k: policy.get(k) or {} for k in ("calendar", "bands", "callback", "attempt1_rule")}
     return DATES_SRC + "\nimport json" + hooks.COMMON + "POLICY = " + hooks.literal(pol) + "\n" + (
         "try:\n    for k, v in calendar_facts(vars.get('now'), POLICY).items():\n        vars[k] = v\nexcept Exception:\n    pass\n"
-        "for k, v in [('product_facts_json', '[]'), ('promises_recorded', '[]'), ('notes_recorded', '[]'), ('promise_failures', '0'), ('id_state', 'pending'), ('offer_now', 'none'), ('proposed_day_words', ''),\n"
+        "for k, v in [('product_facts_json', '[]'), ('promises_recorded', '[]'), ('notes_recorded', '[]'), ('promise_failures', '0'), ('id_state', 'pending'), ('id_verified_fields', '[]'), ('offer_now', 'none'), ('proposed_day_words', ''),\n"
         "             ('transfer_state', 'none'), ('callback_state', 'none'), ('promise_state', 'none'), ('debt_summary', 'not loaded yet'), ('debt_statement', ''), ('product_count', '0')]:\n"
         "    if not vars.get(k):\n        vars[k] = v\n"
         "vars['outcome'] = " + json.dumps(str(o.get("outcome", ""))) + "\nvars['reason'] = " + json.dumps(str(o.get("reason", ""))) + "\n" + extra)

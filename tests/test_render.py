@@ -188,6 +188,55 @@ class Rendered(unittest.TestCase):
         self.assertEqual(resolve("product_id", "", ["ref", "type", "amount_paid"], ["ref", "type", "amount_paid"], ["product", "account", "id", "ref"]), "ref")
         self.assertEqual(resolve("date", "", ["holiday", "product_id", "amount"], ["holiday", "amount"], ["date", "day", "when"]), "date")
 
+    def test_verify_hook_completes_the_check_without_an_all_verified_flag(self):
+        """A service whose verify answer has no all-verified field: the hook counts the questions that passed."""
+        verify = next(t for t in self.wf["nodes"]["identity"]["tools"] if t["function"]["name"] == "verify_identity")
+        fields = [q["field"] for q in POLICY["identity"]["questions"]]
+        vars = {"id_verified_fields": "[]"}
+        for n, field in enumerate(fields):
+            vars["id_current_field"] = field
+            result = {"data": {"ok": True, "verified": True, "wrong_answers_left": 3}}
+            exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+            self.assertEqual(vars.get("id_state"), "verified" if n == len(fields) - 1 else None, field)
+        self.assertIn("complete", result["data"]["what_to_do_next"])
+        # the same question passed twice does not complete the check
+        vars = {"id_verified_fields": "[]", "id_current_field": fields[0]}
+        for _ in fields:
+            exec(verify["post_process_code"], {"vars": vars, "result": {"data": {"ok": True, "verified": True}}, "json": json})
+        self.assertNotIn("id_state", vars)
+        # a wrong answer still counts down, and the flag still completes the check when the service sends it
+        vars = {"id_verified_fields": "[]", "id_current_field": fields[0]}
+        exec(verify["post_process_code"], {"vars": vars, "result": {"data": {"ok": True, "verified": False, "wrong_answers_left": 2}}, "json": json})
+        self.assertNotIn("id_state", vars)
+        exec(verify["post_process_code"], {"vars": vars, "result": {"data": {"ok": True, "verified": True, "all_verified": True}}, "json": json})
+        self.assertEqual(vars["id_state"], "verified")
+
+    def test_hooks_without_a_success_flag_or_a_wrong_answers_counter(self):
+        """A contract whose answers carry no ok field and no count of wrong answers left: success is an answer without an error, the hook counts wrong answers."""
+        verify = next(t for t in self.wf["nodes"]["identity"]["tools"] if t["function"]["name"] == "verify_identity")
+        vars, result = {"id_current_field": "date_of_birth"}, {"data": {"verified": "true"}}
+        exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertTrue(result["data"]["what_to_do_next"].startswith("Correct."))
+        vars = {"id_current_field": "date_of_birth"}
+        for n in range(POLICY["identity"]["max_wrong_total"]):
+            result = {"data": {"verified": "false"}}
+            exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+            self.assertEqual(vars.get("id_state"), "failed" if n == POLICY["identity"]["max_wrong_total"] - 1 else None, n)
+        self.assertTrue(result["data"]["what_to_do_next"].startswith("The identity check has failed"))
+        vars, result = {}, {"data": {"error": "unreadable date"}}
+        exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertIn("could not be read", result["data"]["what_to_do_next"])
+        transfer = next(t for t in self.wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "transfer_to_agent")
+        vars, result = {}, {"data": {"ticket": "t1"}}
+        exec(transfer["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertEqual(vars["transfer_state"], "done")
+        vars, result = {}, {"data": {"error": "queue closed"}}
+        exec(transfer["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertNotIn("transfer_state", vars)
+        vars, result = {}, {"data": {"ok": "false"}}
+        exec(transfer["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertNotIn("transfer_state", vars)
+
     def test_transfer_and_note_pre_hooks_keep_the_values(self):
         transfer = next(t for t in self.wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "transfer_to_agent")
         vars, config = {}, {"body": {"customer_id": "c1", "queue": "general"}}
