@@ -230,7 +230,8 @@ def render(policy, spec):
                        + [
                         when("wrap_up", "goodbye said", ("conversation_done", "yes"))]}
     nodes["set_outcome"] = code_node("set_outcome", outcome_code(policy), "end_goodbye")
-    nodes["stop_offers"] = code_node("stop_offers", "vars['end_reason'] = 'refused'\n" + outcome_code(policy), "end_goodbye")
+    # a reason the extractor already found (hardship, dispute, paid) outranks a refusal, as the brief's special rules come before persuasion
+    nodes["stop_offers"] = code_node("stop_offers", "if str(vars.get('end_reason') or 'none') in ('none', ''):\n    vars['end_reason'] = 'refused'\n" + outcome_code(policy), "end_goodbye")
     nodes["offer_deadline"] = code_node("offer_deadline", (
         "import json\ntry:\n    facts = json.loads(vars.get('product_facts_json') or '[]')\n    f = facts[0] if facts else dict()\n"
         "    if json.loads(vars.get('promises_recorded') or '[]'):\n        raise ValueError('a promise exists')\n"
@@ -247,7 +248,8 @@ def render(policy, spec):
         "        else:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '. Read back exactly this date and record ' + day.isoformat() + ' once confirmed; do not compute the date yourself.'\n"
         "except Exception:\n    pass\n"), "negotiate")
     nodes["count_refusal"] = code_node("count_refusal", (
-        "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'other'\n    vars['offer_now'] = ''\n"
+        "try:\n    special = str(vars.get('end_reason') or 'none') not in ('none', '', 'refused')\n"
+        "    n = int(float(vars.get('refusals') or 0)) + (0 if special else 1)\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'other'\n    vars['offer_now'] = ''\n"
         "    allowed = int(float(vars.get('attempts_allowed') or 99))\n    vars['refusals_over'] = 'yes' if n > allowed else 'no'\nexcept Exception:\n    vars['refusals_over'] = 'no'\n"),
         "negotiate", before=[when("stop_offers", "persuasion attempts used up", ("refusals_over", "yes"))])
     nodes["wrap_up"] = code_node("wrap_up", outcome_code(policy), "end_quiet")

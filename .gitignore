@@ -4,9 +4,8 @@ env.sh
 .personas.json
 .claude/settings.local.json
 
-# run outputs
+# run outputs (traces and exported workflows are committed: the submission needs them)
 results/
-traces/
 out/
 
 # python
@@ -20,4 +19,3 @@ env
 .env
 .venv/
 work/
-*.workflow.json

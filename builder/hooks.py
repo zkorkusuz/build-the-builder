@@ -142,19 +142,23 @@ import json
 __COMMON__
 CAL = __CAL__
 ADJ = __ADJ__
-def _same_promise(x, b):
-    return str(x.get('product_id')) == str(b.get('product_id')) and str(x.get('date')) == b['date'] and abs(float(x.get('amount') or 0) - float(b.get('amount') or 0)) < 0.005
 try:
     b = config.get('body') if isinstance(config, dict) else None
     facts = _load('product_facts_json', [])
+    done = _load('promises_recorded', [])
     vars['promise_block'] = ''
     if isinstance(b, dict) and facts:
         ids = [f.get('product_id') for f in facts]
         if b.get('product_id') not in ids and len(facts) == 1:
             b['product_id'] = ids[0]
         f = next((x for x in facts if x.get('product_id') == b.get('product_id')), None)
+        x = next((x for x in done if str(x.get('product_id')) == str(b.get('product_id'))), None)
         if f is None:
             vars['promise_block'] = 'NOT recorded: product_id ' + str(b.get('product_id')) + ' is not one of the customer products. Use exactly one of these ids: ' + ', '.join(str(x) for x in ids) + ' and CALL create_promise again.'
+            _block(b)
+        elif x is not None:
+            # the bank takes one promise per product, so a retry after a lost answer or a change of mind must not reach it
+            vars['promise_block'] = 'ALREADY recorded earlier in this call: ' + str(f.get('words') or 'this product') + ', ' + str(x.get('amount')) + ' on ' + str(x.get('date')) + '. One promise per product: it cannot be recorded again, changed or cancelled in this call, so do not CALL create_promise for it again. Tell the customer what is recorded (if they ask to change it, say what your instructions say about that), then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
             _block(b)
         elif f.get('floor') is not None and float(b.get('amount') or 0) < float(f.get('floor')) - 0.005:
             vars['promise_block'] = 'NOT recorded: the amount ' + str(b.get('amount')) + ' is below the floor of ' + str(f.get('floor')) + ' for this product. Tell the customer it cannot be recorded and offer the floor amount once, as your instructions say.'
@@ -178,11 +182,6 @@ try:
                     b['date'] = day.isoformat()
                     # the attempt is kept with the date the bank receives, so the post-hook reads back and compares the same value
                     vars['promise_attempt'] = json.dumps({'product_id': b.get('product_id'), 'amount': b.get('amount'), 'date': b['date'], 'words': f.get('words', '')})
-                    done = _load('promises_recorded', [])
-                    # the bank would record a repeated identical promise twice, so a retry after a lost answer stops here
-                    if any(_same_promise(x, b) for x in done):
-                        vars['promise_block'] = 'ALREADY recorded earlier in this call: ' + str(f.get('words') or 'this product') + ', ' + str(b.get('amount')) + ' on ' + b['date'] + '. Do not CALL create_promise again for it. Tell the customer it is recorded, then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
-                        _block(b)
 except Exception:
     pass
 """
@@ -290,10 +289,9 @@ def _day(text, today):
         return today + datetime.timedelta(days=1)
     for i, name in enumerate(DAYS):
         if name in t or name[:3] in t.split():
-            ahead = (i - today.weekday()) % 7
-            if 'next' in t:
-                ahead = ahead + 7 if ahead else 7
-            return today + datetime.timedelta(days=ahead)
+            if 'next' in t:                      # the following calendar week, as in the date engine
+                return today + datetime.timedelta(days=7 - today.weekday() + i)
+            return today + datetime.timedelta(days=(i - today.weekday()) % 7)
     m = re.search(r'(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:of\\s*)?([a-z]+)?', t)
     if m and m.group(1):
         d = int(m.group(1))
@@ -347,7 +345,7 @@ try:
         today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
         nb = datetime.date.fromisoformat(str(vars.get('callback_next_business_day') or vars.get('next_business_day'))[:10])
         # an ISO date in the text would read as a time, so it is removed before the time is parsed
-        day, t = _day(b.get('date'), today), _time(re.sub(r'\d{4}-\d{2}-\d{2}', ' ', str(b.get('time') or '') + ' ' + str(b.get('date') or '')))
+        day, t = _day(b.get('date'), today), _time(re.sub(r'\\d{4}-\\d{2}-\\d{2}', ' ', str(b.get('time') or '') + ' ' + str(b.get('date') or '')))
         now_t, days = str(vars.get('now_time') or ''), CB.get('days') or []
         frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')
         ok_day = day is not None and ((day == today and 'today' in days) or (day == nb and 'next_business_day' in days))

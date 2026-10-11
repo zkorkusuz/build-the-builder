@@ -116,10 +116,9 @@ def _weekday_date(weekday, day, today, is_next):
         cand = today + datetime.timedelta(days=n)
         if cand.day == day and cand.weekday() == weekday:
             return cand
-    ahead = (weekday - today.weekday()) % 7
-    if is_next:
-        return today + datetime.timedelta(days=ahead + 7 if ahead else 7)
-    return today + datetime.timedelta(days=ahead)
+    if is_next:                                      # that weekday in the following calendar week, whatever today's weekday is
+        return today + datetime.timedelta(days=7 - today.weekday() + weekday)
+    return today + datetime.timedelta(days=(weekday - today.weekday()) % 7)
 
 
 def adjust_day(day, today, deadline, cal, rules):

@@ -1,0 +1,2 @@
+01:51:26 start 2026-10-11T01:51:26+0300 | briefs briefs/brief-a.md | tool api tools/openapi.json | slot brief-a
+01:51:26 normalize: skipped, policy from work/brief-a/policy.json
