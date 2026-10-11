@@ -62,21 +62,29 @@ try:
         fmt = str(q.get('format') or '').lower()
         prev = str(vars.get('id_partial_' + field) or '')
         WORDS = {'zero': 0, 'oh': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10}
-        # a date said in parts is kept until a full one arrives, and a repeat or a fuller answer replaces it
-        combined = answer if (not prev or prev in answer) else (prev if answer in prev else prev + ' ' + answer)
         datelike = 'yyyy' in fmt or 'date' in fmt or 'date' in field or 'birth' in field and 'year' not in field
         digits_needed = 0
         m = re.search(r'(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\s*digit', fmt)
         if m:
             digits_needed = WORDS.get(m.group(1), 0) or int(m.group(1))
         if datelike:
-            d = parse_full_date(combined, str(P.get('numeric_date_order') or 'day_month_year'))
+            held = _load('id_partial_' + field, dict())
+            new = date_parts(answer, str(P.get('numeric_date_order') or 'day_month_year'))
+            # parts the customer already gave are kept and a later answer fills only what is missing, because the model's own join of the parts is sometimes wrong; the cost is that a correction of an earlier part is dropped until the bank marks the answer wrong
+            parts = dict((k, (held.get(k) if isinstance(held, dict) else None) or new.get(k)) for k in ('day', 'month', 'year'))
+            missing = [k for k in parts if parts[k] is None]
+            d = None
+            if not missing:
+                try:
+                    d = datetime.date(parts['year'], parts['month'], parts['day'])
+                except ValueError:
+                    parts, missing = dict(day=None, month=None, year=None), ['whole date, because the parts given do not make a real date']
             if d is not None:
                 b['answer'] = d.isoformat()
                 vars['id_partial_' + field] = ''
             else:
-                vars['id_partial_' + field] = combined
-                vars['id_block'] = 'INCOMPLETE answer for ' + field + ': so far ' + json.dumps(combined) + ', which is not a full date. Ask the customer only for the missing part (day, month or year) and CALL verify_identity again with just that part; the parts are combined for you. This is not a wrong answer.'
+                vars['id_partial_' + field] = json.dumps(parts)
+                vars['id_block'] = 'INCOMPLETE answer for ' + field + ': missing the ' + ' and '.join(missing) + '. Ask the customer only for that and CALL verify_identity again with what they say; the parts are combined for you. This is not a wrong answer.'
                 _block(b)
         elif digits_needed:
             # number words become digits; a value that extends the digits held so far is the model's own join, anything else is the next part
@@ -330,21 +338,23 @@ try:
     if isinstance(b, dict) and (CB.get('days') or CB.get('from') or CB.get('to')):
         today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
         nb = datetime.date.fromisoformat(str(vars.get('callback_next_business_day') or vars.get('next_business_day'))[:10])
-        day, t = _day(b.get('date'), today), _time(str(b.get('time') or '') + ' ' + str(b.get('date') or ''))
+        # an ISO date in the text would read as a time, so it is removed before the time is parsed
+        day, t = _day(b.get('date'), today), _time(re.sub(r'\d{4}-\d{2}-\d{2}', ' ', str(b.get('time') or '') + ' ' + str(b.get('date') or '')))
         now_t, days = str(vars.get('now_time') or ''), CB.get('days') or []
         frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')
-        if day is None or t is None:
-            vars['callback_block'] = 'NOT booked: the day or the time could not be read. CALL schedule_callback again with date as the day the person said (today, tomorrow, a weekday name, or YYYY-MM-DD) and time as they said it (for example 9pm or 10:30); today is ' + today.isoformat() + ' and the next business day is ' + nb.isoformat() + '. Do not ask the person for a date.'
+        ok_day = day is not None and ((day == today and 'today' in days) or (day == nb and 'next_business_day' in days))
+        # a day outside the window is an offer outside it even when no time was said, so the ask counter moves instead of a clarifying question
+        if day is None or (t is None and ok_day):
+            vars['callback_block'] = 'NOT booked: the day or the time could not be read. CALL schedule_callback again with date as the day the person said (today, tomorrow, a weekday name, or YYYY-MM-DD) and time as they said it (for example 9pm or 10:30); today is ' + today.isoformat() + ' and the next business day is ' + nb.isoformat() + '. Do not ask the person for a date. If they gave no exact time, ask them for one inside the window first.'
             _block(b)
         else:
-            b['date'], b['time'] = day.isoformat(), t
-            ok_day = (day == today and 'today' in days) or (day == nb and 'next_business_day' in days)
-            ok_time = (not frm or t >= frm) and (not to or t <= to) and not (day == today and now_t and t <= now_t)
+            b['date'], b['time'] = day.isoformat(), t or ''
+            ok_time = t is not None and (not frm or t >= frm) and (not to or t <= to) and not (day == today and now_t and t <= now_t)
             if not (ok_day and ok_time):
                 n = _count('callback_outside')
                 limit = int(float(CB.get('max_asks') or 1))
                 if n <= limit:
-                    vars['callback_block'] = 'NOT booked: ' + day.isoformat() + ' at ' + t + ' is outside the callback window (' + str(vars.get('callback_text') or '') + '). Ask for another day and time inside it, then CALL schedule_callback again.'
+                    vars['callback_block'] = 'NOT booked: ' + day.isoformat() + (' at ' + t if t else '') + ' is outside the callback window (' + str(vars.get('callback_text') or '') + '). Ask for another day and time inside it, then CALL schedule_callback again.'
                 else:
                     vars['callback_block'] = 'NOT booked: that is outside the window again. Do not book anything and do not ask again. Thank the person, say goodbye, and in the same message call transition_to_outcome_no_callback_quiet.'
                 _block(b)

@@ -46,6 +46,17 @@ class ReferenceDates(unittest.TestCase):
         self.assertNotIn("2026-10-26", self.f["business_days_text"]); self.assertIn("2026-11-02", self.f["business_days_text"])
 
 
+class DateAnswers(unittest.TestCase):
+    def test_date_parts(self):
+        for text, order, want in (("14-03-1988", "day_month_year", (14, 3, 1988)), ("3/14/1988", "month_day_year", (14, 3, 1988)), ("March 14th, 1988", "day_month_year", (14, 3, 1988)),
+                                  ("0003-03-14", "day_month_year", (14, 3, None)), ("-03-14 1988", "day_month_year", (14, 3, 1988)), ("the 14th", "day_month_year", (14, None, None)),
+                                  ("1988", "day_month_year", (None, None, 1988)), ("0000-00-00", "day_month_year", (None, None, None))):
+            p = dates.date_parts(text, order)
+            self.assertEqual((p["day"], p["month"], p["year"]), want, text)
+        self.assertIsNone(dates.parse_full_date("31 February 1988"))
+        self.assertEqual(dates.parse_full_date("14 March 1988"), datetime.date(1988, 3, 14))
+
+
 class OtherDays(unittest.TestCase):
     def test_attempt1_said_on_friday_goes_to_next_week(self):
         self.assertEqual(dates.calendar_facts("2026-10-16T09:00", POLICY)["attempt1_date"], "2026-10-23")

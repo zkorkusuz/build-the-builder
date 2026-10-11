@@ -131,27 +131,39 @@ def adjust_day(day, today, deadline, cal, rules):
     return day, ""
 
 
-def parse_full_date(text, numeric_order="day_month_year"):
-    """A complete date of birth style answer (day, month and a four-digit year) as a date, or None when any part is missing."""
-    t = " " + str(text or "").strip().lower().replace(",", " ").replace("/", " ").replace(".", " ").replace("-", " ") + " "
+def date_parts(text, numeric_order="day_month_year"):
+    """The day, month and year found in a date answer, None for each part that is missing.
+
+    The dialogue model sends a date said without a year as a partial ISO form such as 0003-03-14 or -03-14, so that shape
+    gives month and day only; the year must be four digits."""
+    t = " " + str(text or "").strip().lower().replace(",", " ") + " "
+    iso = re.search(r"(?<!\d)(\d{4}|)-(\d{1,2})-(\d{1,2})(?!\d)", t)
+    year = next((int(n) for n in re.findall(r"\d{4}", t) if 1900 <= int(n) <= 2100), None)
+    if iso:
+        return {"day": int(iso.group(3)) or None, "month": int(iso.group(2)) or None, "year": year}
+    t = t.replace("/", " ").replace(".", " ").replace("-", " ")
     nums = [int(x) for x in re.findall(r"\d+", t)]
-    year = next((n for n in nums if 1900 <= n <= 2100), None)
     month = next((k + 1 for k, m in enumerate(MONTHS) if " " + m + " " in t or " " + m[:3] + " " in t), None)
     small = [n for n in nums if n != year and 1 <= n <= 31]
     ordinal = re.findall(r"\b(\d{1,2})(?:st|nd|rd|th)\b", t)
-    if year is None:
-        return None
+    day = None
     if month is None and len(small) >= 2:
         first, second = small[0], small[1]
         day, month = (first, second) if numeric_order == "day_month_year" else (second, first)
         if month > 12 and day <= 12:
             day, month = month, day
-    elif month is not None and small:
+    elif small:
         day = int(ordinal[0]) if ordinal else small[0]
-    else:
+    return {"day": day, "month": month, "year": year}
+
+
+def parse_full_date(text, numeric_order="day_month_year"):
+    """A complete date of birth style answer (day, month and a four-digit year) as a date, or None when any part is missing."""
+    p = date_parts(text, numeric_order)
+    if None in p.values():
         return None
     try:
-        return datetime.date(year, month, day)
+        return datetime.date(p["year"], p["month"], p["day"])
     except ValueError:
         return None
 

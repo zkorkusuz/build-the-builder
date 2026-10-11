@@ -89,11 +89,11 @@ class Rendered(unittest.TestCase):
         pre = self.wf["nodes"]["identity"]["tools"][0]["pre_process_code"]
         vars = {}
         sent = []
-        for field, answer in (("date_of_birth", "14 March"), ("date_of_birth", "1988"), ("phone_last4", "44"), ("phone_last4", "71"), ("phone_last4", "44"), ("phone_last4", "the last four are 4471"), ("phone_last4", "4"), ("phone_last4", "four"), ("phone_last4", "7"), ("phone_last4", "1"), ("phone_last4", "4"), ("phone_last4", "44"), ("phone_last4", "447"), ("phone_last4", "1")):
+        for field, answer in (("date_of_birth", "14 March"), ("date_of_birth", "1988"), ("phone_last4", "44"), ("phone_last4", "71"), ("phone_last4", "44"), ("phone_last4", "the last four are 4471"), ("phone_last4", "4"), ("phone_last4", "four"), ("phone_last4", "7"), ("phone_last4", "1"), ("phone_last4", "4"), ("phone_last4", "44"), ("phone_last4", "447"), ("phone_last4", "1"), ("date_of_birth", "0003-03-14"), ("date_of_birth", "1988-03-03"), ("date_of_birth", "-03-14"), ("date_of_birth", "the year is 1988")):
             config = {"body": {"field": field, "answer": answer}}
             exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
             sent.append("blocked: " + vars["id_block"][:10] if config["body"]["answer"] == "blocked" else config["body"]["answer"])
-        self.assertEqual(sent, ["blocked: INCOMPLETE", "1988-03-14", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "4471"])
+        self.assertEqual(sent, ["blocked: INCOMPLETE", "1988-03-14", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "1988-03-14", "blocked: INCOMPLETE", "1988-03-14"])
 
     def test_asking_for_a_person_is_not_a_declined_check(self):
         n = self.wf["nodes"]["identity"]
@@ -109,6 +109,11 @@ class Rendered(unittest.TestCase):
             vars = dict(base); config = {"body": {"date": date, "time": time}}
             exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
             self.assertEqual(config["body"]["date"] != "blocked", inside, date + " " + time)
+        # a day outside the window counts as an outside offer even without a time; a vague time on an allowed day is asked for
+        for date, time, word in (("Sunday morning", "", "outside"), ("tomorrow morning", "", "could not be read"), ("2026-10-15", "morning", "could not be read"), ("2026-10-14", "", "could not be read")):
+            vars = dict(base); config = {"body": {"date": date, "time": time}}
+            exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
+            self.assertIn(word, vars["callback_block"], date)
         vars = dict(base)
         for n in (1, 2):
             config = {"body": {"date": "2026-10-18", "time": "10:00"}}
