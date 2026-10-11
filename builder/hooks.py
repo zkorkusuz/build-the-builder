@@ -43,10 +43,42 @@ def _count(name):
     return n
 """
 
-VERIFY_PRE = """try:
+VERIFY_PRE = """__DATES_SRC__
+import json
+P = __IDENTITY__
+try:
     b = config.get('body') if isinstance(config, dict) else None
+    vars['id_block'] = ''
     if isinstance(b, dict):
-        vars['id_current_field'] = str(b.get('field') or '')
+        field, answer = str(b.get('field') or ''), str(b.get('answer') or '').strip()
+        vars['id_current_field'] = field
+        q = next((x for x in (P.get('questions') or []) if str(x.get('field')) == field), dict())
+        fmt = str(q.get('format') or '').lower()
+        prev = str(vars.get('id_partial_' + field) or '')
+        combined = (prev + ' ' + answer).strip() if prev and answer not in prev else answer
+        datelike = 'yyyy' in fmt or 'date' in fmt or 'date' in field or 'birth' in field and 'year' not in field
+        digits_needed = 0
+        m = re.search(r'(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\s*digit', fmt)
+        if m:
+            digits_needed = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10}.get(m.group(1), 0) or int(m.group(1))
+        if datelike:
+            d = parse_full_date(combined, str(P.get('numeric_date_order') or 'day_month_year'))
+            if d is not None:
+                b['answer'] = d.isoformat()
+                vars['id_partial_' + field] = ''
+            else:
+                vars['id_partial_' + field] = combined
+                vars['id_block'] = 'INCOMPLETE answer for ' + field + ': so far ' + json.dumps(combined) + ', which is not a full date. Ask the customer only for the missing part (day, month or year) and CALL verify_identity again with just that part; the parts are combined for you. This is not a wrong answer.'
+                config['body'] = dict()
+        elif digits_needed:
+            digits = re.sub(r'\\D', '', combined)
+            if len(digits) >= digits_needed:
+                b['answer'] = digits[-digits_needed:]
+                vars['id_partial_' + field] = ''
+            else:
+                vars['id_partial_' + field] = digits
+                vars['id_block'] = 'INCOMPLETE answer for ' + field + ': ' + str(len(digits)) + ' of ' + str(digits_needed) + ' digits so far. Ask the customer for the rest and CALL verify_identity again with just the remaining digits; the parts are combined for you. This is not a wrong answer.'
+                config['body'] = dict()
 except Exception:
     pass
 """
@@ -56,7 +88,14 @@ __COMMON__
 try:
     d = _d(result)
     P = __IDENTITY__
-    if d is not None:
+    block = str(vars.get('id_block') or '')
+    if d is None and isinstance(result, dict):
+        result['data'] = d = dict()
+    if block:
+        vars['id_block'] = ''
+        if d is not None:
+            d['what_to_do_next'] = block
+    elif d is not None:
         left = d.get('wrong_answers_left')
         hint = str(d.get('hint') or '')
         if _flag(d.get('all_verified')):
@@ -349,7 +388,7 @@ def all_hooks(policy, recompute="", dates_src=""):
     note_value = next((e.get("note_reason") for e in policy.get("end_reasons") or [] if e.get("key") == "service_error" and e.get("note_reason")), "")
     service_next = ("CALL add_note for this product with reason " + json.dumps(note_value) + ", then continue.") if (multi and note_value) else "Then continue with the other products, or thank the customer and say goodbye."
     return {
-        ("verify_identity", "pre"): VERIFY_PRE, ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
+        ("verify_identity", "pre"): fill(VERIFY_PRE, dates_src=dates_src, identity=ident), ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
         ("create_promise", "pre"): fill(PROMISE_PRE, dates_src=dates_src, common=COMMON, cal=policy.get("calendar") or {}, adj=policy.get("date_adjust") or {}),
         ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next)),
         ("add_note", "pre"): NOTE_PRE, ("add_note", "post"): fill(NOTE_POST, common=COMMON),

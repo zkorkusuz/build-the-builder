@@ -14,6 +14,7 @@
                 {"field": "phone_last4", "ask": "What are the last four digits of the phone number on file?", "format": "four digits"}],
   "max_wrong_total": 3,
   "on_wrong": "Tell the customer the answer did not match and ask the same question again, then CALL verify_identity with the new answer.",
+  "numeric_date_order": "day_month_year",
   "hint_value": "day_month_swapped",
   "hint_instruction": "The customer gave day and month the other way round. Ask them to say the month as a word, then CALL verify_identity again with the same field. This retry does not count as a wrong answer.",
   "decline_rule": "explain once that the questions protect their account. If they still decline, say goodbye. Asking what the call is about instead of answering counts as declining; a second refusal or a second such question ends the call.",
