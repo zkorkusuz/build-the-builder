@@ -275,7 +275,7 @@ def render(policy, spec):
     for kind in farewells:
         nodes["end_" + kind] = code_node("end_" + kind, "vars['farewell'] = " + json.dumps(kind) + "\n", "close")
     nodes["close"] = {"name": "close", "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "hang_up_goodbye", "disable_inactivity_monitor": True,
-                      "on_enter": {"type": "silent"}, "suppress_tool_results": True, "pre_actions": [T("close_call", lifecycle=None)],
+                      "on_enter": {"type": "silent"}, "suppress_tool_results": True, "pre_actions": [T("close_call", retries=2, lifecycle=None)],   # a sandbox fault on the close has no model to retry it
                       "transitions": [when("hang_up_" + kind, "farewell " + kind, ("farewell", kind)) for kind in farewells if kind != "goodbye"] + [always("hang_up_goodbye")]}
     for kind, spoken in farewells.items():
         nodes["hang_up_" + kind] = end_node("hang_up_" + kind, spoken)
