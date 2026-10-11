@@ -1,9 +1,139 @@
-[
- {"service": "cards.list", "path": "/cards.list", "lookup": ["customerNo"], "fields": {"customerNo": "the customer number the phone menu handed over with the call", "aiFlow": "which use case is asking; CardOps for this one"}, "summary": "The customer's active credit cards the assistant may talk about", "description": "Success: data.cards (cardNumber as the services expect it back, cardNumberLast4, productName free text and possibly empty, status, isMainCard), data.validCardsCount, data.exitState 1_CARD or MULTI_CARD. Two cards can share a product name and the last four digits. 404 FB_IVR_CHANNEL_102: the customer has no valid card (a warning, not a broken service). 500 FBE00099: technical error.", "statuses": {"200": "the customer's cards", "404": "the customer has no valid card (FB_IVR_CHANNEL_102, a warning)", "500": "technical error (FBE00099)"}},
- {"service": "cards.balance", "path": "/cards.balance", "lookup": ["cardNumber"], "fields": {"cardNumber": "the cardNumber exactly as cards.list returned it"}, "summary": "Statement and due dates and the debt of one card in every currency", "description": "data.statementDate and data.lastPayDate (last issued statement and its due date), data.nextStatementDate and data.nextLastPayDate, one block per currency debtTL, debtUSD, debtEUR, debtGBP (a block can be missing; a missing block is not a zero) with statementDebt, minPayment, remainingDebt, remainingMinPayment, totalDebt, currentPeriodExpense, transferAmount, statementPaymentStatus and totalDebtPaymentStatus HAS_DEBT or NO_DEBT, remainAutomaticPaymentAmount; top-level statementPaymentStatus, totalDebtPaymentStatus, automaticPaymentFlag Y or N. Dates dd.MM.yyyy, amounts numbers. 404 FB_IVR_CHANNEL_120 card not found, 500 FBE00099.", "statuses": {"200": "the card's statement debt", "404": "card not found (FB_IVR_CHANNEL_120)", "500": "technical error (FBE00099)"}},
- {"service": "statement.week.get", "path": "/statement.week.get", "lookup": ["cardNumber"], "fields": {"cardNumber": "the cardNumber exactly as cards.list returned it"}, "summary": "The card's current statement week and day, and whether it shares a statement with another card", "description": "data.statementWeek 1 to 4 and data.statementDay (numbers), statementDate, lastPayDate, nextStatementDate, nextLastPayDate, relationType empty, M (this is the main card of a shared statement) or C (this card is linked to a main card), relatedCardNumber and relatedCardProductName for the other card. No field says whether the week may still be changed. 404 FB_IVR_CHANNEL_121, 500 FBE00099.", "statuses": {"200": "the card's statement week", "404": "card not found (FB_IVR_CHANNEL_121)", "500": "technical error (FBE00099)"}},
- {"service": "statement.week.decide", "path": "/statement.week.decide", "lookup": ["cardNumber", "newStatementWeek"], "fields": {"cardNumber": "the cardNumber exactly as cards.list returned it", "newStatementWeek": "the requested week, 1 to 4, never the card's current week", "statementDay": "the card's current statementDay from statement.week.get"}, "summary": "Preview of a statement week change: the dates the card would get; changes nothing", "description": "data.statementDate and data.statementDueDate are the first statement and due date under the requested week, data.statementDay the new day, data.responseCode 0 and data.responseMessage. Do not call it for the week the card already has. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099.", "statuses": {"200": "the dates under the requested week", "400": "invalid arguments", "500": "technical error (FBE00099)"}},
- {"service": "statement.week.change", "path": "/statement.week.change", "lookup": ["cardNumber", "newStatementWeek"], "fields": {"cardNumber": "the cardNumber exactly as cards.list returned it", "newStatementWeek": "the requested week, 1 to 4", "statementDay": "the card's current statementDay from statement.week.get"}, "summary": "Changes the card's statement week; only after the caller agreed to the dates from statement.week.decide", "description": "Success is data.exitState OK with data.responseCode 0; data.statementWeek and data.statementDay come back as strings; tell the caller the dates from the preview. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099. No automatic retry: the call has a side effect.", "statuses": {"200": "the change was made (exitState OK)", "400": "invalid arguments", "500": "technical error (FBE00099)"}},
- {"service": "contact.email.get", "path": "/contact.email.get", "lookup": ["customerNo"], "fields": {"customerNo": "the customer number", "intAddressInfoType": "E for e-mail, P for phone, B for both; never empty"}, "summary": "The customer's registered e-mail address and phone", "description": "The registered e-mail is data.ibanEmail (data.ttsEmail is the same address for reading aloud); data.communicationType Both, Phone or Email. No registered e-mail: communicationType Phone and/or an empty ibanEmail; check the field. The iban prefix is historical. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099.", "statuses": {"200": "the registered contact details", "400": "invalid arguments", "500": "technical error (FBE00099)"}},
- {"service": "statement.pdf.send", "path": "/statement.pdf.send", "lookup": ["customerNo"], "fields": {"customerNo": "the customer number", "cardNumber": "the cardNumber exactly as cards.list returned it", "currencyType": "TL, USD, EUR or GBP", "statementDate": "the statementDate from cards.balance, dd.MM.yyyy", "emailAddress": "the registered address from contact.email.get; the service sends to whatever is here and does not check it"}, "summary": "Sends the last issued statement PDF by e-mail; only after the caller clearly agreed", "description": "Success is data.exitState DONE. 404 FB_IVR_CHANNEL_107: no statement document to send. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099. No automatic retry: the call has a side effect.", "statuses": {"200": "the statement was sent (exitState DONE)", "404": "no statement document to send (FB_IVR_CHANNEL_107)", "500": "technical error (FBE00099)"}}
-]
+{
+ "base": "/voice/v1",
+ "customer_key": "customerNo",
+ "envelope": "Every service is POST with a JSON body {data: {...}, call: {ani, lang}}; every answer has a result object (returnCode 1 and HTTP 200 mean success) and successful answers also have data. Error answers have only result (type ERROR or WARNING, code and message). Dates are dd.MM.yyyy strings, amounts JSON numbers. Always send cardNumber exactly as cards.list returned it.",
+ "title": "Freya Bank voice services: statement and debt (the bank's test environment, mocked)",
+ "routes": [
+  {
+   "service": "cards.list",
+   "path": "/cards.list",
+   "lookup": [
+    "customerNo"
+   ],
+   "fields": {
+    "customerNo": "the customer number the phone menu handed over with the call",
+    "aiFlow": "which use case is asking; CardOps for this one"
+   },
+   "summary": "The customer's active credit cards the assistant may talk about",
+   "description": "Success: data.cards (cardNumber as the services expect it back, cardNumberLast4, productName free text and possibly empty, status, isMainCard), data.validCardsCount, data.exitState 1_CARD or MULTI_CARD. Two cards can share a product name and the last four digits. 404 FB_IVR_CHANNEL_102: the customer has no valid card (a warning, not a broken service). 500 FBE00099: technical error.",
+   "statuses": {
+    "200": "the customer's cards",
+    "404": "the customer has no valid card (FB_IVR_CHANNEL_102, a warning)",
+    "500": "technical error (FBE00099)"
+   }
+  },
+  {
+   "service": "cards.balance",
+   "path": "/cards.balance",
+   "lookup": [
+    "cardNumber"
+   ],
+   "fields": {
+    "cardNumber": "the cardNumber exactly as cards.list returned it"
+   },
+   "summary": "Statement and due dates and the debt of one card in every currency",
+   "description": "data.statementDate and data.lastPayDate (last issued statement and its due date), data.nextStatementDate and data.nextLastPayDate, one block per currency debtTL, debtUSD, debtEUR, debtGBP (a block can be missing; a missing block is not a zero) with statementDebt, minPayment, remainingDebt, remainingMinPayment, totalDebt, currentPeriodExpense, transferAmount, statementPaymentStatus and totalDebtPaymentStatus HAS_DEBT or NO_DEBT, remainAutomaticPaymentAmount; top-level statementPaymentStatus, totalDebtPaymentStatus, automaticPaymentFlag Y or N. Dates dd.MM.yyyy, amounts numbers. 404 FB_IVR_CHANNEL_120 card not found, 500 FBE00099.",
+   "statuses": {
+    "200": "the card's statement debt",
+    "404": "card not found (FB_IVR_CHANNEL_120)",
+    "500": "technical error (FBE00099)"
+   }
+  },
+  {
+   "service": "statement.week.get",
+   "path": "/statement.week.get",
+   "lookup": [
+    "cardNumber"
+   ],
+   "fields": {
+    "cardNumber": "the cardNumber exactly as cards.list returned it"
+   },
+   "summary": "The card's current statement week and day, and whether it shares a statement with another card",
+   "description": "data.statementWeek 1 to 4 and data.statementDay (numbers), statementDate, lastPayDate, nextStatementDate, nextLastPayDate, relationType empty, M (this is the main card of a shared statement) or C (this card is linked to a main card), relatedCardNumber and relatedCardProductName for the other card. No field says whether the week may still be changed. 404 FB_IVR_CHANNEL_121, 500 FBE00099.",
+   "statuses": {
+    "200": "the card's statement week",
+    "404": "card not found (FB_IVR_CHANNEL_121)",
+    "500": "technical error (FBE00099)"
+   }
+  },
+  {
+   "service": "statement.week.decide",
+   "path": "/statement.week.decide",
+   "lookup": [
+    "cardNumber",
+    "newStatementWeek"
+   ],
+   "fields": {
+    "cardNumber": "the cardNumber exactly as cards.list returned it",
+    "newStatementWeek": "the requested week, 1 to 4, never the card's current week",
+    "statementDay": "the card's current statementDay from statement.week.get"
+   },
+   "summary": "Preview of a statement week change: the dates the card would get; changes nothing",
+   "description": "data.statementDate and data.statementDueDate are the first statement and due date under the requested week, data.statementDay the new day, data.responseCode 0 and data.responseMessage. Do not call it for the week the card already has. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099.",
+   "statuses": {
+    "200": "the dates under the requested week",
+    "400": "invalid arguments",
+    "500": "technical error (FBE00099)"
+   }
+  },
+  {
+   "service": "statement.week.change",
+   "path": "/statement.week.change",
+   "lookup": [
+    "cardNumber",
+    "newStatementWeek"
+   ],
+   "fields": {
+    "cardNumber": "the cardNumber exactly as cards.list returned it",
+    "newStatementWeek": "the requested week, 1 to 4",
+    "statementDay": "the card's current statementDay from statement.week.get"
+   },
+   "summary": "Changes the card's statement week; only after the caller agreed to the dates from statement.week.decide",
+   "description": "Success is data.exitState OK with data.responseCode 0; data.statementWeek and data.statementDay come back as strings; tell the caller the dates from the preview. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099. No automatic retry: the call has a side effect.",
+   "statuses": {
+    "200": "the change was made (exitState OK)",
+    "400": "invalid arguments",
+    "500": "technical error (FBE00099)"
+   }
+  },
+  {
+   "service": "contact.email.get",
+   "path": "/contact.email.get",
+   "lookup": [
+    "customerNo"
+   ],
+   "fields": {
+    "customerNo": "the customer number",
+    "intAddressInfoType": "E for e-mail, P for phone, B for both; never empty"
+   },
+   "summary": "The customer's registered e-mail address and phone",
+   "description": "The registered e-mail is data.ibanEmail (data.ttsEmail is the same address for reading aloud); data.communicationType Both, Phone or Email. No registered e-mail: communicationType Phone and/or an empty ibanEmail; check the field. The iban prefix is historical. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099.",
+   "statuses": {
+    "200": "the registered contact details",
+    "400": "invalid arguments",
+    "500": "technical error (FBE00099)"
+   }
+  },
+  {
+   "service": "statement.pdf.send",
+   "path": "/statement.pdf.send",
+   "lookup": [
+    "customerNo"
+   ],
+   "fields": {
+    "customerNo": "the customer number",
+    "cardNumber": "the cardNumber exactly as cards.list returned it",
+    "currencyType": "TL, USD, EUR or GBP",
+    "statementDate": "the statementDate from cards.balance, dd.MM.yyyy",
+    "emailAddress": "the registered address from contact.email.get; the service sends to whatever is here and does not check it"
+   },
+   "summary": "Sends the last issued statement PDF by e-mail; only after the caller clearly agreed",
+   "description": "Success is data.exitState DONE. 404 FB_IVR_CHANNEL_107: no statement document to send. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099. No automatic retry: the call has a side effect.",
+   "statuses": {
+    "200": "the statement was sent (exitState DONE)",
+    "404": "no statement document to send (FB_IVR_CHANNEL_107)",
+    "500": "technical error (FBE00099)"
+   }
+  }
+ ]
+}

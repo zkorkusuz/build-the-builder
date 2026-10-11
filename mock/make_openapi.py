@@ -51,10 +51,11 @@ def examples(customers, service, depth):
 def main(customers_path, routes_path, out_path):
     customers = json.load(open(customers_path, encoding="utf-8"))
     customers = customers.get("customers", customers) if isinstance(customers, dict) else customers
-    routes = json.load(open(routes_path, encoding="utf-8"))
+    table = json.load(open(routes_path, encoding="utf-8"))
+    routes, customer_key = table["routes"], table["customer_key"]
     paths = {}
     for r in routes:
-        answers = examples(customers, r["service"], len(r["lookup"]) - (1 if r["lookup"][0] == "customerNo" else 0))
+        answers = examples(customers, r["service"], len(r["lookup"]) - (1 if r["lookup"][0] == customer_key else 0))
         by_status = {}
         for a in answers:
             s = schema_of(a.get("response"))
@@ -70,9 +71,8 @@ def main(customers_path, routes_path, out_path):
               "requestBody": {"required": True, "content": {"application/json": {"schema": request}}},
               "responses": {status: {"description": r.get("statuses", {}).get(status, "as recorded for the test customers"), "content": {"application/json": {"schema": schema}}} for status, schema in sorted(by_status.items())}}
         paths[r["path"]] = {r.get("method", "POST").lower(): op}
-    doc = {"openapi": "3.0.3", "info": {"title": "Freya Bank voice services: statement and debt (the bank's test environment, mocked)", "version": "1.0.0",
-                                        "description": "Every service is POST with a JSON body {data: {...}, call: {ani, lang}}; every answer has a result object (returnCode 1 and HTTP 200 mean success) and successful answers also have data. Error answers have only result (type ERROR or WARNING, code and message). Dates are dd.MM.yyyy strings, amounts JSON numbers. Always send cardNumber exactly as cards.list returned it."},
-           "servers": [{"url": "https://bank-mock.bank-mock.workers.dev/voice/v1"}], "paths": paths}
+    doc = {"openapi": "3.0.3", "info": {"title": table.get("title", "Bank services (mock)"), "version": "1.0.0", "description": table.get("envelope", "")},
+           "servers": [{"url": "https://bank-mock.bank-mock.workers.dev" + table.get("base", "")}], "paths": paths}
     json.dump(doc, open(out_path, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     print("openapi:", len(paths), "paths;", ", ".join(p + " " + "/".join(sorted(paths[p][m]["responses"])) for p in paths for m in paths[p]))
 

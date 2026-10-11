@@ -1,6 +1,6 @@
 """Check the deployed final mock against the bank's test customers: every recorded answer must come back with its status and body.
 
-    python3 mock/check_final.py https://<worker>.workers.dev mock/customers.json <routes.json> [customerNo ...]
+    python3 mock/check_final.py https://<worker>.workers.dev mock/customers.json <routes.json> [customer number ...]
 
 Reads the served /openapi.json (paths must match the route table), calls every service of each listed customer (all when none is
 given) with the keys the data was recorded under, compares status and body with the recording, then prints the ledger of the first.
@@ -39,10 +39,11 @@ def main(argv):
     status, spec = http(base + "/openapi.json")
     paths = list((spec or {}).get("paths") or {}) if isinstance(spec, dict) else []
     server = (spec.get("servers") or [{}])[0].get("url") if isinstance(spec, dict) else base
-    routes = json.load(open(routes_path, encoding="utf-8"))
+    table = json.load(open(routes_path, encoding="utf-8"))
+    routes, ckey = table["routes"], table["customer_key"]
     print("openapi:", status, len(paths), "paths | servers", server, "| routes missing from it:", [r["path"] for r in routes if r["path"] not in paths] or "none")
     data = json.load(open(customers_path, encoding="utf-8"))
-    customers = [c for c in data["customers"] if not only or c["customerNo"] in only]
+    customers = [c for c in data["customers"] if not only or c[ckey] in only]
     ok = bad = 0
     for c in customers:
         for r in routes:
@@ -50,20 +51,20 @@ def main(argv):
             if entry is None:
                 continue
             for values, rec in answers(entry, r["lookup"]):
-                data = {k: "1" if k == "statementDay" else "E" if k == "intAddressInfoType" else "x" for k in (r.get("fields") or {})}   # the mock checks presence, not values
-                data.update({"customerNo": c["customerNo"]} if r["lookup"][0] == "customerNo" else {})
-                data.update(dict(zip([k for k in r["lookup"] if k != "customerNo"], values)))
+                data = {k: "1" for k in (r.get("fields") or {})}                     # the mock checks presence, not values
+                data.update({ckey: c[ckey]} if r["lookup"][0] == ckey else {})
+                data.update(dict(zip([k for k in r["lookup"] if k != ckey], values)))
                 t0 = time.time()
                 st, out = http(server + r["path"], {"data": data, "call": {"ani": "", "lang": "tr"}})
                 want = rec.get("response", rec.get("yanit"))
                 good = st == rec["http"] and out == want
                 ok += good; bad += not good
                 if not good or only:
-                    print(("ok  " if good else "BAD "), c["customerNo"], r["service"], values, "->", st, "(want", rec["http"], ")", str(round(time.time() - t0, 1)) + "s", "" if good else json.dumps(out, ensure_ascii=False)[:200])
+                    print(("ok  " if good else "BAD "), c[ckey], r["service"], values, "->", st, "(want", rec["http"], ")", str(round(time.time() - t0, 1)) + "s", "" if good else json.dumps(out, ensure_ascii=False)[:200])
     print("\nanswers:", ok, "match,", bad, "differ")
     if customers:
-        st, led = http(base + "/ledger/" + customers[0]["customerNo"])
-        print("ledger of", customers[0]["customerNo"] + ":", json.dumps(led, ensure_ascii=False)[:800])
+        st, led = http(base + "/ledger/" + customers[0][ckey])
+        print("ledger of", customers[0][ckey] + ":", json.dumps(led, ensure_ascii=False)[:800])
 
 
 if __name__ == "__main__":
