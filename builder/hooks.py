@@ -151,7 +151,14 @@ try:
     facts = _load('product_facts_json', [])
     done = _load('promises_recorded', [])
     vars['promise_block'] = ''
-    if isinstance(b, dict) and facts:
+    failed_turn, turn = str(vars.get('promise_failed_turn') or ''), str(vars.get('negotiate.current_turns') or '')
+    if failed_turn and failed_turn != turn:
+        vars['promise_failed_turn'] = ''
+    if isinstance(b, dict) and facts and failed_turn and failed_turn == turn:
+        # the model retries a failed recording in the same breath; the customer must hear about the problem first
+        vars['promise_block'] = 'NOT yet: first tell the customer there was a technical problem recording it, and that you will try once more. CALL create_promise again with the same values after they reply.'
+        _block(b)
+    elif isinstance(b, dict) and facts:
         ids = [f.get('product_id') for f in facts]
         if b.get(F['product_id']) not in ids and len(facts) == 1:
             b[F['product_id']] = ids[0]
@@ -228,7 +235,8 @@ try:
         n = _count('promise_failures')
         vars['promise_state'] = 'failed'
         if d is not None and n < 2:
-            d['what_to_do_next'] = 'NOT recorded: the service failed. Tell the customer there was a technical problem and CALL create_promise once more with the same product, amount and date.'
+            vars['promise_failed_turn'] = str(vars.get('negotiate.current_turns') or '')
+            d['what_to_do_next'] = 'NOT recorded: the service failed. Tell the customer there was a technical problem and that you will try once more; after they reply, CALL create_promise once more with the same product, amount and date.'
         elif d is not None:
             failed = _load('service_error_products', [])
             failed.append(attempt.get('product_id'))
