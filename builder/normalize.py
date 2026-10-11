@@ -22,6 +22,9 @@ def prompt(briefs, spec_text):
 def problems(policy):
     """What is missing or malformed in a policy. Empty means usable."""
     out = []
+    for k, shape in json.loads(SCHEMA).items():                  # a section of the wrong type would crash the render; empty it and ask for a repair
+        if policy.get(k) is not None and isinstance(shape, (dict, list)) and not isinstance(policy[k], type(shape)):
+            policy[k] = type(shape)(); out.append(k + " must be a " + ("map" if isinstance(shape, dict) else "list"))
     for k in REQUIRED:
         if not policy.get(k):
             out.append("missing " + k)
