@@ -41,10 +41,16 @@ def _count(name):
     n = int(float(vars.get(name) or 0)) + 1
     vars[name] = str(n)
     return n
+def _block(b):
+    # the platform sends the request even with an empty body and skips the post-hook on an error, so a blocked call sends values no bank accepts
+    for k in list(b):
+        if k != 'customer_id':
+            b[k] = 'blocked'
 """
 
 VERIFY_PRE = """__DATES_SRC__
 import json
+__COMMON__
 P = __IDENTITY__
 try:
     b = config.get('body') if isinstance(config, dict) else None
@@ -55,12 +61,14 @@ try:
         q = next((x for x in (P.get('questions') or []) if str(x.get('field')) == field), dict())
         fmt = str(q.get('format') or '').lower()
         prev = str(vars.get('id_partial_' + field) or '')
-        combined = (prev + ' ' + answer).strip() if prev and answer not in prev else answer
+        WORDS = {'zero': 0, 'oh': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10}
+        # a date said in parts is kept until a full one arrives, and a repeat or a fuller answer replaces it
+        combined = answer if (not prev or prev in answer) else (prev if answer in prev else prev + ' ' + answer)
         datelike = 'yyyy' in fmt or 'date' in fmt or 'date' in field or 'birth' in field and 'year' not in field
         digits_needed = 0
         m = re.search(r'(\\d+|one|two|three|four|five|six|seven|eight|nine|ten)\\s*digit', fmt)
         if m:
-            digits_needed = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10}.get(m.group(1), 0) or int(m.group(1))
+            digits_needed = WORDS.get(m.group(1), 0) or int(m.group(1))
         if datelike:
             d = parse_full_date(combined, str(P.get('numeric_date_order') or 'day_month_year'))
             if d is not None:
@@ -69,16 +77,18 @@ try:
             else:
                 vars['id_partial_' + field] = combined
                 vars['id_block'] = 'INCOMPLETE answer for ' + field + ': so far ' + json.dumps(combined) + ', which is not a full date. Ask the customer only for the missing part (day, month or year) and CALL verify_identity again with just that part; the parts are combined for you. This is not a wrong answer.'
-                config['body'] = dict()
+                _block(b)
         elif digits_needed:
-            digits = re.sub(r'\\D', '', combined)
+            # digits are always appended, one or more per turn, and the last ones count; number words become digits
+            spoken = re.sub(r'[a-z]+', lambda w: str(WORDS[w.group(0)]) if w.group(0) in WORDS else w.group(0), (prev + ' ' + answer).lower())
+            digits = re.sub(r'\\D', '', spoken)
             if len(digits) >= digits_needed:
                 b['answer'] = digits[-digits_needed:]
                 vars['id_partial_' + field] = ''
             else:
                 vars['id_partial_' + field] = digits
                 vars['id_block'] = 'INCOMPLETE answer for ' + field + ': ' + str(len(digits)) + ' of ' + str(digits_needed) + ' digits so far. Ask the customer for the rest and CALL verify_identity again with just the remaining digits; the parts are combined for you. This is not a wrong answer.'
-                config['body'] = dict()
+                _block(b)
 except Exception:
     pass
 """
@@ -135,10 +145,10 @@ try:
         vars['promise_attempt'] = json.dumps({'product_id': b.get('product_id'), 'amount': b.get('amount'), 'date': b.get('date'), 'words': (f or {}).get('words', '')})
         if f is None:
             vars['promise_block'] = 'NOT recorded: product_id ' + str(b.get('product_id')) + ' is not one of the customer products. Use exactly one of these ids: ' + ', '.join(str(x) for x in ids) + ' and CALL create_promise again.'
-            config['body'] = dict()
+            _block(b)
         elif f.get('floor') is not None and float(b.get('amount') or 0) < float(f.get('floor')) - 0.005:
             vars['promise_block'] = 'NOT recorded: the amount ' + str(b.get('amount')) + ' is below the floor of ' + str(f.get('floor')) + ' for this product. Tell the customer it cannot be recorded and offer the floor amount once, as your instructions say.'
-            config['body'] = dict()
+            _block(b)
         else:
             today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
             try:
@@ -148,12 +158,12 @@ try:
             deadline = datetime.date.fromisoformat(str(f.get('deadline'))[:10])
             if day is None:
                 vars['promise_block'] = 'NOT recorded: the date ' + str(b.get('date')) + ' could not be read. CALL create_promise again with the date as YYYY-MM-DD or in the customer\\'s own words (for example next Friday, Monday the 19th, 20 November).'
-                config['body'] = dict()
+                _block(b)
             else:
                 use, why = adjust_day(day, today, deadline, CAL, ADJ)
                 if why:
                     vars['promise_block'] = 'NOT recorded: the date ' + day.isoformat() + ' ' + why + '. Read the promise back again with the new date and CALL create_promise only after the customer confirms it.'
-                    config['body'] = dict()
+                    _block(b)
                 else:
                     b['date'] = day.isoformat()
 except Exception:
@@ -324,7 +334,7 @@ try:
         frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')
         if day is None or t is None:
             vars['callback_block'] = 'NOT booked: the day or the time could not be read. CALL schedule_callback again with date as the day the person said (today, tomorrow, a weekday name, or YYYY-MM-DD) and time as they said it (for example 9pm or 10:30); today is ' + today.isoformat() + ' and the next business day is ' + nb.isoformat() + '. Do not ask the person for a date.'
-            config['body'] = dict()
+            _block(b)
         else:
             b['date'], b['time'] = day.isoformat(), t
             ok_day = (day == today and 'today' in days) or (day == nb and 'next_business_day' in days)
@@ -336,7 +346,7 @@ try:
                     vars['callback_block'] = 'NOT booked: ' + day.isoformat() + ' at ' + t + ' is outside the callback window (' + str(vars.get('callback_text') or '') + '). Ask for another day and time inside it, then CALL schedule_callback again.'
                 else:
                     vars['callback_block'] = 'NOT booked: that is outside the window again. Do not book anything and do not ask again. Thank the person, say goodbye, and in the same message call transition_to_outcome_no_callback_quiet.'
-                config['body'] = dict()
+                _block(b)
 except Exception:
     pass
 """
@@ -388,7 +398,7 @@ def all_hooks(policy, recompute="", dates_src=""):
     note_value = next((e.get("note_reason") for e in policy.get("end_reasons") or [] if e.get("key") == "service_error" and e.get("note_reason")), "")
     service_next = ("CALL add_note for this product with reason " + json.dumps(note_value) + ", then continue.") if (multi and note_value) else "Then continue with the other products, or thank the customer and say goodbye."
     return {
-        ("verify_identity", "pre"): fill(VERIFY_PRE, dates_src=dates_src, identity=ident), ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
+        ("verify_identity", "pre"): fill(VERIFY_PRE, dates_src=dates_src, common=COMMON, identity=ident), ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
         ("create_promise", "pre"): fill(PROMISE_PRE, dates_src=dates_src, common=COMMON, cal=policy.get("calendar") or {}, adj=policy.get("date_adjust") or {}),
         ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next)),
         ("add_note", "pre"): NOTE_PRE, ("add_note", "post"): fill(NOTE_POST, common=COMMON),

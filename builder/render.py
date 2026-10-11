@@ -199,7 +199,7 @@ def render(policy, spec):
     nodes["mark_confirmed"] = code_node("mark_confirmed", facts_code(policy, "id_declined"), "identity")
     nodes["identity"] = {"name": "identity", "node_type": "conversation", "task_message": prompts.identity_task(policy), "max_node_turns": 14, "max_turn_transition": "outcome_id_declined",
         "tools": [T("verify_identity", mapping=[{"path": "data.all_verified", "variable": "id_all_verified"}])] + ([T("transfer_to_agent")] if policy.get("transfers") else []),
-        "extraction_schema": [extraction("identity_signal", ["none", "declined"], "declined only when the customer has refused the security questions a second time, or has twice asked what the call is about instead of answering, or has said twice that they do not want to talk. none otherwise.")],
+        "extraction_schema": [extraction("identity_signal", ["none", "wants_person", "declined"], "wants_person when the customer asks for a human, a person, an agent or a transfer, however often. declined only when the customer has refused the security questions a second time, or has twice asked what the call is about instead of answering, or has said twice that they do not want to talk, and has not asked for a person. none otherwise.")],
         "transitions": [when("account", "all security questions passed", ("id_state", "verified"), ("id_all_verified", "true"), ("verify_identity_response.data.all_verified", "true")),
                         when("outcome_id_failed", "too many wrong answers", ("id_state", "failed")), when("set_outcome", "transferred to a person", ("transfer_state", "done")),
                         when("outcome_id_declined", "customer declined the check", ("identity_signal", "declined")),
@@ -235,11 +235,11 @@ def render(policy, spec):
         "import json\ntry:\n    facts = json.loads(vars.get('product_facts_json') or '[]')\n    f = facts[0] if facts else dict()\n"
         "    if json.loads(vars.get('promises_recorded') or '[]'):\n        raise ValueError('a promise exists')\n"
         "    vars['offer_now'] = 'The customer gave no exact day: propose exactly ' + str(f.get('deadline')) + ', the latest allowed date, for the amount in play, and read it back if accepted. Do not propose any other date.'\n"
-        "    vars['last_reply'] = 'handled'\nexcept Exception:\n    vars['offer_now'] = ''\n"), "negotiate")
+        "    vars['last_reply'] = 'other'\nexcept Exception:\n    vars['offer_now'] = ''\n"), "negotiate")
     nodes["resolve_proposal"] = code_node("resolve_proposal", DATES_SRC + "\nimport json\nADJ = " + hooks.literal(policy.get("date_adjust") or {}) + "\nCAL = " + hooks.literal(policy.get("calendar") or {}) + "\n" + (
-        "try:\n    words = str(vars.get('proposed_day_words') or '')\n    vars['proposed_day_words'] = ''\n    vars['last_reply'] = 'resolved'\n"
+        "try:\n    words = str(vars.get('proposed_day_words') or '')\n    vars['proposed_day_words'] = ''\n    vars['last_reply'] = 'other'\n"
         "    facts = json.loads(vars.get('product_facts_json') or '[]')\n    today = datetime.date.fromisoformat(str(vars.get('today'))[:10])\n"
-        "    day = parse_day_words(words, today) if words and words != 'resolved' else None\n"
+        "    day = parse_day_words(words, today) if words else None\n"
         "    if day is not None and facts and not json.loads(vars.get('promises_recorded') or '[]'):\n"
         "        deadline = datetime.date.fromisoformat(str(facts[0].get('deadline'))[:10])\n        use, why = adjust_day(day, today, deadline, CAL, ADJ)\n"
         "        if why and use is not None:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '; it ' + why + '. Read back ' + say(use) + ' and record exactly ' + use.isoformat() + ' once confirmed.'\n"
@@ -247,7 +247,7 @@ def render(policy, spec):
         "        else:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '. Read back exactly this date and record ' + day.isoformat() + ' once confirmed; do not compute the date yourself.'\n"
         "except Exception:\n    pass\n"), "negotiate")
     nodes["count_refusal"] = code_node("count_refusal", (
-        "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'counted'\n    vars['offer_now'] = ''\n"
+        "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'other'\n    vars['offer_now'] = ''\n"
         "    allowed = int(float(vars.get('attempts_allowed') or 99))\n    vars['refusals_over'] = 'yes' if n > allowed else 'no'\nexcept Exception:\n    vars['refusals_over'] = 'no'\n"),
         "negotiate", before=[when("stop_offers", "persuasion attempts used up", ("refusals_over", "yes"))])
     nodes["wrap_up"] = code_node("wrap_up", outcome_code(policy), "end_quiet")

@@ -61,7 +61,7 @@ def identity_task(p):
         "The customer confirmed who they are. Thank them and run the security check: ask these questions one at a time, in this order, and CALL verify_identity with each answer. Do not ask the next question before the tool has answered.\n"
         + qtext + "\n"
         "After each tool result do exactly what what_to_do_next says: it tells you whether to ask the next question, repeat one, or stop.\n"
-        "If the customer gives only part of an answer, ask for the rest before calling the tool. Convert what they say into the required format yourself.\n"
+        "CALL verify_identity with what the customer said, even when it looks incomplete (a day without a year, only some of the digits): the tool joins the parts, converts the format and tells you what is still missing. Never ask the customer to complete or repeat an answer before calling the tool. Numbers said in words go in as digits.\n"
         "Say nothing about why the bank is calling until the check is complete.\n"
         + (("If the customer does not want to answer, or asks what the call is about instead of answering: " + str(i["decline_rule"]) + "\n") if i.get("decline_rule") else "")
         + (("Transfers:\n" + _transfers(p) + "\n") if p.get("transfers") else "")
@@ -111,7 +111,7 @@ def tool_descriptions(p):
     m = p.get("multi_product") or {}
     queues = "; ".join(str(t.get("queue", "")) + ": " + str(t.get("when", "")) for t in p.get("transfers") or [])
     return {
-        "verify_identity": "Check one security answer. CALL it every time the customer gives an answer to a security question, with the field name and the answer in the required format.",
+        "verify_identity": "Check one security answer. CALL it every time the customer says anything in answer to a security question, with the field name and their answer as said, even a partial one: the tool joins parts and converts the format.",
         "get_account": "The customer's late products.",
         "create_promise": "Record one payment promise. CALL it only after the customer clearly confirmed the read-back of product, amount and date. One call per product. product_id is exactly the id shown in the facts, such as the value after 'id'.",
         "add_note": "Record why a product ends without a promise. CALL it once for each product that gets no promise, with its product_id and the reason.",

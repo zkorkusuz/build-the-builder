@@ -77,12 +77,29 @@ class Rendered(unittest.TestCase):
         facts = json.dumps([{"product_id": "p1", "deadline": "2026-10-23", "floor": 126, "words": "credit card ending 4821"}])
         for date, amount, expect_block in (("2026-10-31", 200, "after the latest allowed date"), ("2026-10-17", 200, "not a business day"), ("2026-10-16", 50, "below the floor"), ("2026-10-16", 200, "")):
             vars = {"today": "2026-10-14", "product_facts_json": facts}
-            config = {"body": {"product_id": "p1", "amount": amount, "date": date}}
+            config = {"body": {"customer_id": "c1", "product_id": "p1", "amount": amount, "date": date}}
             exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
             if expect_block:
-                self.assertEqual(config["body"], {}, date); self.assertIn(expect_block, vars["promise_block"])
+                self.assertEqual(config["body"]["product_id"], "blocked", date); self.assertEqual(config["body"]["customer_id"], "c1"); self.assertIn(expect_block, vars["promise_block"])
             else:
                 self.assertEqual(config["body"]["date"], date); self.assertEqual(vars["promise_block"], "")
+
+    def test_verify_pre_hook_joins_partial_answers(self):
+        import datetime
+        pre = self.wf["nodes"]["identity"]["tools"][0]["pre_process_code"]
+        vars = {}
+        sent = []
+        for field, answer in (("date_of_birth", "14 March"), ("date_of_birth", "1988"), ("phone_last4", "44"), ("phone_last4", "71"), ("phone_last4", "44"), ("phone_last4", "the last four are 4471"), ("phone_last4", "4"), ("phone_last4", "four"), ("phone_last4", "7"), ("phone_last4", "1")):
+            config = {"body": {"field": field, "answer": answer}}
+            exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
+            sent.append("blocked: " + vars["id_block"][:10] if config["body"]["answer"] == "blocked" else config["body"]["answer"])
+        self.assertEqual(sent, ["blocked: INCOMPLETE", "1988-03-14", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "4471", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "blocked: INCOMPLETE", "4471"])
+
+    def test_asking_for_a_person_is_not_a_declined_check(self):
+        n = self.wf["nodes"]["identity"]
+        self.assertIn("wants_person", n["extraction_schema"][0]["enum_values"])
+        routes = [t for t in n["transitions"] if "wants_person" in json.dumps(t)]
+        self.assertEqual(routes, [])
 
     def test_callback_pre_hook_checks_the_window_and_counts(self):
         import datetime
@@ -91,7 +108,7 @@ class Rendered(unittest.TestCase):
         for date, time, inside in (("2026-10-14", "21:00", False), ("2026-10-18", "10:00", False), ("2026-10-14", "10:30", False), ("2026-10-15", "11:00", True), ("2026-10-14", "15:00", True)):
             vars = dict(base); config = {"body": {"date": date, "time": time}}
             exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
-            self.assertEqual(bool(config["body"]), inside, date + " " + time)
+            self.assertEqual(config["body"]["date"] != "blocked", inside, date + " " + time)
         vars = dict(base)
         for n in (1, 2):
             config = {"body": {"date": "2026-10-18", "time": "10:00"}}
