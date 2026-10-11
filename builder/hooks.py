@@ -295,13 +295,14 @@ except Exception:
     pass
 """
 
-CALLBACK_PRE = """import json, datetime, re
+CALLBACK_PRE = """__DATES_SRC__
+import json, datetime, re
 __COMMON__
 CB = __CALLBACK__
 WORDS = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12, 'noon': 12, 'midday': 12, 'midnight': 0}
 DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 def _day(text, today):
-    t = str(text or '').strip().lower()
+    t = translate(text).strip()
     m = re.search(r'(\\d{4})-(\\d{2})-(\\d{2})', t)
     if m:
         return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
@@ -328,7 +329,7 @@ def _day(text, today):
             pass
     return None
 def _time(text):
-    t = str(text or '').strip().lower().replace('.', ':')
+    t = translate(text).strip().replace('.', ':')
     extra = 0
     if 'half past' in t:
         t, extra = t.replace('half past', ''), 30
@@ -340,9 +341,11 @@ def _time(text):
     h, mi = None, 0
     if m:
         h, mi = int(m.group(1)), int(m.group(2) or 0)
-        if m.group(3) and m.group(3).startswith('p') and h < 12:
+        pm = bool(m.group(3) and m.group(3).startswith('p')) or bool(re.search(r'\\bpm\\b', t))     # "pm" may come before the hour once translated
+        am = bool(m.group(3) and m.group(3).startswith('a')) or bool(re.search(r'\\bam\\b', t))
+        if pm and h < 12:
             h += 12
-        if m.group(3) and m.group(3).startswith('a') and h == 12:
+        if am and not pm and h == 12:
             h = 0
     else:
         for w, n in WORDS.items():
@@ -448,6 +451,6 @@ def all_hooks(policy, recompute="", dates_src="", fields=None):
         ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next), fields=F("create_promise")),
         ("add_note", "pre"): fill(NOTE_PRE, fields=F("add_note")), ("add_note", "post"): fill(NOTE_POST, common=COMMON, fields=F("add_note")),
         ("transfer_to_agent", "pre"): fill(TRANSFER_PRE, fields=F("transfer_to_agent")), ("transfer_to_agent", "post"): fill(TRANSFER_POST, common=COMMON, fields=F("transfer_to_agent")),
-        ("schedule_callback", "pre"): fill(CALLBACK_PRE, common=COMMON, callback=policy.get("callback") or {}, fields=F("schedule_callback")), ("schedule_callback", "post"): fill(CALLBACK_POST, common=COMMON, fields=F("schedule_callback")),
+        ("schedule_callback", "pre"): fill(CALLBACK_PRE, dates_src=dates_src, common=COMMON, callback=policy.get("callback") or {}, fields=F("schedule_callback")), ("schedule_callback", "post"): fill(CALLBACK_POST, common=COMMON, fields=F("schedule_callback")),
         ("close_call", "pre"): fill(CLOSE_PRE, recompute=recompute or "", no_reason=policy.get("no_reason_outcomes") or [], default_outcome=json.dumps(default_outcome), fields=F("close_call")),
     }

@@ -1,0 +1,346 @@
+{
+ "rules": {
+  "max_wrong_total": 3
+ },
+ "cases": [
+  {
+   "id": "PUB-01",
+   "title": "Confirms identity and pays the full amount today",
+   "variables": {
+    "first_name": "Daniel",
+    "last_name": "Reyes",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1988-03-14",
+    "phone_last4": "4471"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "4821",
+     "past_due": 420,
+     "days_late": 6,
+     "minimum_payment": 126
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-02",
+   "title": "A relative answers",
+   "variables": {
+    "first_name": "Maria",
+    "last_name": "Costa",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1984-09-30",
+    "phone_last4": "5520"
+   },
+   "products": [
+    {
+     "type": "personal_loan",
+     "past_due": 310.5,
+     "days_late": 11,
+     "instalment_amount": 103.5
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-03",
+   "title": "Three wrong answers",
+   "variables": {
+    "first_name": "Owen",
+    "last_name": "Park",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1989-02-03",
+    "phone_last4": "7718"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "0377",
+     "past_due": 95,
+     "days_late": 4,
+     "minimum_payment": 28.5
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-04",
+   "title": "Wants a date after the deadline",
+   "variables": {
+    "first_name": "Lena",
+    "last_name": "Hoffmann",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1979-05-22",
+    "phone_last4": "3382"
+   },
+   "products": [
+    {
+     "type": "car_loan",
+     "past_due": 1250,
+     "days_late": 14,
+     "instalment_amount": 400
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-05",
+   "title": "Lost his job, declines the support team",
+   "variables": {
+    "first_name": "Tomas",
+    "last_name": "Novak",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1983-11-08",
+    "phone_last4": "9174"
+   },
+   "products": [
+    {
+     "type": "personal_loan",
+     "past_due": 780,
+     "days_late": 21,
+     "instalment_amount": 260
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-06",
+   "title": "Full amount is too much, accepts the floor",
+   "variables": {
+    "first_name": "Priya",
+    "last_name": "Nair",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1991-02-17",
+    "phone_last4": "2650"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "1903",
+     "past_due": 2125.1,
+     "days_late": 12,
+     "minimum_payment": 637.5
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-07",
+   "title": "A vague period, then a holiday",
+   "variables": {
+    "first_name": "Samuel",
+    "last_name": "Ortiz",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1976-08-30",
+    "phone_last4": "7701"
+   },
+   "products": [
+    {
+     "type": "personal_loan",
+     "past_due": 540,
+     "days_late": 5,
+     "instalment_amount": 180
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-08",
+   "title": "Says she already paid",
+   "variables": {
+    "first_name": "Hannah",
+    "last_name": "Schmidt",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1994-06-03",
+    "phone_last4": "1123"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "5512",
+     "past_due": 180,
+     "days_late": 5,
+     "minimum_payment": 54
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-09",
+   "title": "Asks for a new payment plan",
+   "variables": {
+    "first_name": "Victor",
+    "last_name": "Ionescu",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1969-12-12",
+    "phone_last4": "5568"
+   },
+   "products": [
+    {
+     "type": "personal_loan",
+     "past_due": 2100,
+     "days_late": 28,
+     "instalment_amount": 700
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-10",
+   "title": "The promise service fails on the first call",
+   "variables": {
+    "first_name": "Grace",
+    "last_name": "Lin",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1987-04-25",
+    "phone_last4": "8046"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "7740",
+     "past_due": 365,
+     "days_late": 8,
+     "minimum_payment": 109.5
+    }
+   ],
+   "fail_first": [
+    "create_promise"
+   ]
+  },
+  {
+   "id": "PUB-11",
+   "title": "Three products, one date for all",
+   "variables": {
+    "first_name": "Sofia",
+    "last_name": "Almeida",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1990-09-14",
+    "phone_last4": "6219"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "2288",
+     "past_due": 220,
+     "days_late": 9,
+     "minimum_payment": 66
+    },
+    {
+     "type": "personal_loan",
+     "past_due": 640,
+     "days_late": 9,
+     "instalment_amount": 213
+    },
+    {
+     "type": "car_loan",
+     "past_due": 75,
+     "days_late": 3,
+     "instalment_amount": 25
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-12",
+   "title": "Promises one product, refuses two",
+   "variables": {
+    "first_name": "Marcus",
+    "last_name": "Bell",
+    "title": "Mr",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1985-01-27",
+    "phone_last4": "4410"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "9015",
+     "past_due": 510,
+     "days_late": 16,
+     "minimum_payment": 153
+    },
+    {
+     "type": "personal_loan",
+     "past_due": 1320,
+     "days_late": 16,
+     "instalment_amount": 440
+    },
+    {
+     "type": "car_loan",
+     "past_due": 140,
+     "days_late": 7,
+     "instalment_amount": 46
+    }
+   ],
+   "fail_first": []
+  },
+  {
+   "id": "PUB-13",
+   "title": "One date for both, but the deadlines differ",
+   "variables": {
+    "first_name": "Elena",
+    "last_name": "Rossi",
+    "title": "Ms",
+    "now": "2026-10-14T11:00"
+   },
+   "identity": {
+    "date_of_birth": "1982-07-19",
+    "phone_last4": "3907"
+   },
+   "products": [
+    {
+     "type": "credit_card",
+     "card_last4": "6604",
+     "past_due": 300,
+     "days_late": 4,
+     "minimum_payment": 90
+    },
+    {
+     "type": "personal_loan",
+     "past_due": 900,
+     "days_late": 20,
+     "instalment_amount": 300
+    }
+   ],
+   "fail_first": []
+  }
+ ]
+}

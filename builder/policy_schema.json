@@ -33,7 +33,7 @@
  "persuasion_rules": "<every rule about refusals and persuasion attempts, in full: what counts as a refusal, what each attempt proposes, what to do when attempts are used up>",
  "special_rules": "<every rule for special situations, in full: hardship, already paid, dispute, does not want to talk, unknown information, and which rule comes first>",
  "recording_rules": "<every rule about the read-back, changes at the read-back, one promise per product, changing a recorded promise, and failed recordings>",
- "sentences": {"first_ask": "<the exact first question about payment>", "first_ask_multi": "<the exact first question when there are several products, or empty>", "confirm_question": "<the exact confirmation question at the read-back>", "after_promise": "<the exact sentence to say after a recorded promise>"},
+ "sentences": {"first_ask": "<the exact first question about payment>", "first_ask_multi": "<the exact first question when there are several products, or empty>", "confirm_question": "<the exact confirmation question at the read-back>", "after_promise": "<the exact sentence to say after a recorded promise>", "debt_line": "<the sentence that states one late product, with the placeholders {product}, {amount} and {days_late}, in the call's language; the amount is a bare number, so write the currency word around it; empty if the brief gives none>"},
  "transfers": [{"queue": "<queue value from the API file>", "when": "<in which situation to transfer, as an instruction, including anything to say or ask first>", "outcome": "<close_call outcome after this transfer>", "reason": "<reason, or empty>"}],
  "outcomes": {
   "unclear": {"outcome": "<close_call outcome when the right person could not be confirmed>", "reason": "<reason or empty>"},

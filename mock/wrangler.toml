@@ -1,0 +1,20 @@
+name = "bank-mock"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+workers_dev = true
+
+[vars]
+# Bump to "2", "3", ... and deploy to start with an empty ledger (old records stay in the old object).
+LEDGER_EPOCH = "1"
+
+[[durable_objects.bindings]]
+name = "BANK"
+class_name = "BankState"
+
+# SQLite-backed Durable Objects are the ones the free plan allows.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BankState"]
+
+[observability]
+enabled = true

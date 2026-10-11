@@ -109,6 +109,9 @@ def account_code(policy, fields):
     s, m = policy.get("sentences") or {}, policy.get("multi_product") or {}
     pol = {k: policy.get(k) or {} for k in ("calendar", "bands", "floor_field", "product_words", "attempt1_rule")}
     pol["fields"], products = fields, "account_response.data." + fields["products"]
+    pol["debt_line"] = str(s.get("debt_line") or "")                  # the brief's own sentence for a late product, in its language
+    for k in ("floor_fraction", "attempt2_rule"):                   # read by product_facts; without them the code step never saw a fraction floor
+        pol[k] = policy.get(k) or ""
     first = str(s.get("first_ask") or "")
     first_multi = str((s.get("first_ask_multi") if m.get("enabled") else "") or first)      # the question for several products, chosen per call by the count
     return "P2 = " + hooks.literal(pol) + "\nINTRO = " + json.dumps(str(policy.get("debt_intro_sentence") or "")) + "\nFIRST = " + json.dumps(first) + "\nFIRST_MULTI = " + json.dumps(first_multi) + "\n" + (
@@ -231,7 +234,7 @@ def render(policy, spec):
         "on_enter": {"type": "tts", "text": "{{debt_statement}}"}, "on_enter_first_entry_only": True,
         "extraction_schema": [extraction("end_reason", keys, "Why the call is ending without a promise, if it is. " + meanings + " none while the conversation continues or a promise was recorded."),
                               extraction("conversation_done", ["yes", "no"], "yes only after the assistant has said goodbye."),
-                              {"name": "proposed_day_words", "type": "string", "min_confidence": 0.5, "description": "The customer's own words for the day they propose or accept, exactly as said (for example next Friday, Monday the 19th, tomorrow, 20 November). If the customer gave the day in parts over the last two messages, join the parts. Leave out any time of day. Empty if no day is named."},
+                              {"name": "proposed_day_words", "type": "string", "min_confidence": 0.5, "description": "The customer's own words for the day they propose or accept, in English with digits for numbers (for example next Friday, Monday the 19th, tomorrow, 20 November). If the customer gave the day in parts over the last two messages, join the parts. Leave out any time of day. Empty if no day is named."},
                               extraction("last_reply", ["refusal", "proposal", "no_exact_day", "question", "hardship", "other"], "What the customer's latest message is. refusal: a no to paying with no date and no amount of their own, or a refusal of the date or amount the assistant just proposed. proposal: the customer offers a date or an amount, or accepts one. no_exact_day: the assistant asked for the exact day and the customer still names none (does not know, will see, when the salary comes). hardship: illness, a death in the family or job loss. question: asks something. other: anything else.")],
         "transitions": stops + [when("set_outcome", "transferred to a person", ("transfer_state", "done")),
                         goodbye_transition("wrap_up", "A promise was recorded or the customer was transferred, and the assistant has said goodbye")]

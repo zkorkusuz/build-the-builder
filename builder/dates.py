@@ -7,12 +7,29 @@ import datetime
 import re
 
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+# Turkish day, month, relative-day and time-of-day words (the final case's language, announced for the hackathon), longest first so "cumartesi" wins over "cuma"
+FOREIGN = sorted([("pazartesi", "monday"), ("salı", "tuesday"), ("sali", "tuesday"), ("çarşamba", "wednesday"), ("carsamba", "wednesday"), ("perşembe", "thursday"), ("persembe", "thursday"),
+                  ("cumartesi", "saturday"), ("cuma", "friday"), ("pazar", "sunday"), ("ocak", "january"), ("şubat", "february"), ("subat", "february"), ("mart", "march"), ("nisan", "april"),
+                  ("mayıs", "may"), ("mayis", "may"), ("haziran", "june"), ("temmuz", "july"), ("ağustos", "august"), ("agustos", "august"), ("eylül", "september"), ("eylul", "september"),
+                  ("ekim", "october"), ("kasım", "november"), ("kasim", "november"), ("aralık", "december"), ("aralik", "december"), ("bugün", "today"), ("bugun", "today"), ("yarın", "tomorrow"),
+                  ("yarin", "tomorrow"), ("önümüzdeki", "next"), ("onumuzdeki", "next"), ("gelecek", "next"), ("haftaya", "next"), ("sabah", "am"), ("öğleden sonra", "pm"), ("ogleden sonra", "pm"),
+                  ("akşam", "pm"), ("aksam", "pm"), ("öğlen", "noon"), ("öğle", "noon"), ("ogle", "noon")], key=lambda x: -len(x[0]))
+
+
+def translate(text):
+    """Turkish date and time words become English, so one parser serves both languages; a suffixed form ("cumaya", "ekimde") counts by its stem."""
+    t = " " + str(text or "").lower().replace(",", " ") + " "
+    t = t.replace(" öbür gün ", " day after tomorrow ").replace(" obur gun ", " day after tomorrow ")
+    for tr, en in FOREIGN:
+        if " " in tr:
+            t = t.replace(" " + tr + " ", " " + en + " ")
+    return " ".join(next((en for tr, en in FOREIGN if " " not in tr and tok.startswith(tr)), tok) for tok in t.split())
 
 
 def parse_now(value):
     """`now` as a datetime. Accepts 2026-10-14T11:00, with seconds, or with a trailing Z."""
     s = str(value or "").strip().replace("Z", "")
-    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d", "%d.%m.%Y %H:%M", "%d/%m/%Y %H:%M", "%d.%m.%Y", "%d/%m/%Y"):
         try:
             return datetime.datetime.strptime(s[:19], fmt)
         except ValueError:
@@ -87,7 +104,7 @@ NUMBER_WORDS = sorted(((w, n) for n in range(1, 32) for w in _ordinals(n)), key=
 def parse_day_words(text, today):
     """A day said in words, as a date, or None. A bare or "this" weekday is its next occurrence, today included; "next <weekday>" is the one in
     the week after; a weekday with a day number is the next date that is both."""
-    t = " " + str(text or "").strip().lower().replace(",", " ") + " "
+    t = " " + translate(text).strip() + " "
     if not t.strip():
         return None
     for word, n in NUMBER_WORDS:                                  # "the twenty-second" is the 22nd
@@ -161,7 +178,7 @@ def date_parts(text, numeric_order="day_month_year"):
 
     The dialogue model sends a date said without a year as a partial ISO form such as 0003-03-14 or -03-14, so that shape
     gives month and day only; the year must be four digits."""
-    t = " " + str(text or "").strip().lower().replace(",", " ") + " "
+    t = " " + translate(text).strip() + " "
     iso = re.search(r"(?<!\d)(\d{4}|)-(\d{1,2})-(\d{1,2})(?!\d)", t)
     year = next((int(n) for n in re.findall(r"\d{4}", t) if 1900 <= int(n) <= 2100), None)
     if iso:
@@ -281,6 +298,15 @@ def calendar_facts(now_value, policy):
     return out
 
 
+def debt_line(policy, product, amount, days_late):
+    """The sentence that states one late product: the brief's own template when it gives one, so the customer hears the brief's language."""
+    plain = "Your " + product + " is " + amount + " past due and " + days_late + " days late."
+    try:
+        return str(policy.get("debt_line") or "").format(product=product, amount=amount, days_late=days_late) or plain
+    except (KeyError, IndexError, ValueError):
+        return plain
+
+
 def product_facts(products, policy, now_value):
     """Per-product band, deadline, floor, offers and words, plus a summary and a spoken debt statement."""
     now = parse_now(now_value) or datetime.datetime(2000, 1, 1, 9, 0)
@@ -326,5 +352,5 @@ def product_facts(products, policy, now_value):
         lines.append("Product " + str(i + 1) + ": id " + f["product_id"] + ", " + name + ", past due " + money(f["past_due"]) + ", " + str(f["days_late"])
                      + " days late, band " + f["band"] + ", floor amount " + (money(floor) if floor is not None else "none (only the full amount is proposed)") + ", latest allowed date " + say(deadline)
                      + " (propose this when the customer gives a vague period and no exact day, or asks for a later date); " + offers + several + ".")
-        spoken.append("Your " + name + " is " + money(f["past_due"]) + " past due and " + str(f["days_late"]) + " days late.")
+        spoken.append(debt_line(policy, name, money(f["past_due"]), str(f["days_late"])))
     return {"facts": facts, "summary": "\n".join(lines), "count": len(facts), "spoken": " ".join(spoken)}

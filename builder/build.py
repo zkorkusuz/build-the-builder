@@ -1,37 +1,43 @@
-"""Build a Freya phone agent from a bank's brief and its tool API file, with no manual step.
+"""Build a Freya phone agent from a bank's brief and its tool API file, or from a folder of the bank's documents and the address of its mock, with no manual step.
 
     python3 builder/build.py <brief.md> [more brief files] <openapi.json> [--no-adapt] [--policy <policy.json>] [--selftest <cases.json> --brief-id A]
+    python3 builder/build.py <folder of documents> <mock url>
 
 Stages: normalize (Claude) -> render (code) -> adapt (Claude) -> lint and dry run -> save and publish -> export -> optional self-test.
 Writes a plain-text trace to traces/<slot>-<start>.log. Stops itself well inside 30 minutes and always leaves a saved workflow.
 --policy skips the normalize stage and renders from a given policy file (for tests; never for a hidden brief).
 """
-import json, pathlib, shutil, subprocess, sys, time
+import json, pathlib, shutil, subprocess, sys, time, urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import freya
-from builder import adapt, lint, llm, normalize, render, selfcheck
+from builder import adapt, documents, lint, llm, normalize, render, selfcheck
 
 BUDGET_S = 27 * 60          # the rule is 30 minutes; keep a margin for the export and the trace
 
 
 def main(argv):
     opts, files = parse(argv)
-    briefs, spec_path = files[:-1], files[-1]
-    slot = "_".join(pathlib.Path(b).stem for b in briefs)      # one slot per brief set; the same set updates the same workflow
+    folder, mock_url = source(files)
+    briefs, spec_path = ([folder] if folder else files[:-1]), (None if folder else files[-1])
+    slot = pathlib.Path(folder.rstrip("/")).name if folder else "_".join(pathlib.Path(b).stem for b in briefs)   # one slot per brief set; the same set updates the same workflow
     start = time.time()
     ROOT.joinpath("traces").mkdir(exist_ok=True)
     log_path = ROOT / "traces" / (slot + "-" + time.strftime("%Y%m%d-%H%M%S") + ".log")
     trace = logger(log_path)
-    trace("start " + time.strftime("%Y-%m-%dT%H:%M:%S%z") + " | briefs " + " ".join(briefs) + " | tool api " + spec_path + " | slot " + slot)
+    trace("start " + time.strftime("%Y-%m-%dT%H:%M:%S%z") + (" | documents " + folder + " | mock " + mock_url if folder else " | briefs " + " ".join(briefs) + " | tool api " + spec_path) + " | slot " + slot)
     trace(selfcheck.describe_run(sys.argv))
     left = lambda: BUDGET_S - (time.time() - start)
     given = json.loads(pathlib.Path(opts["policy"]).read_text()) if opts["policy"] else None   # read before the work folder is wiped
     workdir = isolate(slot, briefs, spec_path)
-    spec = json.loads(pathlib.Path(spec_path).read_text())
     ask = lambda prompt, wd, tr, purpose: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120))
+    texts = documents.folder_to_briefs(folder) if folder else [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
+    if folder:
+        trace("documents: " + str(len(texts)) + " read in this order: " + ", ".join(n for n, _ in texts) + (" | images listed, not read: " + str(len(documents.image_paths(folder))) if documents.image_paths(folder) else ""))
+    spec = tool_spec(spec_path, mock_url, texts, workdir, trace, ask)
+    (workdir / "openapi.json").write_text(json.dumps(spec, indent=1))
 
-    policy = given if given is not None else read_policy(opts, briefs, spec_path, workdir, trace, ask)
+    policy = given if given is not None else read_policy(opts, texts, json.dumps(spec, indent=1), workdir, trace, ask)
     if given is not None:
         trace("normalize: skipped, policy from " + opts["policy"])
     (workdir / "policy.json").write_text(json.dumps(policy, indent=1))
@@ -80,11 +86,10 @@ def main(argv):
                       "export": str(export_path), "trace": str(log_path)}))
 
 
-def read_policy(opts, briefs, spec_path, workdir, trace, ask):
+def read_policy(opts, texts, spec_text, workdir, trace, ask):
     """The policy from --policy, or from the normalize stage. On a total failure, an empty policy still yields a saved agent."""
-    texts = [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
     try:
-        policy = normalize.normalize(texts, pathlib.Path(spec_path).read_text(), workdir, trace, ask, llm.parse_json)
+        policy = normalize.normalize(texts, spec_text, workdir, trace, ask, llm.parse_json)
     except Exception as e:
         trace("normalize: FAILED, " + str(e)[:300] + "; rendering from whatever came back")
         policy = {}
@@ -119,6 +124,52 @@ def _dig(d, keys):
     return d
 
 
+SPEC_PROMPT = """The documents below include a bank's service contract: the services a phone agent calls to check a customer's identity, read the late products, record a payment promise, add a note, book a callback, transfer the call and close it.
+Write an OpenAPI 3.0 JSON for them: one POST path per service, named by its role from this list exactly: verify_identity, get_account, create_promise, add_note, schedule_callback, transfer_to_agent, close_call (leave out a role the contract has no service for; put the contract's own service name in the summary).
+The application/json request body lists the property names, types, enums, descriptions and required fields exactly as the contract spells them, and the 200 response schema lists the response field names exactly as the contract gives them. Answer with the JSON only, in a ```json fence.
+
+"""
+
+
+def tool_spec(spec_path, mock_url, texts, workdir, trace, ask):
+    """The tool API: the given file, else the mock's own /openapi.json, else one the model writes from the service contract."""
+    if spec_path:
+        return json.loads(pathlib.Path(spec_path).read_text())
+    base = mock_url.rstrip("/")
+    spec = fetch_json(base + "/openapi.json")
+    if spec and spec.get("paths"):
+        trace("tool api: " + base + "/openapi.json, " + str(len(spec["paths"])) + " paths")
+    else:
+        try:
+            spec = llm.parse_json(ask(SPEC_PROMPT + normalize.documents_text(texts), workdir, trace, "tool api: OpenAPI from the service contract"))
+            trace("tool api: written by the model from the documents, " + str(len(spec.get("paths") or {})) + " paths")
+        except Exception as e:
+            spec = json.loads((ROOT / "tools" / "openapi.json").read_text())       # the kit's shapes keep the build alive; the trace says so
+            trace("tool api: FAILED to read or derive one (" + str(e)[:120] + "); using the kit's tool shapes")
+    if not str((spec.get("servers") or [{}])[0].get("url") or "").startswith(base):
+        spec["servers"] = [{"url": base}]                            # the agent's tools call the mock, whatever the file says
+    return spec
+
+
+def fetch_json(url, tries=3):
+    for _ in range(tries):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 build-the-builder"}), timeout=20) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception:
+            time.sleep(3)
+    return None
+
+
+def source(files):
+    """The final's form (a folder of documents and the mock's address) or the practice form (brief files and an API file)."""
+    folder = next((f for f in files if pathlib.Path(f).is_dir()), None)
+    url = next((f for f in files if f.startswith(("http://", "https://"))), None)
+    if (folder is None) != (url is None):
+        sys.exit("a folder of documents goes with the mock's address (python3 builder/build.py <folder> <mock url>)")
+    return folder, url
+
+
 def parse(argv):
     opts, files, i = {"no_adapt": False, "selftest": None, "brief_id": None, "policy": None}, [], 0
     while i < len(argv):
@@ -142,12 +193,15 @@ def logger(path):
 
 
 def isolate(slot, briefs, spec_path):
-    """A working folder for the model that holds only the briefs and the tool API file."""
+    """A working folder for the model that holds only the briefs (or the document folder) and the tool API file."""
     workdir = ROOT / "work" / slot
     shutil.rmtree(workdir, ignore_errors=True)
     workdir.mkdir(parents=True)
-    for f in briefs + [spec_path]:
-        shutil.copy(f, workdir / pathlib.Path(f).name)
+    for f in briefs + ([spec_path] if spec_path else []):
+        if pathlib.Path(f).is_dir():
+            shutil.copytree(f, workdir / "documents")
+        else:
+            shutil.copy(f, workdir / pathlib.Path(f).name)
     return workdir
 
 

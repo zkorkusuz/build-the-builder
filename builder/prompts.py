@@ -47,7 +47,7 @@ def third_party_task(p):
     return (
         "The person on the line is not the customer. Say nothing about why you are calling or about any account, even if they offer to help or pay.\n"
         "Ask when the customer can be reached. A callback must be inside this window: {{callback_text}}. If it is today, the time must be later than now ({{now_text}}).\n"
-        "CALL schedule_callback with every day and time the person offers, the moment they offer it, passing the day and the time in the person's own words (for example date \"tomorrow\" or \"Sunday\" or \"2026-10-15\", time \"9pm\" or \"ten in the morning\" or \"10:30\"): the bank converts and checks them and the result tells you what to do next. Never judge the window yourself, never convert or compute dates yourself, and never ask for another time unless the result tells you to. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
+        "CALL schedule_callback with every day and time the person offers, the moment they offer it, passing the day and the time as the person said them, in English with digits for numbers (for example date \"tomorrow\" or \"Sunday\" or \"2026-10-15\", time \"9pm\" or \"ten in the morning\" or \"10:30\"): the bank converts and checks them and the result tells you what to do next. Never judge the window yourself, never convert or compute dates yourself, and never ask for another time unless the result tells you to. When the result says no callback can be booked, say thank you and goodbye, and in the same message call transition_to_outcome_no_callback_quiet.\n"
         "If they say the number does not belong to the customer, or that the customer has died, do not ask anything else; say nothing more.\n"
         + (("Instructions from the bank: " + str(t["instructions"]) + "\n") if t.get("instructions") else "")
         + _rules(p, "third_party")
@@ -62,7 +62,7 @@ def identity_task(p):
         "The customer confirmed who they are. Thank them and run the security check: ask these questions one at a time, in this order, and CALL verify_identity with each answer. Do not ask the next question before the tool has answered.\n"
         + qtext + "\n"
         "After each tool result do exactly what what_to_do_next says: it tells you whether to ask the next question, repeat one, or stop.\n"
-        "CALL verify_identity with what the customer said, even when it looks incomplete (a day without a year, only some of the digits): the tool joins the parts, converts the format and tells you what is still missing. Never ask the customer to complete or repeat an answer before calling the tool, and never fill in a part they did not say (such as a year from an earlier answer). Numbers said in words go in as digits.\n"
+        "CALL verify_identity with what the customer said, even when it looks incomplete (a day without a year, only some of the digits): the tool joins the parts, converts the format and tells you what is still missing. Never ask the customer to complete or repeat an answer before calling the tool, and never fill in a part they did not say (such as a year from an earlier answer). Numbers said in words go in as digits and month names as digits or English month names; everything else exactly as the customer said it.\n"
         "Say nothing about why the bank is calling until the check is complete.\n"
         + (("If the customer does not want to answer, or asks what the call is about instead of answering: " + str(i["decline_rule"]) + "\n") if i.get("decline_rule") else "")
         + (("Transfers:\n" + _transfers(p) + "\n") if p.get("transfers") else "")
@@ -122,7 +122,7 @@ def tool_descriptions(p, fields=None):
         "get_account": "The customer's late products.",
         "create_promise": "Record one payment promise. CALL it only after the customer clearly confirmed the read-back of product, amount and date. One call per product. " + pid + " is exactly the id shown in the facts, such as the value after 'id'.",
         "add_note": "Record why a product ends without a promise. CALL it once for each product that gets no promise, with its " + pid + " and the reason.",
-        "schedule_callback": "Book a callback with the person who answered. CALL it every time they offer a day and a time, with both in their own words; the bank checks the window.",
+        "schedule_callback": "Book a callback with the person who answered. CALL it every time they offer a day and a time, with both as said, in English with digits for numbers; the bank checks the window.",
         "transfer_to_agent": "Hand the call to a person. Queues: " + (queues or "see your instructions") + ".",
         "close_call": "Records how the call ended. Runs by itself at the end of the call.",
     }

@@ -7,6 +7,8 @@ SITUATIONS = ["unclear", "callback", "no_callback", "wrong_number", "deceased", 
 
 INSTRUCTIONS = """You are turning a bank's instructions for an outbound late-payment phone call into one JSON policy file.
 Read every brief document below completely, sentence by sentence. Later documents (memos, corrections) override earlier ones when they conflict.
+The documents may be in any language. Every sentence the agent must say (opening, confirmation question, identity questions, the debt line, the first ask, the read-back question, the after-promise sentence, the deceased and on-fail sentences, farewells) goes in the documents' own language exactly as they give it, and language names that language; rule text fields are instructions in English that quote verbatim any sentence the agent must say in the original language.
+A README that describes the documents says which ones bind (policy, contract, memo, announcement) and which are examples (conversations, questions and answers): examples show how the rules apply, settle ambiguities and give the agent's exact sentences; a rule only an example implies goes into ambiguities.
 Fill every field of the schema from the briefs and the tool API file. Take tool field names, enum values, outcome names, reasons and queue names from the tool API file. api_fields maps each role to the field name spelled exactly as in the tool API file's request body or 200 response for that tool (keep the role name when the file uses it; empty when the file has no such field). Never invent a value: if the briefs do not give one, use an empty string, and for lists an empty list.
 Rules text fields (date_rules, amount_rules, persuasion_rules, special_rules, recording_rules, third_party.instructions, identity.decline_rule, multi_product.rules) must contain every rule of that kind, rewritten as instructions to the phone agent, complete and in the brief's own words where possible. Use the phrase "latest allowed date" for the per-product deadline and "floor" for the minimum amount; the agent receives the computed dates and amounts.
 The outcomes map: each situation key is a moment the call ends before or without a payment conversation; fill the outcome and reason values the brief's closing table prescribes for it. end_reasons lists every way a verified call can end without a promise, with its outcome and reason from the table and the add_note reason value for it, if the brief uses notes. transfers lists every queue of the tool API with the situation that leads to it. no_reason_outcomes lists the outcome values the table shows with no reason. attempt1_rule encodes which date the first persuasion attempt proposes.
@@ -14,9 +16,12 @@ rules: list every rule in the briefs, verbatim, with its section. Keep the brief
 Answer with one JSON object in a ```json fence and nothing else. Integers must be JSON numbers, booleans JSON booleans."""
 
 
+def documents_text(briefs):
+    return "\n\n".join("=== BRIEF DOCUMENT " + str(i + 1) + ": " + name + " ===\n" + text for i, (name, text) in enumerate(briefs))
+
+
 def prompt(briefs, spec_text):
-    docs = "\n\n".join("=== BRIEF DOCUMENT " + str(i + 1) + ": " + name + " ===\n" + text for i, (name, text) in enumerate(briefs))
-    return INSTRUCTIONS + "\n\n=== SCHEMA (fill every field; <...> describes what goes there) ===\n" + SCHEMA + "\n\n" + docs + "\n\n=== TOOL API FILE ===\n" + spec_text
+    return INSTRUCTIONS + "\n\n=== SCHEMA (fill every field; <...> describes what goes there) ===\n" + SCHEMA + "\n\n" + documents_text(briefs) + "\n\n=== TOOL API FILE ===\n" + spec_text
 
 
 def problems(policy):
