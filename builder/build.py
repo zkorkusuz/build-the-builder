@@ -65,6 +65,7 @@ def main(argv):
         export_path.write_text(json.dumps({"workflow_id": saved["workflow_id"], "agent_id": saved["agent_id"], "exported_from": "the workflow as sent, the platform did not answer the read", "workflow": workflow}, indent=1))
         trace("export: written from the saved workflow after " + str(e)[:120])
     trace("export: " + str(export_path))
+    (ROOT / "traces" / (log_path.stem + ".policy.json")).write_text(json.dumps(policy, indent=1))   # the policy that produced this agent, kept with its trace for audit
 
     if opts["selftest"] and left() > 13 * 60:
         selftest(saved["agent_id"], opts, trace)
