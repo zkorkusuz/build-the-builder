@@ -549,7 +549,7 @@
   },
   "checks": [
    "exactly one arrangement in the ledger after the retry",
-   "the agent does not say 'recorded' before a successful call"
+   "the agent does not claim the arrangement is recorded before the successful create_promise call"
   ],
   "fail_first": [
    "create_promise"

@@ -6,7 +6,7 @@ DATES_SRC = pathlib.Path(dates.__file__).read_text()
 # Variables the workflow sets itself. A model-filled tool field must not share one of these names.
 OWN_VARS = {"today", "now", "outcome", "reason", "products", "debt_summary", "debt_statement", "product_count", "id_state", "transfer_state",
             "callback_state", "promise_state", "end_reason", "who", "identity_signal", "third_party_result", "conversation_done"}
-COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "close", "hang_up_"]
+COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "count_refusal set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "close", "hang_up_"]
 
 
 def always(target):
@@ -211,16 +211,14 @@ def render(policy, spec):
     tools = [T("create_promise")] + ([T("transfer_to_agent")] if policy.get("transfers") else []) + ([T("add_note")] if multi else [])
     keys = ["none"] + [str(e.get("key")) for e in ends]
     meanings = " ".join(str(e.get("key")) + ": " + str(e.get("meaning", "")) for e in ends)
-    attempt_values = sorted({int(b.get("attempts", 1)) for b in policy.get("bands") or []} or {1})
-    stops = [{"target_node": "stop_offers", "description": "persuasion attempts used up", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
-                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "attempts_allowed", "operator": "equals", "operand": str(a)},
-                {"variable": "refusals", "operator": "greater_than", "operand": a}]}]}} for a in attempt_values]
+    # The extractor only classifies the latest reply; a code step counts refusals against the attempts allowed and ends the call when they are used up.
+    stops = [{"target_node": "count_refusal", "description": "the customer refused", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
+                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "refusal"}]}]}}]
     nodes["negotiate"] = {"name": "negotiate", "node_type": "conversation", "task_message": prompts.negotiate_task(policy), "max_node_turns": 60, "max_turn_transition": "set_outcome", "tools": tools,
         "on_enter": {"type": "tts", "text": "{{debt_statement}}"}, "on_enter_first_entry_only": True,
         "extraction_schema": [extraction("end_reason", keys, "Why the call is ending without a promise, if it is. " + meanings + " none while the conversation continues or a promise was recorded."),
                               extraction("conversation_done", ["yes", "no"], "yes only after the assistant has said goodbye."),
-                              {"name": "refusals", "type": "string", "enum_values": ["0", "1", "2", "3", "4"], "min_confidence": 0.75,
-                               "description": "How many times so far the customer has flatly refused to pay: a no to paying with no date and no amount of their own, or a refusal of a date or amount the assistant proposed. A customer who proposes a different date or amount, asks a question, or mentions hardship has not refused. Count across the whole conversation."}],
+                              extraction("last_reply", ["refusal", "proposal", "question", "hardship", "other"], "What the customer's latest message is. refusal: a no to paying with no date and no amount of their own, or a refusal of the date or amount the assistant just proposed. proposal: the customer offers a date or an amount, or accepts one. hardship: illness, a death in the family or job loss. question: asks something. other: anything else.")],
         "transitions": stops + [when("set_outcome", "transferred to a person", ("transfer_state", "done")),
                         goodbye_transition("wrap_up", "A promise was recorded or the customer was transferred, and the assistant has said goodbye")]
                        + [goodbye_transition("wrap_up_" + str(e.get("key")), "The call ends without a promise because " + str(e.get("meaning", "")) + ", and the assistant has said goodbye") for e in ends]
@@ -228,6 +226,10 @@ def render(policy, spec):
                         when("wrap_up", "goodbye said", ("conversation_done", "yes"))]}
     nodes["set_outcome"] = code_node("set_outcome", outcome_code(policy), "end_goodbye")
     nodes["stop_offers"] = code_node("stop_offers", "vars['end_reason'] = 'refused'\n" + outcome_code(policy), "end_goodbye")
+    nodes["count_refusal"] = code_node("count_refusal", (
+        "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'counted'\n"
+        "    allowed = int(float(vars.get('attempts_allowed') or 99))\n    vars['refusals_over'] = 'yes' if n > allowed else 'no'\nexcept Exception:\n    vars['refusals_over'] = 'no'\n"),
+        "negotiate", before=[when("stop_offers", "persuasion attempts used up", ("refusals_over", "yes"))])
     nodes["wrap_up"] = code_node("wrap_up", outcome_code(policy), "end_quiet")
     for e in ends:
         key = str(e.get("key"))
