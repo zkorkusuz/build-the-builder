@@ -6,7 +6,7 @@ DATES_SRC = pathlib.Path(dates.__file__).read_text()
 # Variables the workflow sets itself. A model-filled tool field must not share one of these names.
 OWN_VARS = {"today", "now", "outcome", "reason", "products", "debt_summary", "debt_statement", "product_count", "id_state", "transfer_state",
             "callback_state", "promise_state", "end_reason", "who", "identity_signal", "third_party_result", "conversation_done"}
-COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "count_refusal set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "close", "hang_up_"]
+COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "count_refusal offer_deadline set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "close", "hang_up_"]
 
 
 def always(target):
@@ -94,7 +94,7 @@ def facts_code(policy, situation, extra=""):
     pol = {k: policy.get(k) or {} for k in ("calendar", "bands", "callback", "attempt1_rule")}
     return DATES_SRC + "\nimport json" + hooks.COMMON + "POLICY = " + hooks.literal(pol) + "\n" + (
         "try:\n    for k, v in calendar_facts(vars.get('now'), POLICY).items():\n        vars[k] = v\nexcept Exception:\n    pass\n"
-        "for k, v in [('product_facts_json', '[]'), ('promises_recorded', '[]'), ('notes_recorded', '[]'), ('promise_failures', '0'), ('id_state', 'pending'),\n"
+        "for k, v in [('product_facts_json', '[]'), ('promises_recorded', '[]'), ('notes_recorded', '[]'), ('promise_failures', '0'), ('id_state', 'pending'), ('offer_now', 'none'),\n"
         "             ('transfer_state', 'none'), ('callback_state', 'none'), ('promise_state', 'none'), ('debt_summary', 'not loaded yet'), ('debt_statement', ''), ('product_count', '0')]:\n"
         "    if not vars.get(k):\n        vars[k] = v\n"
         "vars['outcome'] = " + json.dumps(str(o.get("outcome", ""))) + "\nvars['reason'] = " + json.dumps(str(o.get("reason", ""))) + "\n" + extra)
@@ -213,12 +213,14 @@ def render(policy, spec):
     meanings = " ".join(str(e.get("key")) + ": " + str(e.get("meaning", "")) for e in ends)
     # The extractor only classifies the latest reply; a code step counts refusals against the attempts allowed and ends the call when they are used up.
     stops = [{"target_node": "count_refusal", "description": "the customer refused", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
-                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "refusal"}]}]}}]
+                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "refusal"}]}]}},
+             {"target_node": "offer_deadline", "description": "no exact day after being asked", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
+                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "no_exact_day"}]}]}}]
     nodes["negotiate"] = {"name": "negotiate", "node_type": "conversation", "task_message": prompts.negotiate_task(policy), "max_node_turns": 60, "max_turn_transition": "set_outcome", "tools": tools,
         "on_enter": {"type": "tts", "text": "{{debt_statement}}"}, "on_enter_first_entry_only": True,
         "extraction_schema": [extraction("end_reason", keys, "Why the call is ending without a promise, if it is. " + meanings + " none while the conversation continues or a promise was recorded."),
                               extraction("conversation_done", ["yes", "no"], "yes only after the assistant has said goodbye."),
-                              extraction("last_reply", ["refusal", "proposal", "question", "hardship", "other"], "What the customer's latest message is. refusal: a no to paying with no date and no amount of their own, or a refusal of the date or amount the assistant just proposed. proposal: the customer offers a date or an amount, or accepts one. hardship: illness, a death in the family or job loss. question: asks something. other: anything else.")],
+                              extraction("last_reply", ["refusal", "proposal", "no_exact_day", "question", "hardship", "other"], "What the customer's latest message is. refusal: a no to paying with no date and no amount of their own, or a refusal of the date or amount the assistant just proposed. proposal: the customer offers a date or an amount, or accepts one. no_exact_day: the assistant asked for the exact day and the customer still names none (does not know, will see, when the salary comes). hardship: illness, a death in the family or job loss. question: asks something. other: anything else.")],
         "transitions": stops + [when("set_outcome", "transferred to a person", ("transfer_state", "done")),
                         goodbye_transition("wrap_up", "A promise was recorded or the customer was transferred, and the assistant has said goodbye")]
                        + [goodbye_transition("wrap_up_" + str(e.get("key")), "The call ends without a promise because " + str(e.get("meaning", "")) + ", and the assistant has said goodbye") for e in ends]
@@ -226,8 +228,12 @@ def render(policy, spec):
                         when("wrap_up", "goodbye said", ("conversation_done", "yes"))]}
     nodes["set_outcome"] = code_node("set_outcome", outcome_code(policy), "end_goodbye")
     nodes["stop_offers"] = code_node("stop_offers", "vars['end_reason'] = 'refused'\n" + outcome_code(policy), "end_goodbye")
+    nodes["offer_deadline"] = code_node("offer_deadline", (
+        "import json\ntry:\n    facts = json.loads(vars.get('product_facts_json') or '[]')\n    f = facts[0] if facts else dict()\n"
+        "    vars['offer_now'] = 'The customer gave no exact day: propose exactly ' + str(f.get('deadline')) + ', the latest allowed date, for the amount in play, and read it back if accepted. Do not propose any other date.'\n"
+        "    vars['last_reply'] = 'handled'\nexcept Exception:\n    vars['offer_now'] = ''\n"), "negotiate")
     nodes["count_refusal"] = code_node("count_refusal", (
-        "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'counted'\n"
+        "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'counted'\n    vars['offer_now'] = ''\n"
         "    allowed = int(float(vars.get('attempts_allowed') or 99))\n    vars['refusals_over'] = 'yes' if n > allowed else 'no'\nexcept Exception:\n    vars['refusals_over'] = 'no'\n"),
         "negotiate", before=[when("stop_offers", "persuasion attempts used up", ("refusals_over", "yes"))])
     nodes["wrap_up"] = code_node("wrap_up", outcome_code(policy), "end_quiet")

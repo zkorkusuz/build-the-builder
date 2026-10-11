@@ -74,6 +74,7 @@ def negotiate_task(p):
     s, m = p.get("sentences") or {}, p.get("multi_product") or {}
     parts = [
         "Identity is verified. On entering this step you have already said: \"{{debt_statement}}\". Do not repeat it; continue from the customer's answer.",
+        "Instruction from the bank's systems for this turn, if any: {{offer_now}}",
         "Facts for this call, computed by the bank's systems from its rules (use these dates and amounts, never your own arithmetic):",
         "Now: {{now_text}}. Today is {{today}}.",
         "Late products:\n{{debt_summary}}",

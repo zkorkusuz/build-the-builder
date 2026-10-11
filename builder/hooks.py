@@ -137,6 +137,7 @@ try:
         if d is not None:
             d['what_to_do_next'] = block
     elif d is not None and _flag(d.get('ok')):
+        vars['offer_now'] = ''
         done.append(attempt)
         vars['promises_recorded'] = json.dumps(done)
         vars['promise_failures'] = '0'
