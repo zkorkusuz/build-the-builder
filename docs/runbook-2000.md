@@ -19,8 +19,8 @@ Times are Istanbul. The briefs open at 20:00, the form closes at 23:00; the targ
 3. Expect about 2 minutes. The build prints one JSON line at the end with `workflow_id`, `agent_id`, the export file
    (`<slot>.workflow.json`) and the trace (`traces/<slot>-<start>.log`).
 4. Read two things in the trace while it runs: every `policy: ambiguity:` line (how the model resolved what the brief left
-   open) and the `fields:` line (which tool fields it mapped to other names). If an ambiguity resolution contradicts the brief,
-   fix the brief text? No: nothing in the brief may be edited. Note it for the write-up and move on.
+   open) and the `fields:` line (which tool fields it mapped to other names). If a resolution contradicts the brief, note it
+   for the write-up and move on: the brief files are never edited, and the builder is not changed for it.
 5. Build hidden brief 2 the same way, after the first has printed its JSON line. One build at a time.
 
 ## If something goes wrong
