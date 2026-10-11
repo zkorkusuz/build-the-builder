@@ -230,6 +230,7 @@ def render(policy, spec):
     nodes["stop_offers"] = code_node("stop_offers", "vars['end_reason'] = 'refused'\n" + outcome_code(policy), "end_goodbye")
     nodes["offer_deadline"] = code_node("offer_deadline", (
         "import json\ntry:\n    facts = json.loads(vars.get('product_facts_json') or '[]')\n    f = facts[0] if facts else dict()\n"
+        "    if json.loads(vars.get('promises_recorded') or '[]'):\n        raise ValueError('a promise exists')\n"
         "    vars['offer_now'] = 'The customer gave no exact day: propose exactly ' + str(f.get('deadline')) + ', the latest allowed date, for the amount in play, and read it back if accepted. Do not propose any other date.'\n"
         "    vars['last_reply'] = 'handled'\nexcept Exception:\n    vars['offer_now'] = ''\n"), "negotiate")
     nodes["count_refusal"] = code_node("count_refusal", (
