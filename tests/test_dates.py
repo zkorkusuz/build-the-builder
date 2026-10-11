@@ -58,9 +58,10 @@ class DateAnswers(unittest.TestCase):
 
     def test_weekday_with_a_day_number(self):
         today = datetime.date(2026, 10, 14)
-        # the customer accepts an offered date with a weekday and a day number; a pair that never matches falls back to the day number
-        for words, want in (("Monday 2", datetime.date(2026, 11, 2)), ("Monday the 19th", datetime.date(2026, 10, 19)), ("yes, Friday 16", datetime.date(2026, 10, 16)),
-                            ("Monday the 20th", datetime.date(2026, 10, 20)), ("next Monday", datetime.date(2026, 10, 26)), ("Monday", datetime.date(2026, 10, 19)), ("Monday 2 November", datetime.date(2026, 11, 2))):
+        # the customer accepts an offered date with a weekday and a day number; a time of day is not a day number; a pair that never matches keeps the weekday
+        for words, want in (("Monday 2", datetime.date(2026, 11, 2)), ("yes, Friday 16", datetime.date(2026, 10, 16)), ("Monday 2 November", datetime.date(2026, 11, 2)),
+                            ("Friday at 10", datetime.date(2026, 10, 16)), ("Friday at 10:30", datetime.date(2026, 10, 16)), ("Monday at 2", datetime.date(2026, 10, 19)), ("Friday 10am", datetime.date(2026, 10, 16)),
+                            ("Monday the 20th", datetime.date(2026, 10, 19)), ("next Monday 2", datetime.date(2026, 11, 2))):
             self.assertEqual(dates.parse_day_words(words, today), want, words)
 
 

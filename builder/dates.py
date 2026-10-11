@@ -73,10 +73,12 @@ MONTHS = ["january", "february", "march", "april", "may", "june", "july", "augus
 
 def parse_day_words(text, today):
     """A day said in words, as a date, or None. "next <weekday>" is that weekday in the following calendar week; "this <weekday>" and a bare
-    weekday are the one in the current week (a bare weekday that is today means today)."""
+    weekday are the one in the current week (a bare weekday that is today means today); a weekday with a day number is the next date that is both."""
     t = " " + str(text or "").strip().lower().replace(",", " ") + " "
     if not t.strip():
         return None
+    # a time of day is not a day number
+    t = re.sub(r"\bat \d{1,2}(:\d{2})?\s*(am|pm)?|\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(am|pm)\b", " ", t)
     digits = [int(x) for x in re.findall(r"\d+", t)]
     if len(digits) >= 3 and "-" in t and digits[0] > 1900:
         try:
@@ -93,9 +95,7 @@ def parse_day_words(text, today):
     day = next((d for d in digits if 1 <= d <= 31), None)
     weekday = next((i for i, name in enumerate(WEEKDAYS) if " " + name.lower() + " " in t or " " + name.lower()[:3] + " " in t), None)
     if weekday is not None and not (month and day):
-        by_weekday = _weekday_date(weekday, day, today, " next " in t)
-        if by_weekday is not None:
-            return by_weekday
+        return _weekday_date(weekday, day, today, " next " in t)
     if day:
         try:
             cand = datetime.date(today.year, month or today.month, day)
@@ -111,13 +111,11 @@ def parse_day_words(text, today):
 
 def _weekday_date(weekday, day, today, is_next):
     """A weekday with a day number ("Monday 2") is the next date that is both, as when the customer accepts a date the agent offered;
-    a bare weekday is the one in the current week, "next" the following week. None when the pair never matches within two months."""
-    if day:
-        for n in range(62):
-            cand = today + datetime.timedelta(days=n)
-            if cand.day == day and cand.weekday() == weekday:
-                return cand
-        return None
+    a bare weekday, or a pair that never matches within two months, is the one in the current week, "next" the following week."""
+    for n in range(62 if day else 0):
+        cand = today + datetime.timedelta(days=n)
+        if cand.day == day and cand.weekday() == weekday:
+            return cand
     ahead = (weekday - today.weekday()) % 7
     if is_next:
         return today + datetime.timedelta(days=ahead + 7 if ahead else 7)
