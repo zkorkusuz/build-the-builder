@@ -108,14 +108,15 @@ def account_code(policy, fields):
     s, m = policy.get("sentences") or {}, policy.get("multi_product") or {}
     pol = {k: policy.get(k) or {} for k in ("calendar", "bands", "floor_field", "product_words", "attempt1_rule")}
     pol["fields"], products = fields, "account_response.data." + fields["products"]
-    first = str((s.get("first_ask_multi") if m.get("enabled") else "") or s.get("first_ask") or "")
-    return "P2 = " + hooks.literal(pol) + "\nINTRO = " + json.dumps(str(policy.get("debt_intro_sentence") or "")) + "\nFIRST = " + json.dumps(first) + "\n" + (
+    first = str(s.get("first_ask") or "")
+    first_multi = str((s.get("first_ask_multi") if m.get("enabled") else "") or first)      # the question for several products, chosen per call by the count
+    return "P2 = " + hooks.literal(pol) + "\nINTRO = " + json.dumps(str(policy.get("debt_intro_sentence") or "")) + "\nFIRST = " + json.dumps(first) + "\nFIRST_MULTI = " + json.dumps(first_multi) + "\n" + (
         "def _flat_list(prefix):\n    rows = dict()\n    try:\n        for k in list(vars.keys()):\n            if str(k).startswith(prefix):\n                rest = str(k)[len(prefix):].split('.')\n"
         "                if len(rest) == 2 and rest[0].isdigit():\n                    rows.setdefault(int(rest[0]), dict())[rest[1]] = vars.get(k)\n    except Exception:\n        pass\n    return [rows[i] for i in sorted(rows)]\n"
         "try:\n    products = _load('products', None) or _flat_list(" + json.dumps(products + ".") + ") or _load(" + json.dumps(products) + ", [])\n"
         "    r = product_facts(products, P2, vars.get('now'))\n    vars['product_facts_json'] = json.dumps(r['facts'])\n"
         "    vars['debt_summary'] = r['summary'] or 'No product information was returned by the account service.'\n    vars['product_count'] = str(r['count'])\n"
-        "    vars['debt_statement'] = ' '.join(x for x in [INTRO, r['spoken'], FIRST] if x)\n"
+        "    vars['debt_statement'] = ' '.join(x for x in [INTRO, r['spoken'], FIRST_MULTI if r['count'] > 1 else FIRST] if x)\n"
         "    vars['attempts_allowed'] = str(r['facts'][0]['attempts']) if r['count'] == 1 else 'per_product'\n"
         "    vars['account_state'] = 'ok' if r['count'] else 'empty'\nexcept Exception:\n    vars['account_state'] = 'error'\n")
 

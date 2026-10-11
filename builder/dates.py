@@ -322,8 +322,9 @@ def product_facts(products, policy, now_value):
             offers = ("persuasion attempts: after a flat refusal propose " + (say(first) if first else "the latest allowed date") + " for the amount in play; after a second flat refusal propose " + amount2 + " on " + say(second)
                       + ("; after a third flat refusal propose the latest allowed date " + say(deadline) + " for the amount in play" if attempts >= 3 else "")
                       + "; after that STOP: make no further offer, thank the customer and say goodbye")
+        several = "; the question about paying today was asked once for all products, so never ask about today again for this product: a no goes straight to the attempts above" if len(products) > 1 else ""
         lines.append("Product " + str(i + 1) + ": id " + f["product_id"] + ", " + name + ", past due " + money(f["past_due"]) + ", " + str(f["days_late"])
                      + " days late, band " + f["band"] + ", floor amount " + (money(floor) if floor is not None else "none (only the full amount is proposed)") + ", latest allowed date " + say(deadline)
-                     + " (propose this when the customer gives a vague period and no exact day, or asks for a later date); " + offers + ".")
+                     + " (propose this when the customer gives a vague period and no exact day, or asks for a later date); " + offers + several + ".")
         spoken.append("Your " + name + " is " + money(f["past_due"]) + " past due and " + str(f["days_late"]) + " days late.")
     return {"facts": facts, "summary": "\n".join(lines), "count": len(facts), "spoken": " ".join(spoken)}
