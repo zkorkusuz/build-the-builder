@@ -42,6 +42,15 @@
  "end_reasons": [{"key": "<short snake_case key; use refused, hardship, dispute, paid, service_error when the brief has these situations, and add others the brief defines>", "meaning": "<when a verified call ends this way without a promise, for the agent>", "outcome": "<close_call outcome>", "reason": "<reason or empty>", "note_reason": "<add_note reason value for a product ending this way, or empty>"}],
  "no_reason_outcomes": ["<outcome values that take no reason>"],
  "multi_product": {"enabled": "<true when customers can have several late products>", "rules": "<every rule for several products, in full, or empty>"},
+ "api_fields": {
+  "verify_identity": {"field": "<request field that names the security question>", "answer": "<request field with the customer's answer>", "ok": "<response field: the call was accepted>", "error": "<response field: error text>", "verified": "<response field: this answer was correct>", "all_verified": "<response field: every question passed>", "wrong_answers_left": "<response field: wrong answers left>", "hint": "<response field with a hint, or empty>"},
+  "get_account": {"products": "<response field with the list of products>", "product_id": "<product field: its id>", "type": "<product field: its type>", "past_due": "<product field: amount past due>", "days_late": "<product field: days late>"},
+  "create_promise": {"product_id": "<request field>", "amount": "<request field>", "date": "<request field>"},
+  "add_note": {"product_id": "<request field>", "reason": "<request field>", "text": "<request field>"},
+  "schedule_callback": {"date": "<request field>", "time": "<request field>"},
+  "transfer_to_agent": {"queue": "<request field>"},
+  "close_call": {"outcome": "<request field>", "reason": "<request field>"}
+ },
  "goodbye": "<a closing sentence that thanks the customer and says goodbye>",
  "ambiguities": ["<anything the briefs leave unclear or contradictory, and how you resolved it; empty list if nothing>"],
  "rules": [{"id": "<rule number or label>", "section": "<one of: opening, third_party, identity, debt, dates, amounts, promise, recording, other, closing, multi>", "text": "<the rule verbatim>"}]

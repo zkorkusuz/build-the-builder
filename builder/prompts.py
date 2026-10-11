@@ -107,14 +107,15 @@ def negotiate_task(p):
     return "\n".join(parts)
 
 
-def tool_descriptions(p):
+def tool_descriptions(p, fields=None):
     m = p.get("multi_product") or {}
     queues = "; ".join(str(t.get("queue", "")) + ": " + str(t.get("when", "")) for t in p.get("transfers") or [])
+    pid = ((fields or {}).get("create_promise") or {}).get("product_id") or "product_id"
     return {
         "verify_identity": "Check one security answer. CALL it every time the customer says anything in answer to a security question, with the field name and their answer as said, even a partial one: the tool joins parts and converts the format.",
         "get_account": "The customer's late products.",
-        "create_promise": "Record one payment promise. CALL it only after the customer clearly confirmed the read-back of product, amount and date. One call per product. product_id is exactly the id shown in the facts, such as the value after 'id'.",
-        "add_note": "Record why a product ends without a promise. CALL it once for each product that gets no promise, with its product_id and the reason.",
+        "create_promise": "Record one payment promise. CALL it only after the customer clearly confirmed the read-back of product, amount and date. One call per product. " + pid + " is exactly the id shown in the facts, such as the value after 'id'.",
+        "add_note": "Record why a product ends without a promise. CALL it once for each product that gets no promise, with its " + pid + " and the reason.",
         "schedule_callback": "Book a callback with the person who answered. CALL it every time they offer a day and a time, with both in their own words; the bank checks the window.",
         "transfer_to_agent": "Hand the call to a person. Queues: " + (queues or "see your instructions") + ".",
         "close_call": "Records how the call ended. Runs by itself at the end of the call.",

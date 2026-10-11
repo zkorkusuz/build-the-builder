@@ -40,6 +40,8 @@ def main(argv):
         env = dict(os.environ, FREYA_BANK_HOST=url); env.pop("CLAUDECODE", None)
         out = subprocess.run([PY, str(ROOT / "builder" / "build.py")] + briefs + [str(folder / "openapi.tunnel.json")], env=env, capture_output=True, text=True)
         print("\n".join(l for l in out.stdout.splitlines() if l.startswith(("{", "0", "1", "2")))[-1200:], flush=True)
+        if not out.stdout.strip().endswith("}"):                      # the build died before its summary line: show why
+            print(out.stderr[-2000:], flush=True); raise SystemExit("build failed, no agent to run")
         agent = json.loads(out.stdout.strip().splitlines()[-1])["agent_id"]
         subprocess.run([PY, str(ROOT / "tools" / "run_cases.py"), agent, "--cases", str(folder / "cases.json"), "--out", str(ROOT / "results" / (folder.name + "-variant.json"))] + extra, env=env)
     finally:

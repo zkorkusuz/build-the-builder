@@ -41,13 +41,13 @@ def main(argv):
         workflow = render.render({}, spec)
     trace("render: " + str(len(workflow["nodes"])) + " steps, " + str(count_tools(workflow)) + " tools, lint " + (" | ".join(lint.check(workflow)) or "clean"))
     trace("render: steps " + ", ".join(workflow["nodes"]) + "; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts")
-    saved = save(slot, workflow, trace)           # a valid agent exists from here on
+    saved = save(slot, workflow, trace, left)     # a valid agent exists from here on
 
     if not opts["no_adapt"] and not opts["policy"] and left() > 6 * 60:
         try:
             adapted = adapt.adapt(json.loads(json.dumps(workflow)), policy, workdir, trace, ask, llm.parse_json)
             if not lint.check(adapted):
-                workflow, saved = adapted, save(slot, adapted, trace)
+                workflow, saved = adapted, save(slot, adapted, trace, left)
             else:
                 trace("adapt: result failed lint, kept the rendered version")
         except Exception as e:
@@ -139,11 +139,23 @@ def count_tools(workflow):
     return sum(len(n.get("tools", [])) + len(n.get("pre_actions", [])) for n in workflow["nodes"].values()) + len(workflow.get("tools", []))
 
 
-def save(slot, workflow, trace):
-    freya.validate_workflow(slot, workflow)
-    saved = freya.save_workflow(slot, workflow, state_file=str(ROOT / ".freya-agents.json"))
-    if "version" not in saved:                      # the first save only creates; the second sets the model and publishes
-        saved = freya.save_workflow(slot, workflow, state_file=str(ROOT / ".freya-agents.json"))
+def save(slot, workflow, trace, left=lambda: 600):
+    """Validate, then save until it works: a platform hiccup must not end a build without a workflow."""
+    try:
+        freya.validate_workflow(slot, workflow)
+    except Exception as e:
+        trace("dry run: skipped, " + str(e)[:160])
+    while True:
+        try:
+            saved = freya.save_workflow(slot, workflow, state_file=str(ROOT / ".freya-agents.json"))
+            if "version" not in saved:                      # the first save only creates; the second sets the model and publishes
+                saved = freya.save_workflow(slot, workflow, state_file=str(ROOT / ".freya-agents.json"))
+            break
+        except Exception as e:
+            trace("save: failed, " + str(e)[:160] + ("; trying again in 20 s" if left() > 180 else "; out of time"))
+            if left() <= 180:
+                raise
+            time.sleep(20)
     trace("freya: workflow " + saved["workflow_id"] + " agent " + saved["agent_id"] + " version " + str(saved.get("version")))
     return saved
 

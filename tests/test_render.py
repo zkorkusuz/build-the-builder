@@ -146,6 +146,44 @@ class Rendered(unittest.TestCase):
         exec(pre, {"vars": vars, "config": config, "json": json})
         self.assertEqual(config["body"], {"outcome": "not_reached", "reason": "callback"})
 
+    def test_renamed_api_fields_and_ref_schemas(self):
+        """A hidden bank may spell the tool fields differently: hooks, routes and the facts must follow the API file, not the practice names."""
+        import datetime
+        m = json.loads(json.dumps(SPEC))
+        cp = m["paths"].pop("/create_promise"); m["paths"]["/v2/tools/create_promise"] = cp
+        body = cp["post"]["requestBody"]["content"]["application/json"]["schema"]
+        body["properties"] = {"customer_id": {"type": "string"}, "account_ref": {"type": "string"}, "promised_sum": {"type": "number"}, "pay_on": {"type": "string"}}
+        m["components"] = {"schemas": {"Promise": body}}; cp["post"]["requestBody"]["content"]["application/json"]["schema"] = {"$ref": "#/components/schemas/Promise"}
+        vr = m["paths"]["/verify_identity"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
+        vr["properties"] = {"ok": {"type": "boolean"}, "error": {"type": "string"}, "passed": {"type": "boolean"}, "attempts_left": {"type": "integer"}, "fully_verified": {"type": "boolean"}}
+        ga = m["paths"]["/get_account"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
+        ga["properties"] = {"ok": {"type": "boolean"}, "accounts": {"type": "array", "items": {"type": "object", "properties": {"account_ref": {"type": "string"}, "kind": {"type": "string"}, "overdue_amount": {"type": "number"}, "days_overdue": {"type": "integer"}}}}}
+        cc = m["paths"]["/close_call"]["post"]["requestBody"]["content"]["application/json"]["schema"]["properties"]
+        cc["result"] = cc.pop("outcome"); cc["why"] = cc.pop("reason")
+        policy = dict(POLICY, api_fields={"create_promise": {"date": "pay_on"}})       # the one name no keyword finds comes from the policy
+        f = render.field_names(policy, m)
+        self.assertEqual({k: f["create_promise"][k] for k in ("product_id", "amount", "date")}, {"product_id": "account_ref", "amount": "promised_sum", "date": "pay_on"})
+        self.assertEqual({k: f["verify_identity"][k] for k in ("verified", "all_verified", "wrong_answers_left")}, {"verified": "passed", "all_verified": "fully_verified", "wrong_answers_left": "attempts_left"})
+        self.assertEqual(f["get_account"], {"ok": "ok", "error": "error", "products": "accounts", "product_id": "account_ref", "type": "kind", "past_due": "overdue_amount", "days_late": "days_overdue"})
+        wf = render.render(policy, m)
+        self.assertEqual(lint.check(wf), [])
+        promise = next(t for t in wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "create_promise")
+        self.assertTrue(promise["function"]["parameters"]["properties"]["url"]["default"].endswith("/v2/tools/create_promise"))
+        self.assertEqual(sorted(promise["function"]["parameters"]["properties"]["body"]["properties"]), ["account_ref", "customer_id", "pay_on", "promised_sum"])
+        vars = {"today": "2026-10-14", "product_facts_json": json.dumps([{"product_id": "p1", "deadline": "2026-10-23", "floor": 126, "words": "card"}])}
+        config = {"body": {"customer_id": "c1", "account_ref": "p1", "promised_sum": 200, "pay_on": "Friday"}}
+        exec(promise["pre_process_code"], {"vars": vars, "config": config, "json": json, "datetime": datetime})
+        self.assertEqual(config["body"]["pay_on"], "2026-10-16"); self.assertEqual(vars["promise_block"], "")
+        verify = next(t for t in wf["nodes"]["identity"]["tools"] if t["function"]["name"] == "verify_identity")
+        self.assertEqual(verify["response_mapping"], [{"path": "data.fully_verified", "variable": "id_all_verified"}])
+        vars, result = {}, {"data": {"ok": True, "passed": True, "fully_verified": True, "attempts_left": 3}}
+        exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertEqual(vars["id_state"], "verified")
+        close = wf["nodes"]["close"]["pre_actions"][0]
+        self.assertEqual(close["function"]["parameters"]["properties"]["body"]["properties"]["result"]["default"], "{{outcome}}")
+        self.assertEqual(wf["nodes"]["account"]["response_mapping"], [{"path": "data.accounts", "variable": "products"}])
+        self.assertIn("account_response.data.accounts.", wf["nodes"]["account_facts"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"])
+
     def test_no_null_anywhere(self):
         self.assertNotIn("null", json.dumps(self.wf))
 

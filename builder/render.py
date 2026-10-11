@@ -43,13 +43,57 @@ def extraction(name, values, description):
     return {"name": name, "type": "string", "enum_values": values, "description": description, "min_confidence": 0.6}
 
 
-def tool(spec, name, hook_map, descriptions, mapping=None, retries=0, lifecycle=None):
+def find_path(spec, name):
+    """The API file's path for a tool: exact, or the one that ends with the tool name, with its POST (or only) operation."""
+    paths = spec.get("paths") or {}
+    key = "/" + name if "/" + name in paths else next((k for k in paths if k.rstrip("/").endswith("/" + name)), "/" + name)
+    item = paths.get(key) or {}
+    return key, item.get("post") or next((v for v in item.values() if isinstance(v, dict)), {})
+
+
+def deref(spec, schema):
+    """A schema with a $ref replaced by its target under the file's own components."""
+    ref = (schema or {}).get("$ref") if isinstance(schema, dict) else None
+    if ref and ref.startswith("#/"):
+        node = spec
+        for part in ref[2:].split("/"):
+            node = (node or {}).get(part) or {}
+        return node
+    return schema or {}
+
+
+def _properties(spec, op, part):
+    body = (op.get("requestBody") or {}) if part == "request" else ((op.get("responses") or {}).get("200") or {})
+    schema = deref(spec, ((body.get("content") or {}).get("application/json") or {}).get("schema") or {})
+    return {k: deref(spec, v) for k, v in (schema.get("properties") or {}).items()}
+
+
+def field_names(policy, spec):
+    """Each tool's field names by role: the policy's api_fields when the API file has that name, else the role name itself,
+    else the first field whose name contains one of the role's keywords. Hooks, routes and the product facts all read names from here."""
+    out = {}
+    for tool_name, roles in hooks.FIELD_ROLES.items():
+        op = find_path(spec, tool_name)[1]
+        have = {"request": _properties(spec, op, "request"), "response": _properties(spec, op, "response")}
+        arr = next((v for v in have["response"].values() if v.get("type") == "array"), {})
+        have["product"] = (deref(spec, arr.get("items") or {}).get("properties") or {})
+        given, names = (policy.get("api_fields") or {}).get(tool_name) or {}, {}
+        for role, (where, keys) in roles.items():
+            g, free = str(given.get(role) or ""), [n for n in have[where] if n != "customer_id" and n not in names.values()]
+            names[role] = g if g in have[where] else role if role in have[where] or not have[where] else next(
+                (n for k in keys for n in free if k in n.lower()), role)                  # keywords in priority order, then the file's order
+        out[tool_name] = names
+    return out
+
+
+def tool(spec, name, hook_map, descriptions, fields, mapping=None, retries=0, lifecycle=None):
     """An api_call tool for one path of the OpenAPI file. customer_id is baked; other fields are model-filled."""
     base = (spec.get("servers") or [{}])[0].get("url", "").rstrip("/")
-    op = spec["paths"]["/" + name]["post"]
-    schema = op["requestBody"]["content"]["application/json"]["schema"]
+    path, op = find_path(spec, name)
+    schema = deref(spec, (((op.get("requestBody") or {}).get("content") or {}).get("application/json") or {}).get("schema") or {})
     body = {}
     for field, prop in schema.get("properties", {}).items():
+        prop = deref(spec, prop)
         leaf = {"type": prop.get("type", "string")}
         if field == "customer_id":
             leaf["default"] = "{{customer_id}}"
@@ -61,11 +105,13 @@ def tool(spec, name, hook_map, descriptions, mapping=None, retries=0, lifecycle=
                 leaf["enum"] = prop["enum"]; leaf["description"] += " One of: " + ", ".join(prop["enum"]) + "."
         body[field] = leaf
     if name == "close_call":
-        body["outcome"]["default"], body["reason"]["default"] = "{{outcome}}", "{{reason}}"
+        for role in ("outcome", "reason"):                      # the outcome lives in vars, set by the outcome code steps
+            if fields[name].get(role) in body:
+                body[fields[name][role]]["default"] = "{{" + role + "}}"
     t = {"type": "function", "config": {"timeoutMs": 12000, "maxRetries": retries},
          "function": {"name": name, "handler": "__function__:api_call", "description": descriptions.get(name, op.get("summary", name)),
                       "parameters": {"type": "object", "properties": {
-                          "url": {"type": "string", "default": base + "/" + name}, "method": {"type": "string", "default": "POST"},
+                          "url": {"type": "string", "default": base + path}, "method": {"type": "string", "default": "POST"},
                           "headers": {"type": "object", "properties": {"Content-Type": {"type": "string", "default": "application/json"}}},
                           "body": {"type": "object", "properties": body, "required": [f for f in schema.get("required", []) if f != "customer_id"]}}}}}
     if lifecycle:
@@ -100,14 +146,15 @@ def facts_code(policy, situation, extra=""):
         "vars['outcome'] = " + json.dumps(str(o.get("outcome", ""))) + "\nvars['reason'] = " + json.dumps(str(o.get("reason", ""))) + "\n" + extra)
 
 
-def account_code(policy):
+def account_code(policy, fields):
     s, m = policy.get("sentences") or {}, policy.get("multi_product") or {}
     pol = {k: policy.get(k) or {} for k in ("calendar", "bands", "floor_field", "product_words", "attempt1_rule")}
+    pol["fields"], products = fields, "account_response.data." + fields["products"]
     first = str((s.get("first_ask_multi") if m.get("enabled") else "") or s.get("first_ask") or "")
     return "P2 = " + hooks.literal(pol) + "\nINTRO = " + json.dumps(str(policy.get("debt_intro_sentence") or "")) + "\nFIRST = " + json.dumps(first) + "\n" + (
         "def _flat_list(prefix):\n    rows = dict()\n    try:\n        for k in list(vars.keys()):\n            if str(k).startswith(prefix):\n                rest = str(k)[len(prefix):].split('.')\n"
         "                if len(rest) == 2 and rest[0].isdigit():\n                    rows.setdefault(int(rest[0]), dict())[rest[1]] = vars.get(k)\n    except Exception:\n        pass\n    return [rows[i] for i in sorted(rows)]\n"
-        "try:\n    products = _load('products', None) or _flat_list('account_response.data.products.') or _load('account_response.data.products', [])\n"
+        "try:\n    products = _load('products', None) or _flat_list(" + json.dumps(products + ".") + ") or _load(" + json.dumps(products) + ", [])\n"
         "    r = product_facts(products, P2, vars.get('now'))\n    vars['product_facts_json'] = json.dumps(r['facts'])\n"
         "    vars['debt_summary'] = r['summary'] or 'No product information was returned by the account service.'\n    vars['product_count'] = str(r['count'])\n"
         "    vars['debt_statement'] = ' '.join(x for x in [INTRO, r['spoken'], FIRST] if x)\n"
@@ -155,11 +202,13 @@ def goodbye_transition(target, description):
 
 def render(policy, spec):
     recompute = "if str(vars.get('id_state') or '') == 'verified':\n" + "".join("    " + line + "\n" for line in outcome_code(policy).splitlines())
-    hook_map, desc = hooks.all_hooks(policy, recompute, DATES_SRC), prompts.tool_descriptions(policy)
+    fields = field_names(policy, spec)
+    hook_map, desc = hooks.all_hooks(policy, recompute, DATES_SRC, fields), prompts.tool_descriptions(policy, fields)
     goodbye = str(policy.get("goodbye") or "Thank you. Goodbye.")
     multi = (policy.get("multi_product") or {}).get("enabled")
     ends = policy.get("end_reasons") or []
-    T = lambda name, **kw: tool(spec, name, hook_map, desc, **kw)
+    T = lambda name, **kw: tool(spec, name, hook_map, desc, fields, **kw)
+    FV, FA = fields["verify_identity"], fields["get_account"]
     nodes = {}
     nodes["prepare"] = code_node("prepare", facts_code(policy, "unclear"), "opening")
     c = policy.get("confirmation") or {}
@@ -198,16 +247,16 @@ def render(policy, spec):
                         goodbye_transition("outcome_no_callback_quiet", "No callback could be booked and the assistant has said goodbye")]}
     nodes["mark_confirmed"] = code_node("mark_confirmed", facts_code(policy, "id_declined"), "identity")
     nodes["identity"] = {"name": "identity", "node_type": "conversation", "task_message": prompts.identity_task(policy), "max_node_turns": 14, "max_turn_transition": "outcome_id_declined",
-        "tools": [T("verify_identity", mapping=[{"path": "data.all_verified", "variable": "id_all_verified"}])] + ([T("transfer_to_agent")] if policy.get("transfers") else []),
+        "tools": [T("verify_identity", mapping=[{"path": "data." + FV["all_verified"], "variable": "id_all_verified"}])] + ([T("transfer_to_agent")] if policy.get("transfers") else []),
         "extraction_schema": [extraction("identity_signal", ["none", "wants_person", "declined"], "wants_person when the customer asks for a human, a person, an agent or a transfer, however often. declined only when the customer has refused the security questions a second time, or has twice asked what the call is about instead of answering, or has said twice that they do not want to talk, and has not asked for a person. none otherwise.")],
-        "transitions": [when("account", "all security questions passed", ("id_state", "verified"), ("id_all_verified", "true"), ("verify_identity_response.data.all_verified", "true")),
+        "transitions": [when("account", "all security questions passed", ("id_state", "verified"), ("id_all_verified", "true"), ("verify_identity_response.data." + FV["all_verified"], "true")),
                         when("outcome_id_failed", "too many wrong answers", ("id_state", "failed")), when("set_outcome", "transferred to a person", ("transfer_state", "done")),
                         when("outcome_id_declined", "customer declined the check", ("identity_signal", "declined")),
                         goodbye_transition("outcome_id_declined_quiet", "The customer will not answer the security questions and the assistant has said goodbye")]}
     nodes["account"] = {"name": "account", "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "account_facts", "on_enter": {"type": "silent"},
         "disable_inactivity_monitor": True, "suppress_tool_results": True, "pre_actions": [T("get_account", retries=2)],
-        "response_mapping": [{"path": "data.products", "variable": "products"}], "transitions": [always("account_facts")]}
-    nodes["account_facts"] = code_node("account_facts", facts_code(policy, "refused", account_code(policy)), "negotiate")
+        "response_mapping": [{"path": "data." + FA["products"], "variable": "products"}], "transitions": [always("account_facts")]}
+    nodes["account_facts"] = code_node("account_facts", facts_code(policy, "refused", account_code(policy, FA)), "negotiate")
     tools = [T("create_promise")] + ([T("transfer_to_agent")] if policy.get("transfers") else []) + ([T("add_note")] if multi else [])
     keys = ["none"] + [str(e.get("key")) for e in ends]
     meanings = " ".join(str(e.get("key")) + ": " + str(e.get("meaning", "")) for e in ends)

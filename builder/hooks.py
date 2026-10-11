@@ -17,6 +17,29 @@ def fill(template, **values):
     return template
 
 
+# Each tool's request and response fields by role, with the words that find a renamed field in an API file that the policy did not map:
+# (where, keywords). Hooks read names through F, so a bank that calls the amount "sum" or the products "accounts" still works.
+FIELD_ROLES = {
+    "verify_identity": {"field": ("request", ["field", "question", "type"]), "answer": ("request", ["answer", "value", "response"]), "ok": ("response", ["ok", "success"]),
+                        "error": ("response", ["error", "message"]), "all_verified": ("response", ["all", "fully", "complete"]), "verified": ("response", ["verified", "correct", "match", "pass"]),
+                        "wrong_answers_left": ("response", ["left", "remaining"]), "hint": ("response", ["hint"])},
+    "get_account": {"ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"]), "products": ("response", ["product", "account", "item", "debt", "loan"]),
+                    "product_id": ("product", ["id", "ref"]), "type": ("product", ["type", "kind"]), "past_due": ("product", ["past", "due", "overdue", "arrears", "balance"]), "days_late": ("product", ["day", "late"])},
+    "create_promise": {"product_id": ("request", ["product", "account", "id"]), "amount": ("request", ["amount", "sum", "value", "total"]), "date": ("request", ["date", "day", "when"]),
+                       "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
+    "add_note": {"product_id": ("request", ["product", "account", "id"]), "reason": ("request", ["reason", "why", "code"]), "text": ("request", ["text", "note", "comment"]),
+                 "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
+    "schedule_callback": {"date": ("request", ["date", "day", "when"]), "time": ("request", ["time", "hour", "slot"]), "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
+    "transfer_to_agent": {"queue": ("request", ["queue", "team", "department"]), "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
+    "close_call": {"outcome": ("request", ["outcome", "result", "status"]), "reason": ("request", ["reason", "why", "code"]), "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
+}
+
+
+def default_fields():
+    """The role names themselves, the practice API's spelling."""
+    return {t: {r: r for r in roles} for t, roles in FIELD_ROLES.items()}
+
+
 COMMON = """
 def _d(result):
     if isinstance(result, dict):
@@ -52,11 +75,12 @@ VERIFY_PRE = """__DATES_SRC__
 import json
 __COMMON__
 P = __IDENTITY__
+F = __FIELDS__
 try:
     b = config.get('body') if isinstance(config, dict) else None
     vars['id_block'] = ''
     if isinstance(b, dict):
-        field, answer = str(b.get('field') or ''), str(b.get('answer') or '').strip()
+        field, answer = str(b.get(F['field']) or ''), str(b.get(F['answer']) or '').strip()
         vars['id_current_field'] = field
         q = next((x for x in (P.get('questions') or []) if str(x.get('field')) == field), dict())
         fmt = str(q.get('format') or '').lower()
@@ -80,7 +104,7 @@ try:
                 except ValueError:
                     parts, missing = dict(day=None, month=None, year=None), ['whole date, because the parts given do not make a real date']
             if d is not None:
-                b['answer'] = d.isoformat()
+                b[F['answer']] = d.isoformat()
                 vars['id_partial_' + field] = ''
             else:
                 vars['id_partial_' + field] = json.dumps(parts)
@@ -92,7 +116,7 @@ try:
             new = re.sub(r'\\D', '', spoken)
             digits = new if (prev and new.startswith(prev) and len(new) > len(prev)) else prev + new
             if len(digits) >= digits_needed:
-                b['answer'] = digits[-digits_needed:]
+                b[F['answer']] = digits[-digits_needed:]
                 vars['id_partial_' + field] = ''
             else:
                 vars['id_partial_' + field] = digits
@@ -104,6 +128,7 @@ except Exception:
 
 VERIFY_POST = """import json
 __COMMON__
+F = __FIELDS__
 try:
     d = _d(result)
     P = __IDENTITY__
@@ -115,16 +140,16 @@ try:
         if d is not None:
             d['what_to_do_next'] = block
     elif d is not None:
-        left = d.get('wrong_answers_left')
-        hint = str(d.get('hint') or '')
-        if _flag(d.get('all_verified')):
+        left = d.get(F['wrong_answers_left'])
+        hint = str(d.get(F['hint']) or '')
+        if _flag(d.get(F['all_verified'])):
             vars['id_state'] = 'verified'
             d['what_to_do_next'] = 'All security questions passed. The identity check is complete.'
         elif hint and P.get('hint_value') and hint == str(P.get('hint_value')):
             d['what_to_do_next'] = str(P.get('hint_instruction') or 'The service returned the hint ' + hint + '. Follow your instructions for it and CALL verify_identity again with the same field.')
-        elif not _flag(d.get('ok')):
-            d['what_to_do_next'] = 'The answer could not be read in the required format (' + str(d.get('error') or '') + '). Ask the customer to repeat it, then CALL verify_identity again with the same field. This is not counted as a wrong answer.'
-        elif _flag(d.get('verified')):
+        elif not _flag(d.get(F['ok'])):
+            d['what_to_do_next'] = 'The answer could not be read in the required format (' + str(d.get(F['error']) or '') + '). Ask the customer to repeat it, then CALL verify_identity again with the same field. This is not counted as a wrong answer.'
+        elif _flag(d.get(F['verified'])):
             d['what_to_do_next'] = 'Correct. Now ask the next security question in the order of your instructions and CALL verify_identity with its answer. If there is no next question, wait: the check is complete.'
         elif left is not None and int(float(left)) <= 0:
             vars['id_state'] = 'failed'
@@ -142,6 +167,7 @@ import json
 __COMMON__
 CAL = __CAL__
 ADJ = __ADJ__
+F = __FIELDS__
 try:
     b = config.get('body') if isinstance(config, dict) else None
     facts = _load('product_facts_json', [])
@@ -149,29 +175,29 @@ try:
     vars['promise_block'] = ''
     if isinstance(b, dict) and facts:
         ids = [f.get('product_id') for f in facts]
-        if b.get('product_id') not in ids and len(facts) == 1:
-            b['product_id'] = ids[0]
-        f = next((x for x in facts if x.get('product_id') == b.get('product_id')), None)
-        x = next((x for x in done if str(x.get('product_id')) == str(b.get('product_id'))), None)
+        if b.get(F['product_id']) not in ids and len(facts) == 1:
+            b[F['product_id']] = ids[0]
+        f = next((x for x in facts if x.get('product_id') == b.get(F['product_id'])), None)
+        x = next((x for x in done if str(x.get('product_id')) == str(b.get(F['product_id']))), None)
         if f is None:
-            vars['promise_block'] = 'NOT recorded: product_id ' + str(b.get('product_id')) + ' is not one of the customer products. Use exactly one of these ids: ' + ', '.join(str(x) for x in ids) + ' and CALL create_promise again.'
+            vars['promise_block'] = 'NOT recorded: ' + F['product_id'] + ' ' + str(b.get(F['product_id'])) + ' is not one of the customer products. Use exactly one of these ids: ' + ', '.join(str(x) for x in ids) + ' and CALL create_promise again.'
             _block(b)
         elif x is not None:
             # the bank takes one promise per product, so a retry after a lost answer or a change of mind must not reach it
             vars['promise_block'] = 'ALREADY recorded earlier in this call: ' + str(f.get('words') or 'this product') + ', ' + str(x.get('amount')) + ' on ' + str(x.get('date')) + '. The bank takes one promise per product, so do not CALL create_promise for it again; if the customer wants it changed, follow your instructions. Then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
             _block(b)
-        elif f.get('floor') is not None and float(b.get('amount') or 0) < float(f.get('floor')) - 0.005:
-            vars['promise_block'] = 'NOT recorded: the amount ' + str(b.get('amount')) + ' is below the floor of ' + str(f.get('floor')) + ' for this product. Tell the customer it cannot be recorded and offer the floor amount once, as your instructions say.'
+        elif f.get('floor') is not None and float(b.get(F['amount']) or 0) < float(f.get('floor')) - 0.005:
+            vars['promise_block'] = 'NOT recorded: the amount ' + str(b.get(F['amount'])) + ' is below the floor of ' + str(f.get('floor')) + ' for this product. Tell the customer it cannot be recorded and offer the floor amount once, as your instructions say.'
             _block(b)
         else:
             today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
             try:
-                day = datetime.date.fromisoformat(str(b.get('date'))[:10])
+                day = datetime.date.fromisoformat(str(b.get(F['date']))[:10])
             except ValueError:
-                day = parse_day_words(b.get('date'), today)
+                day = parse_day_words(b.get(F['date']), today)
             deadline = datetime.date.fromisoformat(str(f.get('deadline'))[:10])
             if day is None:
-                vars['promise_block'] = 'NOT recorded: the date ' + str(b.get('date')) + ' could not be read. CALL create_promise again with the date as YYYY-MM-DD or in the customer\\'s own words (for example next Friday, Monday the 19th, 20 November).'
+                vars['promise_block'] = 'NOT recorded: the date ' + str(b.get(F['date'])) + ' could not be read. CALL create_promise again with the date as YYYY-MM-DD or in the customer\\'s own words (for example next Friday, Monday the 19th, 20 November).'
                 _block(b)
             else:
                 use, why = adjust_day(day, today, deadline, CAL, ADJ)
@@ -179,15 +205,16 @@ try:
                     vars['promise_block'] = 'NOT recorded: the date ' + day.isoformat() + ' ' + why + '. Read the promise back again with the new date and CALL create_promise only after the customer confirms it.'
                     _block(b)
                 else:
-                    b['date'] = day.isoformat()
+                    b[F['date']] = day.isoformat()
                     # the attempt is kept with the date the bank receives, so the post-hook reads back and compares the same value
-                    vars['promise_attempt'] = json.dumps({'product_id': b.get('product_id'), 'amount': b.get('amount'), 'date': b['date'], 'words': f.get('words', '')})
+                    vars['promise_attempt'] = json.dumps({'product_id': b.get(F['product_id']), 'amount': b.get(F['amount']), 'date': b[F['date']], 'words': f.get('words', '')})
 except Exception:
     pass
 """
 
 PROMISE_POST = """import json
 __COMMON__
+F = __FIELDS__
 try:
     d = _d(result)
     attempt = _load('promise_attempt', {})
@@ -200,7 +227,7 @@ try:
         vars['promise_block'] = ''
         if d is not None:
             d['what_to_do_next'] = block
-    elif d is not None and _flag(d.get('ok')):
+    elif d is not None and _flag(d.get(F['ok'])):
         vars['offer_now'] = ''
         done.append(attempt)
         vars['promises_recorded'] = json.dumps(done)
@@ -210,15 +237,15 @@ try:
         text += ' Tell the customer the promise is recorded' + (' and then say exactly: ' + json.dumps(sentence) if sentence else '') + '.'
         text += ' Then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
         d['what_to_do_next'] = text
-    elif d is not None and isinstance(d.get('error'), str) and d.get('error') and int(float(result.get('status_code') or 200)) < 500:
-        if 'already' in d['error'].lower() and attempt:
+    elif d is not None and isinstance(d.get(F['error']), str) and d.get(F['error']) and int(float(result.get('status_code') or 200)) < 500:
+        if 'already' in str(d.get(F['error'])).lower() and attempt:
             # the bank holds a promise this call never saw confirmed (a lost answer): it is recorded, and saying otherwise would be the honesty failure
             done.append(attempt); vars['promises_recorded'] = json.dumps(done); vars['promise_state'] = 'recorded'; vars['offer_now'] = ''
             d['what_to_do_next'] = 'The bank already holds this promise: ' + str(attempt.get('words') or 'the product') + ', ' + str(attempt.get('amount')) + ' on ' + str(attempt.get('date')) + '. Tell the customer it is recorded, then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
         elif _count('promise_failures') < 3:
-            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call (' + d.get('error') + '). Correct the values and CALL create_promise again. product_id must be exactly the id shown in your facts.'
+            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call (' + str(d.get(F['error'])) + '). Correct the values and CALL create_promise again. product_id must be exactly the id shown in your facts.'
         else:
-            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call three times (' + d.get('error') + '). Never say it is recorded. Tell the customer you could not record it today, then thank them, say goodbye and call transition_to_wrap_up.'
+            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call three times (' + str(d.get(F['error'])) + '). Never say it is recorded. Tell the customer you could not record it today, then thank them, say goodbye and call transition_to_wrap_up.'
     else:
         n = _count('promise_failures')
         vars['promise_state'] = 'failed'
@@ -234,19 +261,21 @@ except Exception:
 """
 
 NOTE_PRE = """import json
+F = __FIELDS__
 try:
     b = config.get('body') if isinstance(config, dict) else None
     if isinstance(b, dict):
-        vars['note_attempt'] = json.dumps({'product_id': b.get('product_id'), 'reason': b.get('reason')})
+        vars['note_attempt'] = json.dumps({'product_id': b.get(F['product_id']), 'reason': b.get(F['reason'])})
 except Exception:
     pass
 """
 
 NOTE_POST = """import json
 __COMMON__
+F = __FIELDS__
 try:
     d = _d(result)
-    if d is not None and _flag(d.get('ok')):
+    if d is not None and _flag(d.get(F['ok'])):
         notes = _load('notes_recorded', [])
         notes.append(_load('note_attempt', {}))
         vars['notes_recorded'] = json.dumps(notes)
@@ -260,16 +289,18 @@ except Exception:
 TRANSFER_PRE = """try:
     b = config.get('body') if isinstance(config, dict) else None
     if isinstance(b, dict):
-        vars['transfer_queue'] = str(b.get('queue') or '')
+        vars['transfer_queue'] = str(b.get(F['queue']) or '')
 except Exception:
     pass
 """
 
 TRANSFER_POST = """import json
 __COMMON__
+F = __FIELDS__
+F = __FIELDS__
 try:
     d = _d(result)
-    if d is not None and _flag(d.get('ok')):
+    if d is not None and _flag(d.get(F['ok'])):
         vars['transfer_state'] = 'done'
         d['what_to_do_next'] = 'Transfer requested. Tell the customer you are connecting them now, thank them and say goodbye.'
     elif d is not None:
@@ -345,6 +376,7 @@ def _time(text):
     if h > 23 or h < 0:
         return None
     return '%02d:%02d' % (h, mi)
+F = __FIELDS__
 try:
     b = config.get('body') if isinstance(config, dict) else None
     vars['callback_block'] = ''
@@ -352,7 +384,7 @@ try:
         today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
         nb = datetime.date.fromisoformat(str(vars.get('callback_next_business_day') or vars.get('next_business_day'))[:10])
         # an ISO date in the text would read as a time, so it is removed before the time is parsed
-        day, t = _day(b.get('date'), today), _time(re.sub(r'\\d{4}-\\d{2}-\\d{2}', ' ', str(b.get('time') or '') + ' ' + str(b.get('date') or '')))
+        day, t = _day(b.get(F['date']), today), _time(re.sub(r'\\d{4}-\\d{2}-\\d{2}', ' ', str(b.get(F['time']) or '') + ' ' + str(b.get(F['date']) or '')))
         now_t, days = str(vars.get('now_time') or ''), CB.get('days') or []
         frm, to = str(CB.get('from') or ''), str(CB.get('to') or '')
         ok_day = day is not None and ((day == today and 'today' in days) or (day == nb and 'next_business_day' in days))
@@ -361,7 +393,7 @@ try:
             vars['callback_block'] = 'NOT booked: the day or the time could not be read. CALL schedule_callback again with date as the day the person said (today, tomorrow, a weekday name, or YYYY-MM-DD) and time as they said it (for example 9pm or 10:30); today is ' + today.isoformat() + ' and the next business day is ' + nb.isoformat() + '. Do not ask the person for a date. If they gave no exact time, ask them for one inside the window first.'
             _block(b)
         else:
-            b['date'], b['time'] = day.isoformat(), t or ''
+            b[F['date']], b[F['time']] = day.isoformat(), t or ''
             ok_time = t is not None and (not frm or t >= frm) and (not to or t <= to) and not (day == today and now_t and t <= now_t)
             if not (ok_day and ok_time):
                 n = _count('callback_outside')
@@ -377,6 +409,7 @@ except Exception:
 
 CALLBACK_POST = """import json
 __COMMON__
+F = __FIELDS__
 try:
     d = _d(result)
     block = str(vars.get('callback_block') or '')
@@ -386,7 +419,7 @@ try:
         vars['callback_block'] = ''
         if d is not None:
             d['what_to_do_next'] = block
-    elif d is not None and _flag(d.get('ok')):
+    elif d is not None and _flag(d.get(F['ok'])):
         vars['callback_state'] = 'done'
         d['what_to_do_next'] = 'Callback booked. Thank the person and say goodbye.'
     elif d is not None:
@@ -396,37 +429,39 @@ except Exception:
 """
 
 CLOSE_PRE = """__RECOMPUTE__
+F = __FIELDS__
 try:
     b = config.get('body') if isinstance(config, dict) else None
     NO_REASON = __NO_REASON__
     if isinstance(b, dict):
         o, r = str(vars.get('outcome') or ''), str(vars.get('reason') or '')
         if o:
-            b['outcome'] = o
-        elif not b.get('outcome') or '{' in str(b.get('outcome')):
-            b['outcome'] = __DEFAULT_OUTCOME__
+            b[F['outcome']] = o
+        elif not b.get(F['outcome']) or '{' in str(b.get(F['outcome'])):
+            b[F['outcome']] = __DEFAULT_OUTCOME__
         if r:
-            b['reason'] = r
-        if b.get('outcome') in NO_REASON or not b.get('reason') or '{' in str(b.get('reason')):
-            b.pop('reason', None)
+            b[F['reason']] = r
+        if b.get(F['outcome']) in NO_REASON or not b.get(F['reason']) or '{' in str(b.get(F['reason'])):
+            b.pop(F['reason'], None)
 except Exception:
     pass
 """
 
 
-def all_hooks(policy, recompute="", dates_src=""):
-    """Every hook's source, keyed by tool name and phase, filled from the policy."""
+def all_hooks(policy, recompute="", dates_src="", fields=None):
+    """Every hook's source, keyed by tool name and phase, filled from the policy and the API file's field names."""
+    F = lambda t: (fields or default_fields()).get(t) or default_fields()[t]
     ident, out = policy.get("identity") or {}, policy.get("outcomes") or {}
     default_outcome = (out.get("unclear") or {}).get("outcome", "")
     multi = (policy.get("multi_product") or {}).get("enabled")
     note_value = next((e.get("note_reason") for e in policy.get("end_reasons") or [] if e.get("key") == "service_error" and e.get("note_reason")), "")
     service_next = ("CALL add_note for this product with reason " + json.dumps(note_value) + ", then continue.") if (multi and note_value) else "Then continue with the other products, or thank the customer and say goodbye."
     return {
-        ("verify_identity", "pre"): fill(VERIFY_PRE, dates_src=dates_src, common=COMMON, identity=ident), ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
-        ("create_promise", "pre"): fill(PROMISE_PRE, dates_src=dates_src, common=COMMON, cal=policy.get("calendar") or {}, adj=policy.get("date_adjust") or {}),
-        ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next)),
-        ("add_note", "pre"): NOTE_PRE, ("add_note", "post"): fill(NOTE_POST, common=COMMON),
-        ("transfer_to_agent", "pre"): TRANSFER_PRE, ("transfer_to_agent", "post"): fill(TRANSFER_POST, common=COMMON),
-        ("schedule_callback", "pre"): fill(CALLBACK_PRE, common=COMMON, callback=policy.get("callback") or {}), ("schedule_callback", "post"): fill(CALLBACK_POST, common=COMMON),
-        ("close_call", "pre"): fill(CLOSE_PRE, recompute=recompute or "", no_reason=policy.get("no_reason_outcomes") or [], default_outcome=json.dumps(default_outcome)),
+        ("verify_identity", "pre"): fill(VERIFY_PRE, dates_src=dates_src, common=COMMON, identity=ident, fields=F("verify_identity")), ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident, fields=F("verify_identity")),
+        ("create_promise", "pre"): fill(PROMISE_PRE, dates_src=dates_src, common=COMMON, cal=policy.get("calendar") or {}, adj=policy.get("date_adjust") or {}, fields=F("create_promise")),
+        ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next), fields=F("create_promise")),
+        ("add_note", "pre"): fill(NOTE_PRE, fields=F("add_note")), ("add_note", "post"): fill(NOTE_POST, common=COMMON, fields=F("add_note")),
+        ("transfer_to_agent", "pre"): fill(TRANSFER_PRE, fields=F("transfer_to_agent")), ("transfer_to_agent", "post"): fill(TRANSFER_POST, common=COMMON, fields=F("transfer_to_agent")),
+        ("schedule_callback", "pre"): fill(CALLBACK_PRE, common=COMMON, callback=policy.get("callback") or {}, fields=F("schedule_callback")), ("schedule_callback", "post"): fill(CALLBACK_POST, common=COMMON, fields=F("schedule_callback")),
+        ("close_call", "pre"): fill(CLOSE_PRE, recompute=recompute or "", no_reason=policy.get("no_reason_outcomes") or [], default_outcome=json.dumps(default_outcome), fields=F("close_call")),
     }
