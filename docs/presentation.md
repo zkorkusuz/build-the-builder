@@ -101,13 +101,21 @@ styles, other days, a variant bank. Use figure 2 on the slide and figure 3 as th
   short (`review-run24-reps3.md`, `review-run33-reps3.md`).
 - Speaking styles: in_words 21/21 (`run14-in_words.json`); corrects 21/21 three of three (`run27-corrects-x3.json`);
   pieces 19/21 three of three with one sandbox fault and one parser bug, fixed in v48 and rerun clean
-  (`run26-pieces-x3.json`, `run31-targeted.json`). Talkative and asks_back were queued as run 38 when this was
-  written and are not in the repository yet.
+  (`run26-pieces-x3.json`, `run31-targeted.json`). Asks_back 18/21 on v56 (`run38-asks_back.json`): one simulator
+  persona that never spoke, one judge reading of the ask-once rule, one confirmation the who-extraction missed.
+  Talkative 7/21 on v56 (`run38-talkative.json`, `review-run38-talkative.md`): 8 calls where the simulator produced
+  no customer turn at all and 6 where its lines were cut mid-sentence so the identity digits never came; no agent
+  rule gap. A higher extraction threshold was tried for the cut-off opening line and reverted the same hour
+  (a957516, 0968f39), because it trades one miss for another.
 - Other calendar days: Friday 16 October 21/21 (`run28-fri.json`); holiday eve 23 October 18/19, the miss a
   simulator persona truncating its own line (`run29-holeve.json`, `review-run29-holeve.md`).
 - Two other banks: Northwind, built from an email, a memo and a code list, 13/13 on the final code
   (`results/v1-variant.json`, 10:26); Harbor Credit Union, a clean spec with three identity questions, a six-day
   week and no floor, through normalize, render, lint and dry run only (commit 5f24cee). Not simulated.
+- Brief B on our own mock bank, 17 cases (`results/b-variant.json`, `review-b-variant.md`, 16:23): 10/17. The
+  six single-product cases and four of the multi-product cases pass; 5 losses are customer hang-ups during agent
+  turns of 32 to 73 s (median slowest turn 32 s); 2 are agent faults in multi-product negotiation, fixed for the
+  multi-product path only (a7ecb70) with a rerun queued as run 39.
 - A renamed tool API with `$ref` schemas: unit test `test_renamed_api_fields_and_ref_schemas` (commit de0a864).
 - Final full run on v54, 16:08: 18/21. All four failed calls were customer hang-ups during agent turns of 45 to
   53 s while the median slowest turn was 12 to 15 s against 2 to 4 s earlier in the day; no code change
@@ -173,7 +181,7 @@ Method:
 - A reviewer pass after every change (commits 025a189, 4565211, 1aca823, a59f74b, 9739b08).
 - An independent QA review at 13:30 (`docs/qa-review-sun.md`): all 47 Brief A rules mapped to their homes, 12 gaps
   ranked, 30 scripted edge cases, 10 actions. Eight actions have a commit (5e9b687, 1aca823, de0a864, a59f74b,
-  5f24cee, 70ee3fc). Action 6, Brief B on our own mock, was running when this was written; the third-party turn
+  5f24cee, 70ee3fc). Action 6, Brief B on our own mock, ran at 16:23 (10/17, see slide 4); the third-party turn
   cap in action 9 stayed at 6.
 - Eighteen papers read for what transfers (`docs/research-edge.md`, commit c84f81c); the identical-promise guard
   came out of it (8f09f05).
@@ -181,6 +189,7 @@ Method:
 Limits (`docs/qa-review-sun.md` unless stated):
 
 - Multi-product negotiation is prompt-only; the deterministic routes need one product (section A, Brief B table).
+  The one mock run shows it: two of the seven multi-product failures were the model's (`review-b-variant.md`).
 - The second persuasion attempt's wording comes from the policy since 5f24cee, but its logic is still the
   floor-or-full choice.
 - Consent before a write is a model judgement, not an extracted yes (rule 34).
