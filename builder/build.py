@@ -13,7 +13,7 @@ import json, pathlib, re, shutil, subprocess, sys, time, urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import freya
-from builder import adapt, design, documents, lint, llm, normalize, render, selfcheck
+from builder import adapt, design, documents, dryrun, lint, llm, normalize, render, selfcheck
 
 BUDGET_S = 27 * 60          # the rule is 30 minutes; keep a margin for the export and the trace
 
@@ -130,12 +130,37 @@ def designed_workflow(texts, spec, workdir, trace, ask, left):
             workflow, problems = design.repair(workflow, problems, workdir, trace, ask, llm.parse_json)
         if problems:
             trace("design: lint still objects (" + " | ".join(problems)[:300] + "); the dry run decides")
+        workflow = walk_and_repair(workflow, workdir, trace, ask, left)
     except Exception as e:                        # a build always ends with a saved workflow, even a bare one
         trace("design: FAILED, " + type(e).__name__ + " " + " ".join(str(e).split())[:200] + "; rendering the bare template")
         workflow, problems = render.render({}, spec), ["design failed: " + str(e)[:200]]
     policy = {"path": "design: the model wrote the workflow from the documents and the tool API", "documents": [n for n, _ in texts],
               "steps": list((workflow.get("nodes") or {}).keys()), "lint": problems}
     return workflow, policy
+
+
+def walk_and_repair(workflow, workdir, trace, ask, left):
+    """The engine-run data path against the live services with the workflow's test variables; a broken path goes back to the model once."""
+    problems, trail = dryrun.walk(workflow)
+    for line in trail:
+        trace("data path: " + line[:300])
+    if not problems:
+        trace("data path: clean, a conversation step is reached with the live services")
+        return workflow
+    trace("data path: PROBLEM " + " | ".join(problems)[:300])
+    if left() < 9 * 60:
+        trace("data path: no time for a repair, keeping the design")
+        return workflow
+    report = problems + ["Trail of the engine-run steps with the live services and the test variables (read the actual answers and fix the hooks, mappings, code and transitions that misread them):"] + trail
+    repaired, remaining = design.repair(workflow, report, workdir, trace, ask, llm.parse_json)
+    if remaining:
+        trace("data path: the repair failed lint (" + " | ".join(remaining)[:200] + "); keeping the design")
+        return workflow
+    problems2, trail2 = dryrun.walk(repaired)
+    for line in trail2:
+        trace("data path (repaired): " + line[:300])
+    trace("data path (repaired): " + ("clean" if not problems2 else "PROBLEM " + " | ".join(problems2)[:300]))
+    return repaired if not problems2 or len(problems2) <= len(problems) else workflow
 
 
 def summary(p):
