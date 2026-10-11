@@ -79,11 +79,11 @@ except Exception:
     pass
 """
 
-PROMISE_PRE = """import json, datetime
+PROMISE_PRE = """__DATES_SRC__
+import json
 __COMMON__
 CAL = __CAL__
-def _biz(day):
-    return day.weekday() in (CAL.get('business_weekdays') or [0, 1, 2, 3, 4]) and day.isoformat() not in (CAL.get('holidays') or [])
+ADJ = __ADJ__
 try:
     b = config.get('body') if isinstance(config, dict) else None
     facts = _load('product_facts_json', [])
@@ -102,22 +102,21 @@ try:
             config['body'] = dict()
         else:
             today = datetime.date.fromisoformat(str(vars.get('today'))[:10])
-            day = datetime.date.fromisoformat(str(b.get('date'))[:10])
+            try:
+                day = datetime.date.fromisoformat(str(b.get('date'))[:10])
+            except ValueError:
+                day = parse_day_words(b.get('date'), today)
             deadline = datetime.date.fromisoformat(str(f.get('deadline'))[:10])
-            why, offer = '', day
-            if day < today:
-                why, offer = 'is in the past', today
-            elif day > deadline:
-                why, offer = 'is after the latest allowed date for this product', deadline
-            elif not _biz(day):
-                why, offer = 'is not a business day', day
-                for _ in range(10):
-                    if _biz(offer) or offer >= deadline:
-                        break
-                    offer += datetime.timedelta(days=1)
-            if why:
-                vars['promise_block'] = 'NOT recorded: the date ' + day.isoformat() + ' ' + why + '. Offer ' + offer.strftime('%A %d %B %Y') + ' (' + offer.isoformat() + ') instead, as your instructions say, read the promise back again with the new date, and CALL create_promise only after the customer confirms it.'
+            if day is None:
+                vars['promise_block'] = 'NOT recorded: the date ' + str(b.get('date')) + ' could not be read. CALL create_promise again with the date as YYYY-MM-DD or in the customer\\'s own words (for example next Friday, Monday the 19th, 20 November).'
                 config['body'] = dict()
+            else:
+                use, why = adjust_day(day, today, deadline, CAL, ADJ)
+                if why:
+                    vars['promise_block'] = 'NOT recorded: the date ' + day.isoformat() + ' ' + why + '. Read the promise back again with the new date and CALL create_promise only after the customer confirms it.'
+                    config['body'] = dict()
+                else:
+                    b['date'] = day.isoformat()
 except Exception:
     pass
 """
@@ -342,7 +341,7 @@ except Exception:
 """
 
 
-def all_hooks(policy, recompute=""):
+def all_hooks(policy, recompute="", dates_src=""):
     """Every hook's source, keyed by tool name and phase, filled from the policy."""
     ident, out = policy.get("identity") or {}, policy.get("outcomes") or {}
     default_outcome = (out.get("unclear") or {}).get("outcome", "")
@@ -351,7 +350,7 @@ def all_hooks(policy, recompute=""):
     service_next = ("CALL add_note for this product with reason " + json.dumps(note_value) + ", then continue.") if (multi and note_value) else "Then continue with the other products, or thank the customer and say goodbye."
     return {
         ("verify_identity", "pre"): VERIFY_PRE, ("verify_identity", "post"): fill(VERIFY_POST, common=COMMON, identity=ident),
-        ("create_promise", "pre"): fill(PROMISE_PRE, common=COMMON, cal=policy.get("calendar") or {}),
+        ("create_promise", "pre"): fill(PROMISE_PRE, dates_src=dates_src, common=COMMON, cal=policy.get("calendar") or {}, adj=policy.get("date_adjust") or {}),
         ("create_promise", "post"): fill(PROMISE_POST, common=COMMON, after_promise=json.dumps((policy.get("sentences") or {}).get("after_promise", "")), service_error_next=json.dumps(service_next)),
         ("add_note", "pre"): NOTE_PRE, ("add_note", "post"): fill(NOTE_POST, common=COMMON),
         ("transfer_to_agent", "pre"): TRANSFER_PRE, ("transfer_to_agent", "post"): fill(TRANSFER_POST, common=COMMON),

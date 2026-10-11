@@ -98,6 +98,24 @@ class ProductFacts(unittest.TestCase):
         self.assertEqual(dates.product_facts([], POLICY, NOW)["count"], 0)
 
 
+class DayWords(unittest.TestCase):
+    def test_phrases(self):
+        wed, fri = datetime.date(2026, 10, 14), datetime.date(2026, 10, 16)
+        for text, today, exp in [("next Friday", wed, "2026-10-23"), ("this Friday", wed, "2026-10-16"), ("Friday", wed, "2026-10-16"), ("next Friday", fri, "2026-10-23"),
+                                 ("Saturday the 17th of October", wed, "2026-10-17"), ("Monday the 19th", wed, "2026-10-19"), ("20 November", wed, "2026-11-20"), ("November 6", wed, "2026-11-06"),
+                                 ("tomorrow", wed, "2026-10-15"), ("the 30th", wed, "2026-10-30"), ("2026-10-23", wed, "2026-10-23"), ("next week", wed, None), ("when my salary comes", wed, None)]:
+            got = dates.parse_day_words(text, today)
+            self.assertEqual(got.isoformat() if got else None, exp, text)
+
+    def test_adjust_day_by_policy(self):
+        cal, today, deadline = POLICY["calendar"], datetime.date(2026, 10, 14), datetime.date(2026, 10, 23)
+        rules = {"non_business_day": "next_business_day", "after_deadline": "offer_deadline"}
+        self.assertEqual(dates.adjust_day(datetime.date(2026, 10, 17), today, deadline, cal, rules)[0], datetime.date(2026, 10, 19))
+        self.assertEqual(dates.adjust_day(datetime.date(2026, 10, 31), today, deadline, cal, rules)[0], datetime.date(2026, 10, 23))
+        self.assertEqual(dates.adjust_day(datetime.date(2026, 10, 20), today, deadline, cal, rules), (datetime.date(2026, 10, 20), ""))
+        self.assertIsNone(dates.adjust_day(datetime.date(2026, 10, 17), today, deadline, cal, {})[0])
+
+
 class SandboxSafety(unittest.TestCase):
     def test_no_double_braces_in_source(self):
         src = pathlib.Path(dates.__file__).read_text()

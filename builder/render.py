@@ -6,7 +6,7 @@ DATES_SRC = pathlib.Path(dates.__file__).read_text()
 # Variables the workflow sets itself. A model-filled tool field must not share one of these names.
 OWN_VARS = {"today", "now", "outcome", "reason", "products", "debt_summary", "debt_statement", "product_count", "id_state", "transfer_state",
             "callback_state", "promise_state", "end_reason", "who", "identity_signal", "third_party_result", "conversation_done"}
-COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "count_refusal offer_deadline set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "close", "hang_up_"]
+COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "count_refusal offer_deadline resolve_proposal set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "close", "hang_up_"]
 
 
 def always(target):
@@ -94,7 +94,7 @@ def facts_code(policy, situation, extra=""):
     pol = {k: policy.get(k) or {} for k in ("calendar", "bands", "callback", "attempt1_rule")}
     return DATES_SRC + "\nimport json" + hooks.COMMON + "POLICY = " + hooks.literal(pol) + "\n" + (
         "try:\n    for k, v in calendar_facts(vars.get('now'), POLICY).items():\n        vars[k] = v\nexcept Exception:\n    pass\n"
-        "for k, v in [('product_facts_json', '[]'), ('promises_recorded', '[]'), ('notes_recorded', '[]'), ('promise_failures', '0'), ('id_state', 'pending'), ('offer_now', 'none'),\n"
+        "for k, v in [('product_facts_json', '[]'), ('promises_recorded', '[]'), ('notes_recorded', '[]'), ('promise_failures', '0'), ('id_state', 'pending'), ('offer_now', 'none'), ('proposed_day_words', ''),\n"
         "             ('transfer_state', 'none'), ('callback_state', 'none'), ('promise_state', 'none'), ('debt_summary', 'not loaded yet'), ('debt_statement', ''), ('product_count', '0')]:\n"
         "    if not vars.get(k):\n        vars[k] = v\n"
         "vars['outcome'] = " + json.dumps(str(o.get("outcome", ""))) + "\nvars['reason'] = " + json.dumps(str(o.get("reason", ""))) + "\n" + extra)
@@ -155,7 +155,7 @@ def goodbye_transition(target, description):
 
 def render(policy, spec):
     recompute = "if str(vars.get('id_state') or '') == 'verified':\n" + "".join("    " + line + "\n" for line in outcome_code(policy).splitlines())
-    hook_map, desc = hooks.all_hooks(policy, recompute), prompts.tool_descriptions(policy)
+    hook_map, desc = hooks.all_hooks(policy, recompute, DATES_SRC), prompts.tool_descriptions(policy)
     goodbye = str(policy.get("goodbye") or "Thank you. Goodbye.")
     multi = (policy.get("multi_product") or {}).get("enabled")
     ends = policy.get("end_reasons") or []
@@ -215,11 +215,14 @@ def render(policy, spec):
     stops = [{"target_node": "count_refusal", "description": "the customer refused", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
                 {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "refusal"}]}]}},
              {"target_node": "offer_deadline", "description": "no exact day after being asked", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
-                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "no_exact_day"}]}]}}]
+                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "no_exact_day"}]}]}},
+             {"target_node": "resolve_proposal", "description": "the customer named a day", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
+                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "proposal"}, {"variable": "proposed_day_words", "operator": "is_set"}]}]}}]
     nodes["negotiate"] = {"name": "negotiate", "node_type": "conversation", "task_message": prompts.negotiate_task(policy), "max_node_turns": 60, "max_turn_transition": "set_outcome", "tools": tools,
         "on_enter": {"type": "tts", "text": "{{debt_statement}}"}, "on_enter_first_entry_only": True,
         "extraction_schema": [extraction("end_reason", keys, "Why the call is ending without a promise, if it is. " + meanings + " none while the conversation continues or a promise was recorded."),
                               extraction("conversation_done", ["yes", "no"], "yes only after the assistant has said goodbye."),
+                              {"name": "proposed_day_words", "type": "string", "min_confidence": 0.5, "description": "The customer's own words for the day they propose or accept in this latest message, exactly as said (for example next Friday, Monday the 19th, tomorrow, 20 November). Empty if this message names no day."},
                               extraction("last_reply", ["refusal", "proposal", "no_exact_day", "question", "hardship", "other"], "What the customer's latest message is. refusal: a no to paying with no date and no amount of their own, or a refusal of the date or amount the assistant just proposed. proposal: the customer offers a date or an amount, or accepts one. no_exact_day: the assistant asked for the exact day and the customer still names none (does not know, will see, when the salary comes). hardship: illness, a death in the family or job loss. question: asks something. other: anything else.")],
         "transitions": stops + [when("set_outcome", "transferred to a person", ("transfer_state", "done")),
                         goodbye_transition("wrap_up", "A promise was recorded or the customer was transferred, and the assistant has said goodbye")]
@@ -233,6 +236,16 @@ def render(policy, spec):
         "    if json.loads(vars.get('promises_recorded') or '[]'):\n        raise ValueError('a promise exists')\n"
         "    vars['offer_now'] = 'The customer gave no exact day: propose exactly ' + str(f.get('deadline')) + ', the latest allowed date, for the amount in play, and read it back if accepted. Do not propose any other date.'\n"
         "    vars['last_reply'] = 'handled'\nexcept Exception:\n    vars['offer_now'] = ''\n"), "negotiate")
+    nodes["resolve_proposal"] = code_node("resolve_proposal", DATES_SRC + "\nimport json\nADJ = " + hooks.literal(policy.get("date_adjust") or {}) + "\nCAL = " + hooks.literal(policy.get("calendar") or {}) + "\n" + (
+        "try:\n    words = str(vars.get('proposed_day_words') or '')\n    vars['proposed_day_words'] = ''\n    vars['last_reply'] = 'resolved'\n"
+        "    facts = json.loads(vars.get('product_facts_json') or '[]')\n    today = datetime.date.fromisoformat(str(vars.get('today'))[:10])\n"
+        "    day = parse_day_words(words, today) if words and words != 'resolved' else None\n"
+        "    if day is not None and facts and not json.loads(vars.get('promises_recorded') or '[]'):\n"
+        "        deadline = datetime.date.fromisoformat(str(facts[0].get('deadline'))[:10])\n        use, why = adjust_day(day, today, deadline, CAL, ADJ)\n"
+        "        if why and use is not None:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '; it ' + why + '. Read back ' + say(use) + ' and record exactly ' + use.isoformat() + ' once confirmed.'\n"
+        "        elif why:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '; it ' + why + '.'\n"
+        "        else:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '. Read back exactly this date and record ' + day.isoformat() + ' once confirmed; do not compute the date yourself.'\n"
+        "except Exception:\n    pass\n"), "negotiate")
     nodes["count_refusal"] = code_node("count_refusal", (
         "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'counted'\n    vars['offer_now'] = ''\n"
         "    allowed = int(float(vars.get('attempts_allowed') or 99))\n    vars['refusals_over'] = 'yes' if n > allowed else 'no'\nexcept Exception:\n    vars['refusals_over'] = 'no'\n"),

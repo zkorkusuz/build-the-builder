@@ -4,6 +4,7 @@ The same source runs inside Freya code steps (the renderer embeds this module), 
 json, re and datetime, never raise on bad input, never contain two braces in a row, and hold no bank's values.
 """
 import datetime
+import re
 
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -65,6 +66,68 @@ def attempt1_date(today, cal, rule):
     if kind == "nth_business_day":
         return nth_business_day_after(today, max(n, 1), cal)
     return None
+
+
+MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+
+
+def parse_day_words(text, today):
+    """A day said in words, as a date, or None. "next <weekday>" is that weekday in the following calendar week; "this <weekday>" and a bare
+    weekday are the one in the current week (a bare weekday that is today means today)."""
+    t = " " + str(text or "").strip().lower().replace(",", " ") + " "
+    if not t.strip():
+        return None
+    digits = [int(x) for x in re.findall(r"\d+", t)]
+    if len(digits) >= 3 and "-" in t and digits[0] > 1900:
+        try:
+            return datetime.date(digits[0], digits[1], digits[2])
+        except ValueError:
+            return None
+    if " today " in t or " tonight " in t or " this evening " in t or " this afternoon " in t or " this morning " in t:
+        return today
+    if " day after tomorrow " in t:
+        return today + datetime.timedelta(days=2)
+    if " tomorrow " in t:
+        return today + datetime.timedelta(days=1)
+    for i, name in enumerate(WEEKDAYS):
+        if " " + name.lower() + " " in t or " " + name.lower()[:3] + " " in t:
+            ahead = (i - today.weekday()) % 7
+            if " next " in t:
+                return today + datetime.timedelta(days=ahead + 7 if ahead else 7)
+            return today + datetime.timedelta(days=ahead)
+    month = next((k + 1 for k, m in enumerate(MONTHS) if " " + m + " " in t or " " + m[:3] + " " in t), None)
+    day = next((d for d in digits if 1 <= d <= 31), None)
+    if day:
+        try:
+            cand = datetime.date(today.year, month or today.month, day)
+            if cand < today and not month:
+                cand = datetime.date(today.year + (1 if today.month == 12 else 0), today.month % 12 + 1, day)
+            elif cand < today:
+                cand = datetime.date(today.year + 1, month, day)
+            return cand
+        except ValueError:
+            return None
+    return None
+
+
+def adjust_day(day, today, deadline, cal, rules):
+    """(date to use, reason) for a proposed day under the policy's date_adjust rules; reason is empty when the day stands."""
+    nb, ad = str((rules or {}).get("non_business_day") or ""), str((rules or {}).get("after_deadline") or "")
+    if day < today:
+        return today, "is in the past; the earliest date is today"
+    if day > deadline:
+        return (deadline, "is after the latest allowed date; say the latest date you can record is " + say(deadline) + " and offer it") if ad == "offer_deadline" else (None, "is after the latest allowed date; follow your instructions")
+    if not is_business_day(day, cal):
+        if nb == "next_business_day":
+            d = next_business_day(day, cal)
+            return (d, "is not a business day; offer " + say(d) + " instead") if d <= deadline else (deadline, "is not a business day and the next business day is after the latest allowed date; offer " + say(deadline))
+        if nb == "previous_business_day":
+            d = day
+            while not is_business_day(d, cal) and d > today:
+                d -= datetime.timedelta(days=1)
+            return d, "is not a business day; offer " + say(d) + " instead"
+        return None, "is not a business day; follow your instructions"
+    return day, ""
 
 
 def say(day):

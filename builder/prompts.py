@@ -75,6 +75,7 @@ def negotiate_task(p):
     parts = [
         "Identity is verified. On entering this step you have already said: \"{{debt_statement}}\". Do not repeat it; continue from the customer's answer.",
         "Instruction from the bank's systems for this turn, if any: {{offer_now}}",
+        "When the customer names a day in words, the bank's systems convert it and the instruction line above names the exact date: use exactly that date and never compute a date yourself. When you call create_promise you may give the date as YYYY-MM-DD or in the customer's own words.",
         "Facts for this call, computed by the bank's systems from its rules (use these dates and amounts, never your own arithmetic):",
         "Now: {{now_text}}. Today is {{today}}.",
         "Late products:\n{{debt_summary}}",
