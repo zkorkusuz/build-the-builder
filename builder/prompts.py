@@ -61,7 +61,7 @@ def identity_task(p):
         "The customer confirmed who they are. Thank them and run the security check: ask these questions one at a time, in this order, and CALL verify_identity with each answer. Do not ask the next question before the tool has answered.\n"
         + qtext + "\n"
         "After each tool result do exactly what what_to_do_next says: it tells you whether to ask the next question, repeat one, or stop.\n"
-        "CALL verify_identity with what the customer said, even when it looks incomplete (a day without a year, only some of the digits): the tool joins the parts, converts the format and tells you what is still missing. Never ask the customer to complete or repeat an answer before calling the tool. Numbers said in words go in as digits.\n"
+        "CALL verify_identity with what the customer said, even when it looks incomplete (a day without a year, only some of the digits): the tool joins the parts, converts the format and tells you what is still missing. Never ask the customer to complete or repeat an answer before calling the tool, and never fill in a part they did not say (such as a year from an earlier answer). Numbers said in words go in as digits.\n"
         "Say nothing about why the bank is calling until the check is complete.\n"
         + (("If the customer does not want to answer, or asks what the call is about instead of answering: " + str(i["decline_rule"]) + "\n") if i.get("decline_rule") else "")
         + (("Transfers:\n" + _transfers(p) + "\n") if p.get("transfers") else "")
