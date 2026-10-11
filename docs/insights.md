@@ -1,5 +1,13 @@
 # Ten insights, with the evidence and the limit of each claim
 
+> Note added 19:35 Sunday. At 17:59 the live hackathon page was found to define the final differently from the kit README:
+> one case, Freya Bank's card statement-debt line in Turkish, delivered as a zip of documents, with a bank mock the team
+> hosts on Cloudflare Workers and a `submission.json` carrying the mock's address. The builder was extended for that form
+> between 18:00 and 19:11 (commits 4779c60 to e58ca6e, tag `submission-candidate` at 0e3ccdc, 77 tests); its English
+> behaviour was verified identical on every practice case, and a Turkish document set built in 144 s and passed a Turkish
+> chat probe against the live mock at 19:00. Every measurement below was taken on the English practice briefs. The run
+> command is now `python3 builder/build.py <document folder> <mock url>`; the runbook is `docs/runbook-final.md`.
+
 1. **Consistency is a different goal from accuracy.** Under pass-all-three, an agent right 90% of the time gives 73% of
    customers, one right 80% gives 51%. Evidence: arithmetic; our first three-repetition run scored 17 of 21 with 18, 19
    and 20 per repetition (tracker run 4). Limit: the hidden set may have families our 21 cases do not.

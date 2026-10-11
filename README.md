@@ -1,25 +1,82 @@
 # Build the Builder
 
-## Our builder (team entry)
+## Our entry: a builder that reads the brief, not one that knows it
 
-One command turns a brief and its tool API file into a published Freya phone agent, with no manual step:
+**The problem.** A bank hands over its brief, 47 numbered rules for a collections call or a folder of emails, memos, a
+service contract and example conversations, plus the tool API. A program must turn that into a phone agent on Freya with
+no manual step. The agent is then scored on customers nobody has seen: the bank's ledger must be exactly right and a judge
+model must find no policy or honesty problem, in all three runs. No partial credit. An agent right 90% of the time passes
+73% of its customers; one right 80% of the time passes 51%. In the organizers' background paper the best coding-agent
+builder passed 23.9% of hidden conversations, 5.9% in banking.
+
+**Our answer: the model only speaks.** Everything that can be computed, counted or looked up lives in code. Dates and
+deadlines in a date engine, counters and guards in hooks around every tool call, the call flow in routes, the bank's own
+sentences as fixed lines. The working rule all weekend: a failure is a decision the model made that code could have made
+instead, so the decision moves. Sixteen moved in one day.
+
+![Sixteen decisions moved out of the model, Saturday 23:50 to Sunday 11:14](docs/figures/fig4-decisions.svg)
+
+**How a build works** (one command, 2 to 3 minutes, about $0.50 of Claude credits, nothing on Freya):
+
+1. **Normalize.** One Claude call reads every document in the folder (Markdown, Word, PDF, Excel, JSON) into `policy.json`
+   in a fixed schema and writes down each ambiguity it resolved. A later memo overrides earlier text.
+2. **Render.** Python fills a fixed 40-step workflow from the policy. Field names come from the tool API, so renamed fields
+   and `$ref` schemas work; Turkish or English day, month and time words are translated before every date parser.
+3. **Adapt.** One Claude call checks the prompts rule by rule and adds text only for what structure cannot carry.
+4. **Lint, dry run, publish** in one slot per case, **export**, a one-turn chat probe, and a trace of all of it.
+
+The builder runs in its own folder with only its skill, the case files and the tool spec, so nothing from a practice
+brief can leak into a hidden build. It stops itself inside 30 minutes and always leaves a saved workflow.
+
+### Quick start
 
 ```bash
 cp env.example env && source env                # FREYA_API_KEY, FREYA_API_URL, FREYA_BANK_TEAM_KEY (any secret of 16+ characters)
 python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165 pypdf==6.20.0 && source .venv/bin/activate   # Python 3.10 or newer (a Mac with an older python3: /opt/homebrew/bin/python3 -m venv .venv); needs a Claude login or ANTHROPIC_API_KEY
-python3 builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.log   # several brief files: list them all before the API file
-python3 builder/build.py briefs/final/ https://<worker>.<subdomain>.workers.dev 2>&1 | tee traces/final.log   # the final's form: a folder of documents (md, docx, xlsx, pdf, json) and the address of the bank mock in mock/ (see mock/README.md and docs/runbook-final.md)
+cd mock && npm install && npx wrangler login && npx wrangler deploy && cd ..   # the bank mock on Cloudflare Workers; prints its address (mock/README.md)
+python3 builder/build.py briefs/final/ https://<worker>.<subdomain>.workers.dev 2>&1 | tee traces/final.log   # the final's form: a folder of documents and the mock's address
+python3 builder/build.py briefs/brief-a.md tools/openapi.json 2>&1 | tee traces/brief-a.log   # the practice form: brief file(s), then the API file
+python3 tools/hidden.py briefs/final/ <mock url> --team <name> --member "<name> <email>"   # runs the command above, checks trace and export, prints submission.json
+python3 -m unittest discover -s tests -q        # 77 local tests
 ```
 
-Stages: normalize (one Claude call reads every brief file completely into `policy.json`), render (Python fills a fixed workflow template:
-date engine and per-product facts in code steps, hooks around every tool call, routes on extracted choices), adapt (one Claude call checks
-the brief's rules against the prompts), lint and dry run, save and publish in one slot per brief set, export to `<slot>.workflow.json`,
-a chat probe (one turn with the published agent, so the trace shows it can start a call and speaks its opening), optional self-test
-(`--selftest <cases.json> --brief-id A`). The trace is everything the build prints; the builder also writes it to `traces/<slot>-<start>.log`
-with the policy it rendered next to it. `tools/hidden.py briefs/final/ <mock url> --team ... --member "Name <email>"` runs the command above, checks the export against the
-trace (counts, ids, no fallback, no key) and prints `submission.json`; it also takes brief and API file pairs. `mock/check.py <mock url> <case>` calls every tool of the deployed mock once and prints its ledger. The runbook is `docs/runbook-final.md`. A build takes 2 to 3 minutes and
-costs about $0.60 of Claude credits at `BUILDER_MODEL=claude-opus-5-5` (the default); it stops itself inside 30 minutes and always leaves
-a saved workflow. The model runs in `work/<slot>/` with only the briefs and the API file. Tests: `.venv/bin/python -m unittest discover tests`.
+The build prints one JSON line with the workflow id, the agent id, the export file (`<slot>.workflow.json`) and the trace
+(`traces/<slot>-<start>.log`, with the policy it rendered next to it). `docs/runbook-final.md` is the step-by-step for the
+final; `mock/check.py <mock url> <case>` calls every tool of the deployed mock once and prints its ledger.
+
+### Does it work
+
+![Customers passed in all 3 of 3 repetitions, by agent version](docs/figures/fig2-results.svg)
+
+| Measured on the 21 practice customers (3 public, 18 written from the brief) | Result |
+|---|---|
+| Saturday 23:35, first full pipeline | 17 of 21 in all three repetitions |
+| Sunday 01:57 and on every later normal-speed run (versions 28, 40, 42, 46, 48) | 21 of 21 in all three repetitions |
+| Five speaking styles (words, pieces, self-corrections, talkative, asks back) | 21, 19, 21, 7, 18 of 21; every talkative loss was the simulator, not the agent |
+| Other calendar days (Friday 16 Oct, holiday eve 23 Oct) | 21 of 21, 18 of 19 |
+| A different bank from an email, a memo and a code list (Northwind, 13 cases) | 13 of 13 in all three repetitions |
+| Two more banks and a renamed tool API | through normalize, render, lint and the platform's dry run |
+| Noise floor the agent cannot remove | about 1% of calls lost to a platform sandbox fault, about 3% to judge variance |
+
+More in `docs/figures/` (the agent as a graph, robustness by style and day) and in the write-ups below.
+
+### Method
+
+Expectations for every test customer were written from the brief before any run and never changed to fit the agent. For
+every failed call a review tool prints the decision trail with the maker of each step (code, hook, route, extraction or
+model) and asks which model decision could move into code. Platform losses (hang-ups on slow turns, sandbox faults,
+judge variance, simulator personas cut mid-sentence) are logged separately and never "fixed" in the agent. A reviewer
+agent read every change; an independent QA review mapped all 47 rules of Brief A to their homes; 18 papers on agent
+reliability were read for what transfers.
+
+- `docs/presentation.md`: six slides and the three numbers.
+- `docs/methodology.md`: the principle, the pipeline with timings and cost, the test layers, the review loop, the outages.
+- `docs/insights.md`: ten lessons for other teams with evidence and limits, including the negative results.
+- `docs/qa-review-sun.md`, `docs/research-edge.md`: the QA review and the research notes.
+- Sources: the [hackathon page](https://www.freyavoice.ai/hackathon), [τ^τ-bench](https://arxiv.org/abs/2609.04611),
+  and the papers listed in `docs/research-edge.md`.
+
+---
 
 **Kit version 3** (10 October 2026). The file `VERSION` holds the number. When we update the kit, the number goes up and the changes are listed here.
 

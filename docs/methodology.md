@@ -1,5 +1,13 @@
 # Methodology
 
+> Note added 19:35 Sunday. At 17:59 the live hackathon page was found to define the final differently from the kit README:
+> one case, Freya Bank's card statement-debt line in Turkish, delivered as a zip of documents, with a bank mock the team
+> hosts on Cloudflare Workers and a `submission.json` carrying the mock's address. The builder was extended for that form
+> between 18:00 and 19:11 (commits 4779c60 to e58ca6e, tag `submission-candidate` at 0e3ccdc, 77 tests); its English
+> behaviour was verified identical on every practice case, and a Turkish document set built in 144 s and passed a Turkish
+> chat probe against the live mock at 19:00. Every measurement below was taken on the English practice briefs. The run
+> command is now `python3 builder/build.py <document folder> <mock url>`; the runbook is `docs/runbook-final.md`.
+
 ## 1. The principle
 A collections call has rules that a bank writes down: when to ask, what to say, which date, which amount, which outcome
 code. A language model can follow most of them most of the time. The hackathon scores a customer only when all three
