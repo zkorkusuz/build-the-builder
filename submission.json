@@ -1,0 +1,15 @@
+{
+  "team": "zehrakorkusuz",
+  "members": [
+    {
+      "name": "Zehra Korkusuz",
+      "email": "wzehrakorkusuz@gmail.com"
+    }
+  ],
+  "repo": "https://github.com/zkorkusuz/build-the-builder",
+  "commit": "335d8748b7572181ae4787941da31f85b3b3314d",
+  "run_command": "python3 builder/build.py {case_folder} {mock_url}",
+  "workflow": "final.workflow.json",
+  "trace": "traces/final.log",
+  "mock_url": "https://bank-mock.bank-mock.workers.dev"
+}
