@@ -13,10 +13,13 @@ def api(method, path, body=None, **params):
     """Call the API and return the `result` part of its {success, data: {message, result}} envelope."""
     q = "?" + urllib.parse.urlencode(params) if params else ""
     req = urllib.request.Request(URL + path + q, data=json.dumps(body).encode() if body is not None else None, headers=HEADERS, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r: out = json.load(r)
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"{method} {path} -> {e.code}: {e.read().decode()[:1500]}") from None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r: out = json.load(r); break
+        except urllib.error.HTTPError as e:
+            if method == "GET" and e.code >= 500 and attempt < 2:    # a gateway error on a status poll must not orphan a running simulation
+                time.sleep(15); continue
+            raise RuntimeError(f"{method} {path} -> {e.code}: {e.read().decode()[:1500]}") from None
     return out.get("data", {}).get("result", out) if isinstance(out, dict) else out
 
 _ws = None
