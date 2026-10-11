@@ -4,13 +4,15 @@ The platform reference (docs/workflow-format.md and docs/tools-and-code.md) goes
 platform's own rules; the kit's lint and the platform's dry run check the result, and a repair pass fixes what they flag.
 """
 import json
+import os
 import pathlib
 
 from builder import lint, normalize
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 REFERENCE_DOCS = ("workflow-format.md", "tools-and-code.md")
-DESIGN_TIMEOUT_S, REPAIR_TIMEOUT_S = 20 * 60, 6 * 60     # a whole workflow is a long answer; the build budget still caps both
+DESIGN_TIMEOUT_S, REPAIR_TIMEOUT_S = 20 * 60, 6 * 60
+DESIGN_MODEL = os.environ.get("DESIGN_MODEL") or None     # a faster model for the long design answer, when the build budget demands it     # a whole workflow is a long answer; the build budget still caps both
 
 FIT_QUESTION = """Below are a bank's documents for a phone agent. Answer with one JSON object {"outbound_collections": true or false, "summary": "<one sentence in English: what the agent does>"} in a ```json fence and nothing else.
 outbound_collections is true only when the agent makes an OUTBOUND call about a late payment, asks the customer security questions to verify them, and records payment promises with their dates and amounts. Any other kind of call (an inbound inquiry, a service request, an information line) is false."""
@@ -54,7 +56,7 @@ def design(texts, spec, workdir, trace, ask, parse_json):
     """The model's workflow for the documents, tidied and linted. Returns (workflow, problems)."""
     prompt = (DESIGN + "\n\n" + reference() + "\n\n" + normalize.documents_text(texts)
               + "\n\n=== TOOL API (OpenAPI of the bank's services; its servers url is the mock the tools call) ===\n" + json.dumps(spec, indent=1, ensure_ascii=False))
-    workflow = tidy(parse_json(ask(prompt, workdir, trace, "design: the whole workflow from the documents and the tool API", timeout=DESIGN_TIMEOUT_S, max_turns=8)))
+    workflow = tidy(parse_json(ask(prompt, workdir, trace, "design: the whole workflow from the documents and the tool API", timeout=DESIGN_TIMEOUT_S, max_turns=8, model=DESIGN_MODEL)))
     problems = lint.check(workflow)
     trace("design: " + str(len(workflow.get("nodes") or {})) + " steps, lint " + (" | ".join(problems) or "clean"))
     return workflow, problems
@@ -64,7 +66,7 @@ def repair(workflow, problems, workdir, trace, ask, parse_json):
     """One model pass over the listed problems (lint findings or the platform's rejection). Returns (workflow, remaining problems)."""
     prompt = (REPAIR + "\n".join("- " + str(p) for p in problems) + "\n\n" + reference()
               + "\n\n=== WORKFLOW ===\n```json\n" + json.dumps(workflow, indent=1, ensure_ascii=False) + "\n```")
-    fixed = tidy(parse_json(ask(prompt, workdir, trace, "design: repair of " + str(len(problems)) + " problem(s)", timeout=REPAIR_TIMEOUT_S, max_turns=8)))
+    fixed = tidy(parse_json(ask(prompt, workdir, trace, "design: repair of " + str(len(problems)) + " problem(s)", timeout=REPAIR_TIMEOUT_S, max_turns=8, model=DESIGN_MODEL)))
     remaining = lint.check(fixed)
     trace("design: repaired, " + str(len(fixed.get("nodes") or {})) + " steps, lint " + (" | ".join(remaining) or "clean"))
     return fixed, remaining
