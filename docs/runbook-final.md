@@ -8,6 +8,7 @@ a bank mock we host on Cloudflare Workers; one `submission.json` with `mock_url`
 - Cloudflare: `cd mock && npx wrangler whoami` shows the account; the workers.dev subdomain is registered (dashboard,
   Workers, Subdomain) and `curl https://<worker>.<subdomain>.workers.dev/openapi.json` answers.
 - The dashboard shows no running simulation.
+- `.venv/bin/python -c "import pypdf"` works (PDFs in the zip are read with it); images in the zip are listed in the trace but not read, so open them yourself and check the policy lines against them.
 
 ## 20:00 to 21:00: the mock first, then one build
 1. Unzip into `briefs/final/` (keep the folder name the zip gives; it becomes the slot). Read `BRIEF.md`, then `README.md`,
@@ -20,8 +21,8 @@ a bank mock we host on Cloudflare Workers; one `submission.json` with `mock_url`
    Read the first lines: `documents:` lists every file read in order, `tool api:` says where the tool shapes came from,
    `policy:` lines show the identity questions, calendar, bands, outcomes; `ambiguity:` lines name what the model could
    not settle. `fields:` shows renamed request fields.
-4. Probe in Turkish with one chat turn per step (`tools/chat.py` needs a practice case; use `POST /api/v2/chat/message`
-   with the test customer's variables and `FREYA_BANK_HOST` pointing at the mock when scoring by hand).
+4. Probe in Turkish: `FREYA_BANK_HOST=https://<mock> .venv/bin/python tools/probe.py <slot> <customer case id> "Evet, benim." ...`
+   plays one customer of `mock/customers.json` line by line and prints the tool calls and the mock's ledger.
 5. A crash on a file type or shape: fix the crash only, rerun the build, keep the new trace. Never write a value, name
    or rule from the zip into `builder/` or `mock/src` beyond what the contract requires of the mock.
 
