@@ -44,7 +44,7 @@ the briefs or the public test set.
 - Tool descriptions say when to call the tool. Post-hooks add `what_to_do_next` so the agent never goes silent.
 
 ## Commands
-- `source env.sh` (once per terminal)
+- `source env` (once per terminal; the file is `env`, not `env.sh`)
 - `python3 tools/run_cases.py <agent_id> --brief A [--reps 3] [--style in_words] [--only PUB-01] [--out results/x.json]`
 - `python3 tools/chat.py <slot> <case_id>`: play a practice customer turn by turn
 - `.venv/bin/python tools/review_run.py results/<run>.json`: the review loop. For every failed call it prints the decision trail with its maker (code, hook, route, extraction, model) and the judge's reason. For each failure ask: which decision did the model make that code, a hook or a route could have made instead? Move it, rerun the failed cases with `--only`, then `--reps 3`.

@@ -16,13 +16,14 @@ class Check(unittest.TestCase):
 
     def test_crash_and_fallbacks_mean_rerun(self):
         self.assertTrue(hidden.check([], None, None, {})[1])
-        for line in ("render: FAILED on this policy, x; rendering the bare template", "save: the platform rejected the workflow (x); saving the bare template"):
+        for line in ("render: FAILED on this policy, x; rendering the bare template", "save: the platform rejected the workflow (x); saving the bare template",
+                     "tool api: FAILED to read or derive one (x); using the kit's tool shapes"):
             problems, rerun = hidden.check(GOOD + [line], RESULT, EXPORT, {})
             self.assertTrue(rerun, line); self.assertTrue(any("trace:" in p for p in problems))
 
     def test_notes_are_kept(self):
-        problems, rerun = hidden.check(GOOD + ["normalize: repairing bands"], RESULT, EXPORT, {})
-        self.assertFalse(rerun); self.assertEqual(len(problems), 1)
+        problems, rerun = hidden.check(GOOD + ["normalize: repairing bands", "documents: NOT readable: flow.pdf | image files listed, not read: 1"], RESULT, EXPORT, {})
+        self.assertFalse(rerun); self.assertEqual(len(problems), 2)
 
     def test_export_must_match_trace(self):
         self.assertIn("export: 2 steps and 3 tools, the trace says 2 and 4", hidden.check(GOOD, {**RESULT, "tools": 4}, EXPORT, {})[0])

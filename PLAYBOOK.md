@@ -338,60 +338,15 @@ Write down what surprised you, what failed and how long each step took. That lis
 
 ---
 
-## 10. Timeline
+## 10. The final: timeline, questions and checklist
 
-### Tonight
-
-| Time | What |
-|---|---|
-| 21:30–22:30 | Explore Freya (section 9, steps 1–5) |
-| 22:30–23:15 | Baseline: example builder, `--reps 3`, Brief B, one style (step 6). Read failures while it runs |
-| 23:15–00:30 | `builder/build.py` skeleton: command shape, fixed slots, trace. Date engine with local tests. Commit. Sleep |
-
-### Sunday
-
-| Time | What |
-|---|---|
-| Until 13:00 | Hooks; normalize and render (or the skill upgrade); Brief B |
-| 13:00–16:00 | Extra test customers and calendar days; variant briefs; build time; check that two reruns give similar agents |
-| 16:00–18:00 | Freeze. A fresh clone runs the exact command. README, trace check, export path |
-| 18:00–20:00 | Rest and dinner |
-| 20:00 | Hidden briefs open. Build hidden-1, then hidden-2, one after the other (one simulation at a time). Each run exports right after it finishes |
-| About 21:15 | Optional second run of each, in its own slot; keep the better one only if they are close. Commit |
-| By 22:30 | Submit the form. Deadline 23:00 |
-
-### Hidden-brief checklist (Sunday 20:00)
-
-- [ ] Save the briefs and API files under `briefs/` exactly as received
-- [ ] Run the exact command, e.g. `python3 builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.log`
-- [ ] Check the trace has every required part; remove keys
-- [ ] Check that each run exported its workflow to a file named for that run; commit; note the commit hash
-- [ ] Submit the form: team, repo, commit, run_command, workflows, traces
-
----
-
-## 11. Questions for the organizers
-
-- Do the hidden briefs come with practice customers, or can practice sessions be created for them? If not, how should a builder test itself on a hidden brief?
-- Answered: the workflow limit is 200 on both the hackathon page and the README.
-- Will each hidden brief be one file, or several files for the raw material?
-
----
-
-## 12. Pre-submission checklist
-
-- [ ] A fresh clone, setup and the one command run end to end on a brief the builder has never seen
-- [ ] Secrets only from environment variables; no keys in the repo or traces
-- [ ] Dependencies and builder model names pinned; the exact commit is in the submission
-- [ ] The builder stops itself before 30 minutes and always saves a valid workflow
-- [ ] One slot per brief and run, updated in place; the workspace limit is 200
-- [ ] The builder runs in its own working folder and cannot read `CLAUDE.md`, this playbook, Brief A or the public test set
-- [ ] Nothing from any brief hard-coded in code, prompts or templates
-- [ ] Works with: other identity questions, other calendars and bands, raw-material briefs, one to three products
-- [ ] Every generated agent: no debt talk before verification, read-back before every write, "recorded" only after `ok: true`, exactly one `close_call`, goodbye before it
-- [ ] Measured with `--reps 3` and at least one `--style`; expectations written from the brief
-- [ ] The trace has start/end time, every model call, Freya ids and counts, every self-test and result
-- [ ] README: setup, environment variables, the run command, expected time and cost
+The final's form changed on Sunday (one Turkish case, a zip of documents, our own bank mock, one `submission.json`), so the
+timeline, the questions for the organizers and the pre-submission checklist that stood here are superseded. The one live
+checklist is `docs/runbook-final.md`; the mock's reshape checklist is `mock/README.md`; the form's text is `docs/submission.md`.
+What still holds from the old checklist: secrets only from the environment; the builder stops itself before 30 minutes and
+always saves a valid workflow; one slot per case, updated in place; the builder runs in its own working folder and reads
+neither this playbook nor the practice briefs; nothing from any brief is hard-coded; the trace has start and end time, every
+model call, the Freya ids and counts, and every self-test with its result.
 
 ---
 

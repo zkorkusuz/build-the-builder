@@ -5,7 +5,7 @@
 One command turns a brief and its tool API file into a published Freya phone agent, with no manual step:
 
 ```bash
-cp env.example env.sh && source env.sh          # FREYA_API_KEY, FREYA_API_URL, FREYA_BANK_TEAM_KEY (any secret of 16+ characters)
+cp env.example env && source env                # FREYA_API_KEY, FREYA_API_URL, FREYA_BANK_TEAM_KEY (any secret of 16+ characters)
 python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165 pypdf==6.20.0 && source .venv/bin/activate   # Python 3.10 or newer (a Mac with an older python3: /opt/homebrew/bin/python3 -m venv .venv); needs a Claude login or ANTHROPIC_API_KEY
 python3 builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.log   # several brief files: list them all before the API file
 python3 builder/build.py briefs/final/ https://<worker>.<subdomain>.workers.dev 2>&1 | tee traces/final.log   # the final's form: a folder of documents (md, docx, xlsx, pdf, json) and the address of the bank mock in mock/ (see mock/README.md and docs/runbook-final.md)
@@ -16,8 +16,8 @@ date engine and per-product facts in code steps, hooks around every tool call, r
 the brief's rules against the prompts), lint and dry run, save and publish in one slot per brief set, export to `<slot>.workflow.json`,
 a chat probe (one turn with the published agent, so the trace shows it can start a call and speaks its opening), optional self-test
 (`--selftest <cases.json> --brief-id A`). The trace is everything the build prints; the builder also writes it to `traces/<slot>-<start>.log`
-with the policy it rendered next to it. `tools/hidden.py` runs the command above for each hidden brief in turn, checks the export against the
-trace (counts, ids, no fallback, no key) and prints the submission form. A build takes about 2 minutes and
+with the policy it rendered next to it. `tools/hidden.py briefs/final/ <mock url> --team ... --member "Name <email>"` runs the command above, checks the export against the
+trace (counts, ids, no fallback, no key) and prints `submission.json`; it also takes brief and API file pairs. `mock/check.py <mock url> <case>` calls every tool of the deployed mock once and prints its ledger. The runbook is `docs/runbook-final.md`. A build takes 2 to 3 minutes and
 costs about $0.60 of Claude credits at `BUILDER_MODEL=claude-opus-5-5` (the default); it stops itself inside 30 minutes and always leaves
 a saved workflow. The model runs in `work/<slot>/` with only the briefs and the API file. Tests: `.venv/bin/python -m unittest discover tests`.
 
@@ -37,8 +37,8 @@ One simulated customer is one case. A step of a phone agent is called a node in 
 You need Python 3.10 or newer.
 
 ```bash
-cp env.example env.sh        # put your Freya API key in it, and a team key you make up
-source env.sh
+cp env.example env           # put your Freya API key in it, and a team key you make up
+source env
 
 # 1. Put the example agent on Freya and test it. It prints {"workflow_id": ..., "agent_id": ...}
 python3 -c "import freya,json; print(freya.save_workflow('base', json.load(open('examples/base-agent.json'))))"

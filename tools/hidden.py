@@ -1,30 +1,33 @@
 """Build the hidden briefs for submission, one after the other, and check each build before the next.
 
+    python3 tools/hidden.py briefs/final/ https://<worker>.<subdomain>.workers.dev [--team NAME] [--member "Name <email>"] [--commit]
     python3 tools/hidden.py briefs/hidden-1.md briefs/hidden-1.openapi.json [briefs/hidden-2.md briefs/hidden-2.openapi.json] [--team NAME] [--commit]
 
-For each pair it runs the one build command and keeps everything the build prints in traces/<brief>.log. Then it checks
+A pair is a folder of documents and the address of our bank mock (the final's form; the mock must serve /openapi.json before
+the build starts) or a brief file and its tool API file. For each pair it runs the one build command and keeps everything the build prints in traces/<brief>.log. Then it checks
 the run: the trace has every line the organizers ask for, the export matches the trace, nothing fell back to the bare
 template, no key leaked. A build that crashed or fell back is run once more, after its cause is printed; any other result
 is kept as it is, so no run is ever chosen over another. At the end it prints the submission form. --commit commits the
-briefs, the traces and the exports, nothing else. Needs the venv active (python 3.10+) and `source env`.
+briefs, the traces, the exports and, for the final's form, the mock, nothing else. Needs the venv active (python 3.10+) and `source env`.
 """
-import json, os, pathlib, re, subprocess, sys, time
+import json, os, pathlib, re, subprocess, sys, time, urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import freya
 
 # Markers are matched at the start of a trace line (after its time stamp), never inside it: the policy lines echo the brief's own words.
-RERUN = ("render: FAILED", "normalize: FAILED", "save: the platform rejected", "save: failed, ")      # a crash or a fallback: build again
-WARN = ("normalize: repairing", "normalize: still incomplete", "export: written from the saved workflow", "self-test: chat probe: no answer",
+RERUN = ("render: FAILED", "normalize: FAILED", "save: the platform rejected", "save: failed, ", "tool api: FAILED")      # a crash or a fallback: build again
+WARN = ("normalize: repairing", "normalize: still incomplete", "documents: NOT readable", "tool api: written by the model",
+        "export: written from the saved workflow", "self-test: chat probe: no answer",
         "self-test: chat probe skipped", "self-test skipped", "adapt: skipped", "adapt: result failed lint", "dry run: skipped")
 REQUIRED = ("start ", "builder: commit", "model call:", "dry run:", "freya: workflow", "export:", "self-test:", "end ")
 
 
 def main(argv):
-    opts = {"team": "<team>", "commit": False}
+    opts = {"team": "<team>", "members": [], "commit": False}
     pairs = parse(argv, opts)
-    preflight()
-    results = {pathlib.Path(brief).stem: build_checked(brief, spec) for brief, spec in pairs}
+    preflight(pairs)
+    results = {slot_of(brief): build_checked(brief, spec) for brief, spec in pairs}
     report(results, opts)
 
 
@@ -33,23 +36,38 @@ def parse(argv, opts):
     while i < len(argv):
         if argv[i] == "--team":
             opts["team"] = argv[i + 1]; i += 2
+        elif argv[i] == "--member":                                      # "Name <email>"
+            m = re.match(r"\s*(.*?)\s*<([^>]+)>\s*$", argv[i + 1])
+            opts["members"].append({"name": m.group(1), "email": m.group(2)} if m else {"name": argv[i + 1], "email": ""}); i += 2
         elif argv[i] == "--commit":
             opts["commit"] = True; i += 1
         else:
             files.append(argv[i]); i += 1
     if len(files) < 2 or len(files) % 2:
         sys.exit(__doc__)
-    missing = [f for f in files if not pathlib.Path(f).is_file()]
-    if missing:
-        sys.exit("not a file: " + ", ".join(missing))
-    pairs = list(zip(files[::2], files[1::2]))
-    if len({pathlib.Path(b).stem for b, _ in pairs}) < len(pairs):      # the stem is the slot: equal names would overwrite one agent with the other
-        sys.exit("brief files need distinct names")
+    pairs = [(b, mock_url_of(b, s)) for b, s in zip(files[::2], files[1::2])]
+    bad = [b + " " + s for b, s in pairs if not (pathlib.Path(b).is_file() and pathlib.Path(s).is_file() or pathlib.Path(b).is_dir() and s.startswith("http"))]
+    if bad:
+        sys.exit("each pair is a brief file and its tool API file, or a folder of documents and the mock's address: " + "; ".join(bad))
+    if len({slot_of(b) for b, _ in pairs}) < len(pairs):      # the name is the slot: equal names would overwrite one agent with the other
+        sys.exit("brief files or folders need distinct names")
     return pairs
 
 
-def preflight():
-    """Stop before the first build when something is missing: a key, the interpreter, the SDK; warn about a dirty tree."""
+def mock_url_of(brief, spec):
+    """The second item of a folder pair as a URL: a bare host gets its scheme; a file path or a brief file's API file stays as given."""
+    if pathlib.Path(brief).is_dir() and "://" not in spec and not pathlib.Path(spec).exists():
+        return "https://" + spec
+    return spec
+
+
+def slot_of(brief):
+    """The slot the builder uses: the folder's name, or the brief file's name without its suffix."""
+    return pathlib.Path(brief.rstrip("/")).name if pathlib.Path(brief).is_dir() else pathlib.Path(brief).stem
+
+
+def preflight(pairs):
+    """Stop before the first build when something is missing: a key, the interpreter, the SDK, the mock; warn about a dirty tree."""
     problems = []
     if not os.environ.get("FREYA_API_KEY"):
         problems.append("FREYA_API_KEY is not set: source env")
@@ -59,6 +77,9 @@ def preflight():
         import claude_agent_sdk  # noqa: F401
     except ImportError:
         problems.append("claude_agent_sdk is not installed in this interpreter")
+    for brief, url in pairs:
+        if pathlib.Path(brief).is_dir() and not mock_answers(url):     # without it the build would fall back to model-written tool shapes that may not match the mock
+            problems.append("the mock at " + url + " does not serve /openapi.json with paths; deploy it first (mock/README.md)")
     if problems:
         sys.exit("\n".join(problems))
     dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
@@ -68,6 +89,14 @@ def preflight():
     running = simulations_running()
     if running:
         print("note: a simulation is running (" + ", ".join(running) + "); a build starts none, so this only matters for a self-test", flush=True)
+
+
+def mock_answers(url):
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url.rstrip("/") + "/openapi.json", headers={"User-Agent": "Mozilla/5.0 build-the-builder"}), timeout=20) as r:
+            return bool(json.loads(r.read().decode("utf-8")).get("paths"))
+    except Exception:
+        return False
 
 
 def wait_for_platform(max_wait=20 * 60):
@@ -104,7 +133,7 @@ def build_checked(brief, spec):
 
 def build(brief, spec):
     """Run the one command and keep everything it prints in traces/<brief>.log."""
-    stem = pathlib.Path(brief).stem
+    stem = slot_of(brief)
     log = ROOT / "traces" / (stem + ".log")
     cmd = [sys.executable, "builder/build.py", brief, spec]
     print(time.strftime("%H:%M:%S") + " build " + stem + ": " + " ".join(cmd[1:]) + " -> traces/" + log.name, flush=True)
@@ -181,10 +210,19 @@ def report(results, opts):
         print("  " + name + ": workflow " + str(res.get("workflow_id")) + " agent " + str(res.get("agent_id")) + " version " + str(res.get("version"))
               + ", " + str(res.get("steps")) + " steps, " + str(res.get("tools")) + " tools, " + str(len(r["problems"])) + " check note(s)")
     commit = do_commit(results) if opts["commit"] else "<hash of the commit that holds the files below>"
-    form = {"team": opts["team"], "repo": repo_url(), "commit": commit, "run_command": "python3 builder/build.py {brief_path} {tool_api_path}",
-            "workflows": {n: relative((r["result"] or {}).get("export")) or "<no export>" for n, r in results.items()}, "traces": {n: r["log"] for n, r in results.items()}}
-    (ROOT / "work").mkdir(exist_ok=True); (ROOT / "work" / "form.json").write_text(json.dumps(form, indent=2))
-    print("\nform (also in work/form.json):\n" + json.dumps(form, indent=2))
+    form = submission(results, opts, commit)
+    (ROOT / "work").mkdir(exist_ok=True); (ROOT / "work" / "submission.json").write_text(json.dumps(form, indent=2))
+    print("\nsubmission.json (also in work/submission.json):\n" + json.dumps(form, indent=2))
+
+
+def submission(results, opts, commit):
+    """The form the page asks for: one case with its mock (the final's form), or one workflow and trace per brief file."""
+    head = {"team": opts["team"], "members": opts["members"] or [{"name": "<name>", "email": "<login email>"}], "repo": repo_url(), "commit": commit}
+    exports = {n: relative((r["result"] or {}).get("export")) or "<no export>" for n, r in results.items()}
+    run = next(iter(results.values()))
+    if len(results) == 1 and pathlib.Path(run["brief"]).is_dir():
+        return {**head, "run_command": "python3 builder/build.py {case_folder} {mock_url}", "workflow": exports[run["slot"]], "trace": run["log"], "mock_url": run["spec"]}
+    return {**head, "run_command": "python3 builder/build.py {brief_path} {tool_api_path}", "workflows": exports, "traces": {n: r["log"] for n, r in results.items()}}
 
 
 def relative(path):
@@ -196,11 +234,13 @@ def relative(path):
 
 
 def do_commit(results):
-    """Commit each brief, its API file, the console log, the builder's own trace and policy, and the export. Nothing else."""
+    """Commit each brief (or document folder), its API file (or the mock), the console log, the builder's own trace and policy, and the export. Nothing else."""
     wanted = []
     for r in results.values():
         res = r["result"] or {}
         wanted += [r["brief"], r["spec"], r["log"], res.get("trace"), res.get("export")]
+        if pathlib.Path(r["brief"]).is_dir():                     # the agent was built against this mock, so the scored run needs it as it was
+            wanted += [str(ROOT / "mock" / x) for x in ("customers.json", "openapi.json", "wrangler.toml", "src")]
         if res.get("trace"):
             wanted.append(pathlib.Path(res["trace"]).with_suffix(".policy.json"))
     files = [relative(p) for p in wanted if p and pathlib.Path(p).exists()]
@@ -208,7 +248,7 @@ def do_commit(results):
         if f is None:
             print("  not committed, outside the repository: " + str(p), flush=True)
     subprocess.run(["git", "add", "--"] + [f for f in files if f], cwd=ROOT, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "Hidden briefs built: " + ", ".join(results)], cwd=ROOT, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "Built for submission: " + ", ".join(results)], cwd=ROOT, check=True)
     return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
 
 

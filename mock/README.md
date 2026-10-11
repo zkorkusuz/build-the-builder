@@ -79,12 +79,9 @@ Work through the contract against `src/index.js` top to bottom; every item names
 6. **Ledger route and shape**: `LEDGER_PATH`, the ledger object in `newSession`, the per-call record in
    `callTool`, the list in `allLedgers`.
 7. **OpenAPI**: replace `openapi.json` with the contract's tool API (the servers url is overwritten per request in
-   `openapiFor`), then `npx wrangler deploy` and re-check with the curl sequence below.
+   `openapiFor`), then `npx wrangler deploy` and re-check with `mock/check.py` (below).
 
-Smoke test after a change (any host):
-```
-H=https://bank-mock.<account>.workers.dev
-CID=$(curl -s -X POST $H/v1/practice/sessions -H 'X-Team-Key: a-local-key-of-16-chars' -H 'content-type: application/json' -d '{"case":"PUB-01"}' | python3 -c 'import json,sys;print(json.load(sys.stdin)["variables"]["customer_id"])')
-curl -s -X POST $H/v1/verify_identity -H 'content-type: application/json' -d "{\"customer_id\":\"$CID\",\"field\":\"date_of_birth\",\"answer\":\"1988-03-14\"}"
-curl -s $H/v1/practice/ledger/$CID
-```
+Smoke test after a change (any host): `python3 mock/check.py https://bank-mock.<account>.workers.dev <case id>` reads the
+served `/openapi.json`, opens a session for that customer (or uses its fixed `customer_id`), calls every tool once with the
+contract's field names and the customer's own answers and products, prints each answer and the ledger. Every answer must be
+what the contract says and the ledger must hold one promise, note, callback and transfer and the outcome. Needs `source env`.
