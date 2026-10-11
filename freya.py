@@ -17,11 +17,11 @@ def api(method, path, body=None, **params):
         try:
             with urllib.request.urlopen(req, timeout=120) as r: out = json.load(r); break
         except urllib.error.HTTPError as e:
-            if method == "GET" and e.code >= 500 and attempt < 2:    # a gateway error on a status poll must not orphan a running simulation
+            if e.code >= 500 and attempt < 2:      # a gateway error must not orphan a running simulation or end a build before its first save
                 time.sleep(15); continue
             raise RuntimeError(f"{method} {path} -> {e.code}: {e.read().decode()[:1500]}") from None
-        except (urllib.error.URLError, TimeoutError):               # a hung or dropped connection on a poll is the same case
-            if method == "GET" and attempt < 2:
+        except (urllib.error.URLError, TimeoutError):               # a hung or dropped connection is the same case
+            if attempt < 2:
                 time.sleep(15); continue
             raise
     return out.get("data", {}).get("result", out) if isinstance(out, dict) else out
