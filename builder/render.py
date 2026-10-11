@@ -173,7 +173,6 @@ def render(policy, spec):
     c = policy.get("confirmation") or {}
     q = str(policy.get("confirm_question") or "").replace("{title}", "{{title}}").replace("{last_name}", "{{last_name}}")
     who = extraction("who", ["customer", "other_person", "wrong_number", "deceased", "unclear"], "Who is on the line. customer only if they clearly confirmed being the customer (yes, that's me, speaking, their own name). other_person if someone else answered or the customer is not available. wrong_number if the number does not belong to the customer. deceased if the customer has died. unclear otherwise.")
-    who["min_confidence"] = 0.8                 # a cut-off or rambling first reply must not pass as a confirmation; a doubtful one gets the second ask the brief allows
     routes = lambda: [when("mark_confirmed", "the customer confirmed", ("who", "customer")), when("third_party_prep", "someone else answered", ("who", "other_person")),
                       when("outcome_wrong_number", "wrong number", ("who", "wrong_number")), when("outcome_deceased", "customer has died", ("who", "deceased"))]
     asks = max(int(c.get("max_asks") or 2), 1)
