@@ -1,5 +1,43 @@
 # Build the Builder
 
+This repository is our entry to Freya's Build the Builder hackathon: a builder that turns a bank's documents and the
+address of a bank mock into a phone agent on the Freya platform with no manual step, the mock we host for the final case,
+the tests and tools around them, and the final submission itself (the case folder, the builder's trace and the exported
+agent). Read `BRIEF.md` in `briefs/final/` for the case, `traces/final.log` for how the agent was built, and
+`final.workflow.json` for the agent.
+
+## Reproduce the final build
+
+```bash
+cp env.example env && source env                                         # FREYA_API_KEY, FREYA_API_URL, FREYA_BANK_TEAM_KEY
+python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165 pypdf==6.20.0 && source .venv/bin/activate   # Python 3.10+, a Claude login or ANTHROPIC_API_KEY
+python3 builder/build.py briefs/final/ https://bank-mock.bank-mock.workers.dev 2>&1 | tee traces/final.log
+```
+
+The mock at that address serves the bank's test environment exactly (`mock/`, deployed from `mock/src/final.js`); to host
+your own copy: `cd mock && npm install && npx wrangler login && npx wrangler deploy`, then pass its address instead.
+
+## The final submission (11 October 2026)
+
+- The case: `briefs/final/` as the bank published it (BRIEF.md first). An inbound line: the phone menu has identified the
+  caller, the assistant finds the card, reads the statement debt in four currencies with the due date, can move the
+  statement week or e-mail the statement, and hands payment or a request for a person to an agent. Turkish.
+- The run: `traces/final.log` (commit 96322cf, clean tree, 21:42 Istanbul, 894 s): 19 documents read, the mock's
+  OpenAPI, the plan step chose the design path, one design call of 878 s, lint clean, the data-path dry run reached a
+  conversation step with the live services, the platform's dry run accepted, saved as version 4 (13 steps, 8 tools),
+  exported to `final.workflow.json`. The builder's own trace and the policy it kept are `traces/final-20261011-214233.*`.
+- The mock: `https://bank-mock.bank-mock.workers.dev` (`/voice/v1/<service>`, `/openapi.json`, `/ledger/<customer>`).
+- What the agent does well on our self-test: the single-card reading with amounts and dates in Turkish words and currency
+  names in full, the card choice, the week change with preview and explicit confirmation, the e-mail send after
+  confirmation, the missing e-mail, the service failure, the payment request, the new card without a statement. What it
+  reads differently from the latest sources: the "only the latest statement" sentence, the no-card exit, the shared
+  statement's week change, the number of calming replies, the order of the cut-day sentences.
+- Earlier builds that evening: two design calls timed out at the model-call cap (the answer, not the reading, is what
+  takes long; the cap and size limits were raised), one design dropped a request field the engine removes before the
+  hook runs, one read the card list at the wrong depth; the dry run and the epilogue above came out of those.
+- `work/submission.json` names the commit that holds all of this.
+
+
 ## Our entry: a builder that reads the brief, not one that knows it
 
 **The problem.** A bank hands over its brief, 47 numbered rules for a collections call or a folder of emails, memos, a
@@ -91,7 +129,24 @@ reliability were read for what transfers.
 - Sources: the [hackathon page](https://www.freyavoice.ai/hackathon), [τ^τ-bench](https://arxiv.org/abs/2609.04611),
   and the papers listed in `docs/research-edge.md`.
 
+## Repository map
+
+| Where | What |
+|---|---|
+| `builder/` | the builder: `build.py` (the one command), `documents.py` (folder of md, docx, xlsx, pdf, json to text), `design.py` (the model designs a workflow for a case the template does not fit), `dryrun.py` (data-path dry run against the live mock), `normalize.py`, `render.py`, `hooks.py`, `dates.py`, `adapt.py`, `lint.py` (the collections template), `selfcheck.py`, `llm.py` |
+| `mock/` | the bank mock on Cloudflare Workers: `src/final.js` (the final's services, data-driven), `customers.json` (the bank's test customers), `routes.json`, `make_openapi.py`, `openapi.json`, `check_final.py`; `src/index.js` and `check.py` are the practice mock |
+| `briefs/final/` | the final case as the bank published it; `briefs/brief-a.md`, `brief-b.md` the practice briefs |
+| `traces/` | one trace per build (`final.log` is the submitted run; `final-<start>.log` and `.policy.json` the builder's own copies) |
+| `final.workflow.json` | the submitted agent, exported from the platform right after the save |
+| `tools/` | `hidden.py` (runs the build, checks trace and export, prints `submission.json`), `run_cases.py` and `review_run.py` (practice scoring and the review loop), `probe.py` |
+| `tests/` | 88 unit tests (`python3 -m unittest discover -s tests -q`) |
+| `docs/` | the platform reference the builder reads (`workflow-format.md`, `tools-and-code.md`, `api.md`), the runbook, the write-ups and figures |
+
+
 ---
+
+<details>
+<summary>Appendix: the kit's original README (practice phase), kept for reference</summary>
 
 **Kit version 3** (10 October 2026). The file `VERSION` holds the number. When we update the kit, the number goes up and the changes are listed here.
 
@@ -159,27 +214,7 @@ There is no partial credit. Your score is the share of customers handled.
 
 The same phone agent can pass a customer in one run and fail it in the next. Treat one green run as a hint, not as proof.
 
-## The final submission (11 October 2026)
-
-- The case: `briefs/final/` as the bank published it (BRIEF.md first). An inbound line: the phone menu has identified the
-  caller, the assistant finds the card, reads the statement debt in four currencies with the due date, can move the
-  statement week or e-mail the statement, and hands payment or a request for a person to an agent. Turkish.
-- The run: `traces/final.log` (commit 96322cf, clean tree, 21:42 Istanbul, 894 s): 19 documents read, the mock's
-  OpenAPI, the plan step chose the design path, one design call of 878 s, lint clean, the data-path dry run reached a
-  conversation step with the live services, the platform's dry run accepted, saved as version 4 (13 steps, 8 tools),
-  exported to `final.workflow.json`. The builder's own trace and the policy it kept are `traces/final-20261011-214233.*`.
-- The mock: `https://bank-mock.bank-mock.workers.dev` (`/voice/v1/<service>`, `/openapi.json`, `/ledger/<customer>`).
-- What the agent does well on our self-test: the single-card reading with amounts and dates in Turkish words and currency
-  names in full, the card choice, the week change with preview and explicit confirmation, the e-mail send after
-  confirmation, the missing e-mail, the service failure, the payment request, the new card without a statement. What it
-  reads differently from the latest sources: the "only the latest statement" sentence, the no-card exit, the shared
-  statement's week change, the number of calming replies, the order of the cut-day sentences.
-- Earlier builds that evening: two design calls timed out at the model-call cap (the answer, not the reading, is what
-  takes long; the cap and size limits were raised), one design dropped a request field the engine removes before the
-  hook runs, one read the card list at the wrong depth; the dry run and the epilogue above came out of those.
-- `work/submission.json` names the commit that holds all of this.
-
-## The final, as the kit announced it
+## The final, as the kit announced it before the form changed
 
 - On Sunday we publish briefs you have not seen. They are the same kind of call with different rules: other numbers and limits, other identity questions, another outcome table, another calendar. Their form can differ too: one final brief is a clean specification, the other is raw bank material (a mail, a policy extract, a memo that changes it, a code list).
 - Each final brief comes with its own tool API file. The seven tool names stay the same. The fields and the allowed values can change.
@@ -215,3 +250,5 @@ So build something that reads a brief, not something that knows this one. Whatev
 - The bank answers `unknown product_id`: the model made an id up. Product ids come from `get_account` (`p1`, `p2`, ...). Give them to the model in the tool result, or fill them in with code.
 - A simulation stays at "running" and no call ever starts: the workflow cannot start a call. Try one chat turn. Leave `agent_config` out of the workflow you send.
 - The agent says nothing after a tool call and the customer hangs up: see "Tool results and the next turn" in `docs/tools-and-code.md`.
+
+</details>
