@@ -132,6 +132,8 @@ Consequences: a routing instruction inside a prompt does nothing. Variable condi
 - Built-in date extraction (`type: "date"`) has two traps here: it turns vague periods like "next week" into a concrete date (Brief A rule 21 wants you to ask once instead), and relative dates like "tomorrow" are most likely resolved against the real clock, not the `now` call variable. Safer: extract what the customer said as text and resolve it in code from `now`, or write a custom `extraction_prompt` that keeps all four `{{extractor.*}}` placeholders.
 - Leave `agent_config` out of the workflow you send. The first `save_workflow` only creates the workflow; the model fix in `agent_config` happens on an update. A simulation runs anyway, but a chat turn may not start until you have saved a second time.
 - The chat route may skip a first step that is a code step; a simulation runs it. Keep this in mind when you test with `tools/chat.py`.
+- A simulation whose runner stops polling can stay "running" and the workspace then refuses new ones. `freya.cancel_simulation(id)` (POST `/api/v2/simulations/{id}/cancel`) stops it at once; the dashboard delete also works. Never kill `run_cases.py`: the simulation keeps running on Freya and the next one waits for it. `freya.api` retries every call twice on a 5xx or a dropped connection.
+- A 504 on the chat route does not mean simulations are down; check `GET /api/v2/simulations?limit=10`. A repetition where no customer has a single tool call and the agent turn is 0 s is a platform outage, not an agent fault: `run_cases.py` discards it once and repeats it after 5 minutes. Do not "fix" the workflow for it.
 
 ### 4.5 Debugging tools
 

@@ -74,6 +74,7 @@ def export_workflow(workflow_id, path):
     w = api("GET", f"/api/v2/workflow/{workflow_id}", workspaceId=workspace_id())["workflow"]
     open(path, "w").write(json.dumps({"workflow_id": w["id"], "agent_id": w.get("agentId"), "updated_at": w.get("updatedAt"), "workflow": w["workflow"]}, indent=1)); return path
 def create_personas(personas):        return api("POST", "/api/v2/personas", {"personas": personas})
+def cancel_simulation(sim_id):        return api("POST", f"/api/v2/simulations/{sim_id}/cancel", {})   # a simulation left "running" blocks the workspace
 def get_iteration(sim_id, it_id):
     """One iteration with ALL its runs. The route returns 30 runs by default and 100 at most, so this reads page by page."""
     out, off = None, 0

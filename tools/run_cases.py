@@ -68,10 +68,13 @@ def main():
     (ROOT / "results").mkdir(exist_ok=True)
     reps, total_s = [], 0
     for rep in range(a.reps):
-        for attempt in range(1 + a.rerun_if_slow):                   # organisers: a run made while the model was slow is thrown away and repeated
+        slow_reruns, outage_seen = 0, False
+        while True:                                                  # organisers: a run made while the model was slow is thrown away and repeated
             rows, sim_id, it_id, status, took, med = run_once(a.agent_id, cases, ids)
-            if med <= 10 or attempt == a.rerun_if_slow: break
-            print(f"-- run discarded: median slowest turn {med:.0f} s. Waiting 5 minutes, then repeating it.\n", flush=True); time.sleep(300)
+            if not outage_seen and med == 0 and not any(r["tools"] for r in rows):   # no customer had a tool call and no agent turn: the platform did not run the calls
+                outage_seen = True; print("-- run discarded: no customer had a single tool call, so the platform did not run the calls. Waiting 5 minutes, then repeating it.\n", flush=True); time.sleep(300); continue
+            if med <= 10 or slow_reruns == a.rerun_if_slow: break
+            slow_reruns += 1; print(f"-- run discarded: median slowest turn {med:.0f} s. Waiting 5 minutes, then repeating it.\n", flush=True); time.sleep(300)
         reps.append(rows); total_s += took
         if a.reps > 1: print(f"-- run {rep + 1} of {a.reps}: {sum(r['pass'] for r in rows)} / {len(rows)} passed, {took:.0f} s\n")
     need = a.reps                                                # a customer counts only when every run passes
