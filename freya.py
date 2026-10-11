@@ -75,11 +75,18 @@ def export_workflow(workflow_id, path):
     open(path, "w").write(json.dumps({"workflow_id": w["id"], "agent_id": w.get("agentId"), "updated_at": w.get("updatedAt"), "workflow": w["workflow"]}, indent=1)); return path
 def create_personas(personas):        return api("POST", "/api/v2/personas", {"personas": personas})
 def cancel_simulation(sim_id):        return api("POST", f"/api/v2/simulations/{sim_id}/cancel", {})   # a simulation left "running" blocks the workspace
+def patient(call, tries=120):
+    """A read that outlives a platform outage: the simulation keeps running on Freya, so the runner keeps waiting instead of orphaning it."""
+    for n in range(tries):
+        try: return call()
+        except Exception as e:
+            if n == tries - 1: raise
+            print("read failed, waiting 20 s: " + str(e)[:80], flush=True); time.sleep(20)
 def get_iteration(sim_id, it_id):
     """One iteration with ALL its runs. The route returns 30 runs by default and 100 at most, so this reads page by page."""
     out, off = None, 0
     while True:
-        r = api("GET", f"/api/v2/simulations/{sim_id}/iterations/{it_id}", limit=100, offset=off)
+        r = patient(lambda: api("GET", f"/api/v2/simulations/{sim_id}/iterations/{it_id}", limit=100, offset=off))
         if out is None: out = r
         else: out["runs"] += r["runs"]
         off += 100
@@ -108,7 +115,7 @@ def run_simulation(agent_id, name, variables_by_persona, max_seconds=420, concur
     sim_id = (sim.get("simulation") or sim)["id"]
     while True:
         time.sleep(10)
-        s = api("GET", f"/api/v2/simulations/{sim_id}"); s = s.get("simulation") or s
-        if s.get("status") in ("completed", "failed", "paused"): break
-    its = api("GET", f"/api/v2/simulations/{sim_id}/iterations"); its = its.get("iterations") or its.get("items") or its
+        s = patient(lambda: api("GET", f"/api/v2/simulations/{sim_id}")); s = s.get("simulation") or s
+        if s.get("status") in ("completed", "failed", "paused", "cancelled"): break
+    its = patient(lambda: api("GET", f"/api/v2/simulations/{sim_id}/iterations")); its = its.get("iterations") or its.get("items") or its
     return sim_id, its[0]["id"], s.get("status")
