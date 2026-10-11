@@ -83,12 +83,14 @@ class Rendered(unittest.TestCase):
                 self.assertEqual(config["body"]["product_id"], "blocked", date); self.assertEqual(config["body"]["customer_id"], "c1"); self.assertIn(expect_block, vars["promise_block"])
             else:
                 self.assertEqual(config["body"]["date"], date); self.assertEqual(vars["promise_block"], "")
-        # an identical promise recorded earlier in the call is not sent again; a different date is
-        for date, word in (("2026-10-16", "ALREADY recorded"), ("2026-10-19", "")):
-            vars = {"today": "2026-10-14", "product_facts_json": facts, "promises_recorded": json.dumps([{"product_id": "p1", "amount": 200, "date": "2026-10-16"}])}
-            config = {"body": {"customer_id": "c1", "product_id": "p1", "amount": 200.0, "date": date}}
+        # an identical promise recorded earlier in the call is not sent again, even when the date is said in words; a different date or product is
+        facts2 = json.dumps(json.loads(facts) + [{"product_id": "p2", "deadline": "2026-10-23", "floor": 10, "words": "loan"}])
+        for product, date, word in (("p1", "2026-10-16", "ALREADY recorded"), ("p1", "Friday", "ALREADY recorded"), ("p1", "2026-10-19", ""), ("p2", "2026-10-16", "")):
+            vars = {"today": "2026-10-14", "product_facts_json": facts2, "promises_recorded": json.dumps([{"product_id": "p1", "amount": "200", "date": "2026-10-16"}])}
+            config = {"body": {"customer_id": "c1", "product_id": product, "amount": 200.0, "date": date}}
             exec(pre, {"vars": vars, "config": config, "json": json, "datetime": datetime})
-            self.assertIn(word, vars["promise_block"], date); self.assertEqual(config["body"]["product_id"] == "blocked", bool(word))
+            self.assertIn(word, vars["promise_block"], product + " " + date); self.assertEqual(config["body"]["product_id"] == "blocked", bool(word))
+            self.assertEqual(json.loads(vars["promise_attempt"])["date"], "2026-10-16" if date == "Friday" else date)
 
     def test_verify_pre_hook_joins_partial_answers(self):
         import datetime

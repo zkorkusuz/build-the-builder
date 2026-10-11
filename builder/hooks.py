@@ -142,6 +142,8 @@ import json
 __COMMON__
 CAL = __CAL__
 ADJ = __ADJ__
+def _same_promise(x, b):
+    return str(x.get('product_id')) == str(b.get('product_id')) and str(x.get('date')) == b['date'] and abs(float(x.get('amount') or 0) - float(b.get('amount') or 0)) < 0.005
 try:
     b = config.get('body') if isinstance(config, dict) else None
     facts = _load('product_facts_json', [])
@@ -151,7 +153,6 @@ try:
         if b.get('product_id') not in ids and len(facts) == 1:
             b['product_id'] = ids[0]
         f = next((x for x in facts if x.get('product_id') == b.get('product_id')), None)
-        vars['promise_attempt'] = json.dumps({'product_id': b.get('product_id'), 'amount': b.get('amount'), 'date': b.get('date'), 'words': (f or {}).get('words', '')})
         if f is None:
             vars['promise_block'] = 'NOT recorded: product_id ' + str(b.get('product_id')) + ' is not one of the customer products. Use exactly one of these ids: ' + ', '.join(str(x) for x in ids) + ' and CALL create_promise again.'
             _block(b)
@@ -175,9 +176,11 @@ try:
                     _block(b)
                 else:
                     b['date'] = day.isoformat()
+                    # the attempt is kept with the date the bank receives, so the post-hook reads back and compares the same value
+                    vars['promise_attempt'] = json.dumps({'product_id': b.get('product_id'), 'amount': b.get('amount'), 'date': b['date'], 'words': f.get('words', '')})
                     done = _load('promises_recorded', [])
                     # the bank would record a repeated identical promise twice, so a retry after a lost answer stops here
-                    if any(str(x.get('product_id')) == str(b.get('product_id')) and str(x.get('date')) == b['date'] and abs(float(x.get('amount') or 0) - float(b.get('amount') or 0)) < 0.005 for x in done):
+                    if any(_same_promise(x, b) for x in done):
                         vars['promise_block'] = 'ALREADY recorded earlier in this call: ' + str(f.get('words') or 'this product') + ', ' + str(b.get('amount')) + ' on ' + b['date'] + '. Do not CALL create_promise again for it. Tell the customer it is recorded, then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
                         _block(b)
 except Exception:
