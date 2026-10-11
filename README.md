@@ -16,13 +16,23 @@ instead, so the decision moves. Sixteen moved in one day.
 
 ![Sixteen decisions moved out of the model, Saturday 23:50 to Sunday 11:14](docs/figures/fig4-decisions.svg)
 
-**How a build works** (one command, 2 to 3 minutes, about $0.50 of Claude credits, nothing on Freya):
+**How a build works** (one command; 2 to 3 minutes and about $0.50 for a collections brief, 15 minutes and about $3 for
+a case the model has to design from scratch; nothing on Freya):
 
-1. **Normalize.** One Claude call reads every document in the folder (Markdown, Word, PDF, Excel, JSON) into `policy.json`
-   in a fixed schema and writes down each ambiguity it resolved. A later memo overrides earlier text.
+0. **Plan.** One short Claude call decides whether the documents describe the outbound collections call the fixed template
+   was built for. If yes, steps 1 to 3; if not, step 1' (the final's case, an inbound statement-debt line, took this path).
+1. **Normalize.** One Claude call reads every document in the folder (Markdown, Word, PDF, Excel, JSON; a huge data file is
+   abridged) into `policy.json` in a fixed schema and writes down each ambiguity it resolved. A later memo overrides earlier text.
 2. **Render.** Python fills a fixed 40-step workflow from the policy. Field names come from the tool API, so renamed fields
    and `$ref` schemas work; Turkish or English day, month and time words are translated before every date parser.
 3. **Adapt.** One Claude call checks the prompts rule by rule and adds text only for what structure cannot carry.
+1'. **Design.** One Claude call writes the whole workflow from the documents, the mock's OpenAPI and the platform's own
+   reference pages (`docs/workflow-format.md`, `docs/tools-and-code.md`), within size limits. The kit's lint checks it and a
+   repair call fixes what it flags. Then a **data-path dry run**: the builder walks the engine-run steps from the first node
+   with the workflow's test variables against the live mock, running the model's hooks, mappings, code and routes; a
+   non-200 answer or a call that ends before any conversation step goes back to the model with the exact trail for one
+   repair. Every engine-run call also gets an epilogue that restores request fields the platform drops for an empty
+   placeholder before the hook runs.
 4. **Lint, dry run, publish** in one slot per case, **export**, a one-turn chat probe, and a trace of all of it.
 
 The builder runs in its own folder with only its skill, the case files and the tool spec, so nothing from a practice
@@ -37,12 +47,16 @@ cd mock && npm install && npx wrangler login && npx wrangler deploy && cd ..   #
 python3 builder/build.py briefs/final/ https://<worker>.<subdomain>.workers.dev 2>&1 | tee traces/final.log   # the final's form: a folder of documents and the mock's address
 python3 builder/build.py briefs/brief-a.md tools/openapi.json 2>&1 | tee traces/brief-a.log   # the practice form: brief file(s), then the API file
 python3 tools/hidden.py briefs/final/ <mock url> --team <name> --member "<name> <email>"   # runs the command above, checks trace and export, prints submission.json
-python3 -m unittest discover -s tests -q        # 77 local tests
+python3 -m unittest discover -s tests -q        # 88 local tests
 ```
 
 The build prints one JSON line with the workflow id, the agent id, the export file (`<slot>.workflow.json`) and the trace
 (`traces/<slot>-<start>.log`, with the policy it rendered next to it). `docs/runbook-final.md` is the step-by-step for the
-final; `mock/check.py <mock url> <case>` calls every tool of the deployed mock once and prints its ledger.
+final. The final's mock is `mock/src/final.js`: a data-driven Worker that serves the bank's recorded answers from
+`mock/customers.json` (status, body and delay per customer, card and week) exactly as the service contract says, records
+every call in a ledger, and serves an OpenAPI generated from the recorded shapes (`mock/make_openapi.py` from
+`mock/routes.json`); `mock/check_final.py <mock url> mock/customers.json mock/routes.json [customer ...]` replays every
+recorded answer against the deployed Worker. The practice mock stays in `mock/src/index.js`.
 
 ### Does it work
 
@@ -57,6 +71,7 @@ final; `mock/check.py <mock url> <case>` calls every tool of the deployed mock o
 | A different bank from an email, a memo and a code list (Northwind, 13 cases) | 13 of 13 in all three repetitions |
 | Two more banks and a renamed tool API | through normalize, render, lint and the platform's dry run |
 | Noise floor the agent cannot remove | about 1% of calls lost to a platform sandbox fault, about 3% to judge variance |
+| **The final, 11 October: Freya Bank's inbound statement-debt line, in Turkish** (a folder of 19 documents, our own mock) | designed by the model in one build; 8 of 14 self-written customers pass the judge on our mock (`results/final-selftest-3.json`); the six misses are readings of conflicting sources, see below |
 
 More in `docs/figures/` (the agent as a graph, robustness by style and day) and in the write-ups below.
 
@@ -144,7 +159,27 @@ There is no partial credit. Your score is the share of customers handled.
 
 The same phone agent can pass a customer in one run and fail it in the next. Treat one green run as a hint, not as proof.
 
-## The final
+## The final submission (11 October 2026)
+
+- The case: `briefs/final/` as the bank published it (BRIEF.md first). An inbound line: the phone menu has identified the
+  caller, the assistant finds the card, reads the statement debt in four currencies with the due date, can move the
+  statement week or e-mail the statement, and hands payment or a request for a person to an agent. Turkish.
+- The run: `traces/final.log` (commit 96322cf, clean tree, 21:42 Istanbul, 894 s): 19 documents read, the mock's
+  OpenAPI, the plan step chose the design path, one design call of 878 s, lint clean, the data-path dry run reached a
+  conversation step with the live services, the platform's dry run accepted, saved as version 4 (13 steps, 8 tools),
+  exported to `final.workflow.json`. The builder's own trace and the policy it kept are `traces/final-20261011-214233.*`.
+- The mock: `https://bank-mock.bank-mock.workers.dev` (`/voice/v1/<service>`, `/openapi.json`, `/ledger/<customer>`).
+- What the agent does well on our self-test: the single-card reading with amounts and dates in Turkish words and currency
+  names in full, the card choice, the week change with preview and explicit confirmation, the e-mail send after
+  confirmation, the missing e-mail, the service failure, the payment request, the new card without a statement. What it
+  reads differently from the latest sources: the "only the latest statement" sentence, the no-card exit, the shared
+  statement's week change, the number of calming replies, the order of the cut-day sentences.
+- Earlier builds that evening: two design calls timed out at the model-call cap (the answer, not the reading, is what
+  takes long; the cap and size limits were raised), one design dropped a request field the engine removes before the
+  hook runs, one read the card list at the wrong depth; the dry run and the epilogue above came out of those.
+- `work/submission.json` names the commit that holds all of this.
+
+## The final, as the kit announced it
 
 - On Sunday we publish briefs you have not seen. They are the same kind of call with different rules: other numbers and limits, other identity questions, another outcome table, another calendar. Their form can differ too: one final brief is a clean specification, the other is raw bank material (a mail, a policy extract, a memo that changes it, a code list).
 - Each final brief comes with its own tool API file. The seven tool names stay the same. The fields and the allowed values can change.

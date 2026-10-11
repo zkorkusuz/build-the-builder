@@ -1,5 +1,8 @@
 # Figures for the write-up and the stakeholder deck
 
+> The figures cover the practice phase (Brief A, 10 to 11 October). The final's case and result are in the README's
+> "The final submission" section and in `traces/final.log`; they are not charted.
+
 Hand-written SVG (standard library only, no external fonts or scripts), 1200 px wide, white background,
 colour-blind-safe palette: blue `#1f4bd8`, green `#167a4a`, amber `#9a5b00`, red `#b4232b`, grey `#5b6473`.
 Data for figures 2 to 4 is the run series of 10 to 11 October 2026 (Istanbul time); figure 1 is built from
