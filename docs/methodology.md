@@ -50,8 +50,10 @@ rule's home, every ambiguity and the mapped field names; the policy that produce
    `run25`, `run32`; 19/21 on `run24` and 20/21 on `run33`, both misses judge variance or a persona artifact.
 5. Five speaking styles: in_words 21/21 (`run14-in_words.json`); pieces 16, 18, 19, 20 of 21 by version, then 19/21
    three of three (`run26-pieces-x3.json`) with the two misses fixed and rerun clean (`run31-targeted.json`);
-   corrects 21/21 three of three (`run27-corrects-x3.json`). Talkative and asks_back were queued as run 38 at
-   writing time; not in the repository yet.
+   corrects 21/21 three of three (`run27-corrects-x3.json`); asks_back 18/21 (`run38-asks_back.json`: a persona that
+   never spoke, a judge reading of the ask-once rule, a missed confirmation); talkative 7/21
+   (`run38-talkative.json`): all 14 losses on the simulator side, 8 calls with no customer turn and 6 with lines cut
+   mid-sentence, so no agent rule gap (`review-run38-talkative.md`).
 6. Other calendar days with `tests/day_cases.py`: Friday 16 October 21/21 (`run28-fri.json`); holiday eve 23 October
    18/19 (`run29-holeve.json`), the miss a simulator persona cutting its line short.
 7. Two variant banks: Northwind from an email, a memo and a code list, run against our own mock bank through a
@@ -59,7 +61,9 @@ rule's home, every ambiguity and the mapped field names; the policy that produce
    lived in the extractor, 13/13 three of three once it was a code step, 13/13 on the final code
    (`results/v1-variant.json`, `review-v1-variant.md`). Harbor Credit Union, a clean spec with three identity
    questions, a six-day week, three attempts and no floor, through normalize, render, lint and dry run (5f24cee);
-   not simulated.
+   not simulated. Brief B, built from both practice briefs and run on the same mock with 17 cases: 10/17
+   (`results/b-variant.json`, `review-b-variant.md`); 5 losses were hang-ups on 32 to 73 s agent turns, 2 were
+   multi-product rule gaps fixed for that path only (a7ecb70), rerun queued as run 39.
 8. A renamed tool API: paths with a prefix, `$ref` schemas, renamed request and response fields, covered by
    `test_renamed_api_fields_and_ref_schemas` (de0a864, a59f74b). A normalize check on a renamed API file filled
    the field map exactly (session note of 14:10; the file is in a session scratchpad, not the repository).
@@ -81,7 +85,7 @@ not a business day (5348e58).
 
 ## 5. Keeping platform losses out of the agent's score
 
-Four kinds of loss are not agent errors and are logged, not fixed:
+Five kinds of loss are not agent errors and are logged, not fixed:
 
 - Model latency. The runner prints the median slowest agent turn per repetition. Above 10 s the platform's model
   was busy and customers hang up on the silence (`README.md`). Run 37 at 16:08 was 21, 19, 19 of 21 with medians of
@@ -97,6 +101,10 @@ Four kinds of loss are not agent errors and are logged, not fixed:
   misreads a rule: the opening question counted as a persuasion offer, a name confirmation counted as an identity
   ask (`review-run24-reps3.md`, 2 of 63 calls, about 3%); "This call may be recorded" counted as "recorded" before
   a promise (NW-13 in `review-v1-variant.md`). Locally, an "inconclusive" verdict counts as a fail.
+- Simulator persona faults. The customer never speaks, or its line is cut mid-sentence so the digits or the year
+  never arrive. Rare in the plain styles (PUB-03 twice in about nine runs), dominant in talkative: 14 of 21 calls
+  in `run38-talkative.json`, read one by one in `review-run38-talkative.md`. A simulator persona that never speaks
+  looks like an agent that went silent; the slowest-turn column at 0.0 s tells them apart.
 
 ## 6. The two outages of Sunday afternoon
 
