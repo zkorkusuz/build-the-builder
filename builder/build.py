@@ -59,7 +59,11 @@ def main(argv):
         except Exception as e:
             trace("adapt: skipped after error " + str(e)[:200])
     export_path = ROOT / (slot + ".workflow.json")
-    freya.export_workflow(saved["workflow_id"], str(export_path))
+    try:
+        freya.export_workflow(saved["workflow_id"], str(export_path))
+    except Exception as e:                        # the platform read failed: the file still holds the workflow exactly as it was saved
+        export_path.write_text(json.dumps({"workflow_id": saved["workflow_id"], "agent_id": saved["agent_id"], "exported_from": "the workflow as sent, the platform did not answer the read", "workflow": workflow}, indent=1))
+        trace("export: written from the saved workflow after " + str(e)[:120])
     trace("export: " + str(export_path))
 
     if opts["selftest"] and left() > 13 * 60:
