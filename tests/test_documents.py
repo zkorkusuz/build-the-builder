@@ -106,3 +106,12 @@ class Fixtures(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Abridged(unittest.TestCase):
+    def test_a_huge_document_is_cut_with_a_note_and_a_small_one_kept(self):
+        from builder import documents
+        big = "x" * (documents.ABRIDGE_AT + 1000)
+        out = documents.abridge(big, "big.json")
+        self.assertLess(len(out), documents.ABRIDGE_AT); self.assertIn("[... abridged: ", out); self.assertIn("big.json", out)
+        self.assertEqual(documents.abridge("small", "s.md"), "small")

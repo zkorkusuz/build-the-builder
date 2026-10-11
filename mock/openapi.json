@@ -1,159 +1,194 @@
 {
  "openapi": "3.0.3",
  "info": {
-  "title": "Freya Bank collections tools",
-  "version": "0.3-draft",
-  "description": "Mock of the bank's systems for the Build the Builder hackathon. We host it. Every call is written to the ledger the scorer reads. The service does not enforce the brief: it records a promise on a holiday or past the deadline without complaint. Following the brief is the agent's job. The seven tool calls need no key: the customer_id in the body is the secret of one call."
+  "title": "Freya Bank voice services: statement and debt (the bank's test environment, mocked)",
+  "version": "1.0.0",
+  "description": "Every service is POST with a JSON body {data: {...}, call: {ani, lang}}; every answer has a result object (returnCode 1 and HTTP 200 mean success) and successful answers also have data. Error answers have only result (type ERROR or WARNING, code and message). Dates are dd.MM.yyyy strings, amounts JSON numbers. Always send cardNumber exactly as cards.list returned it."
  },
  "servers": [
   {
-   "url": "https://freya-bank-mock.freyavoice.workers.dev/v1"
+   "url": "https://bank-mock.bank-mock.workers.dev/voice/v1"
   }
  ],
- "components": {},
  "paths": {
-  "/verify_identity": {
+  "/cards.list": {
    "post": {
-    "summary": "Check one security answer. Three wrong answers in total end the check.",
+    "operationId": "cards_list",
+    "summary": "The customer's active credit cards the assistant may talk about",
+    "description": "Success: data.cards (cardNumber as the services expect it back, cardNumberLast4, productName free text and possibly empty, status, isMainCard), data.validCardsCount, data.exitState 1_CARD or MULTI_CARD. Two cards can share a product name and the last four digits. 404 FB_IVR_CHANNEL_102: the customer has no valid card (a warning, not a broken service). 500 FBE00099: technical error.",
     "requestBody": {
      "required": true,
      "content": {
       "application/json": {
        "schema": {
         "type": "object",
+        "required": [
+         "data"
+        ],
         "properties": {
-         "customer_id": {
-          "type": "string"
-         },
-         "field": {
-          "type": "string",
-          "enum": [
-           "date_of_birth",
-           "phone_last4"
+         "data": {
+          "type": "object",
+          "properties": {
+           "customerNo": {
+            "type": "string",
+            "description": "the customer number the phone menu handed over with the call"
+           },
+           "aiFlow": {
+            "type": "string",
+            "description": "which use case is asking; CardOps for this one"
+           }
+          },
+          "required": [
+           "customerNo",
+           "aiFlow"
           ]
          },
-         "answer": {
-          "type": "string",
-          "description": "For date_of_birth: the date as YYYY-MM-DD. Callers say dates in words, the agent converts. An unreadable value is rejected with ok=false and is not counted as a wrong answer. For phone_last4: four digits."
+         "call": {
+          "type": "object",
+          "description": "call metadata the bank logs; not checked in test",
+          "properties": {
+           "ani": {
+            "type": "string",
+            "description": "the caller's number"
+           },
+           "lang": {
+            "type": "string",
+            "description": "tr"
+           }
+          }
          }
-        },
-        "required": [
-         "customer_id",
-         "field",
-         "answer"
-        ]
+        }
        }
       }
      }
     },
     "responses": {
      "200": {
-      "description": "`ok` is false when the action was not carried out.",
+      "description": "the customer's cards",
       "content": {
        "application/json": {
         "schema": {
          "type": "object",
          "properties": {
-          "ok": {
-           "type": "boolean"
+          "data": {
+           "type": "object",
+           "properties": {
+            "cards": {
+             "type": "array",
+             "items": {
+              "type": "object",
+              "properties": {
+               "cardNumber": {
+                "type": "string"
+               },
+               "cardNumberLast4": {
+                "type": "string"
+               },
+               "productName": {
+                "type": "string"
+               },
+               "status": {
+                "type": "string"
+               },
+               "isMainCard": {
+                "type": "boolean"
+               }
+              }
+             }
+            },
+            "validCardsCount": {
+             "type": "number"
+            },
+            "exitState": {
+             "type": "string"
+            }
+           }
           },
-          "error": {
-           "type": "string"
-          },
-          "verified": {
-           "type": "boolean"
-          },
-          "wrong_answers_left": {
-           "type": "integer"
-          },
-          "all_verified": {
-           "type": "boolean"
-          },
-          "hint": {
-           "type": "string",
-           "enum": [
-            "day_month_swapped"
-           ]
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string",
+             "nullable": true
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string",
+               "nullable": true
+              },
+              "errorOrigin": {
+               "type": "string",
+               "nullable": true
+              }
+             }
+            }
+           }
           }
          }
         }
        }
       }
      },
-     "500": {
-      "description": "The service failed. Nothing was recorded. The call may be repeated."
-     }
-    }
-   }
-  },
-  "/get_account": {
-   "post": {
-    "summary": "The late products. Refused until both questions are passed.",
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "type": "object",
-        "properties": {
-         "customer_id": {
-          "type": "string"
-         }
-        },
-        "required": [
-         "customer_id"
-        ]
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "`ok` is false when the action was not carried out.",
+     "404": {
+      "description": "the customer has no valid card (FB_IVR_CHANNEL_102, a warning)",
       "content": {
        "application/json": {
         "schema": {
          "type": "object",
          "properties": {
-          "ok": {
-           "type": "boolean"
-          },
-          "error": {
-           "type": "string"
-          },
-          "products": {
-           "type": "array",
-           "items": {
-            "type": "object",
-            "properties": {
-             "product_id": {
-              "type": "string"
-             },
-             "type": {
-              "type": "string",
-              "enum": [
-               "credit_card",
-               "personal_loan",
-               "car_loan"
-              ]
-             },
-             "card_last4": {
-              "type": "string",
-              "description": "credit cards only"
-             },
-             "past_due": {
-              "type": "number"
-             },
-             "days_late": {
-              "type": "integer"
-             },
-             "minimum_payment": {
-              "type": "number",
-              "description": "credit cards only"
-             },
-             "instalment_amount": {
-              "type": "number",
-              "description": "loans only"
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
              }
             }
            }
@@ -164,125 +199,340 @@
       }
      },
      "500": {
-      "description": "The service failed. Nothing was recorded. The call may be repeated."
-     }
-    }
-   }
-  },
-  "/create_promise": {
-   "post": {
-    "summary": "Record a payment promise. One per product.",
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "type": "object",
-        "properties": {
-         "customer_id": {
-          "type": "string"
-         },
-         "product_id": {
-          "type": "string"
-         },
-         "amount": {
-          "type": "number"
-         },
-         "date": {
-          "type": "string",
-          "format": "date"
-         }
-        },
-        "required": [
-         "customer_id",
-         "product_id",
-         "amount",
-         "date"
-        ]
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "`ok` is false when the action was not carried out.",
+      "description": "technical error (FBE00099)",
       "content": {
        "application/json": {
         "schema": {
          "type": "object",
          "properties": {
-          "ok": {
-           "type": "boolean"
-          },
-          "error": {
-           "type": "string"
-          },
-          "promise_id": {
-           "type": "string"
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
           }
          }
         }
        }
       }
-     },
-     "500": {
-      "description": "The service failed. Nothing was recorded. The call may be repeated."
      }
     }
    }
   },
-  "/add_note": {
+  "/cards.balance": {
    "post": {
-    "summary": "Brief B: record why a product ended without a promise.",
+    "operationId": "cards_balance",
+    "summary": "Statement and due dates and the debt of one card in every currency",
+    "description": "data.statementDate and data.lastPayDate (last issued statement and its due date), data.nextStatementDate and data.nextLastPayDate, one block per currency debtTL, debtUSD, debtEUR, debtGBP (a block can be missing; a missing block is not a zero) with statementDebt, minPayment, remainingDebt, remainingMinPayment, totalDebt, currentPeriodExpense, transferAmount, statementPaymentStatus and totalDebtPaymentStatus HAS_DEBT or NO_DEBT, remainAutomaticPaymentAmount; top-level statementPaymentStatus, totalDebtPaymentStatus, automaticPaymentFlag Y or N. Dates dd.MM.yyyy, amounts numbers. 404 FB_IVR_CHANNEL_120 card not found, 500 FBE00099.",
     "requestBody": {
      "required": true,
      "content": {
       "application/json": {
        "schema": {
         "type": "object",
+        "required": [
+         "data"
+        ],
         "properties": {
-         "customer_id": {
-          "type": "string"
-         },
-         "product_id": {
-          "type": "string"
-         },
-         "reason": {
-          "type": "string",
-          "enum": [
-           "refused",
-           "hardship",
-           "dispute",
-           "paid",
-           "service_error"
+         "data": {
+          "type": "object",
+          "properties": {
+           "cardNumber": {
+            "type": "string",
+            "description": "the cardNumber exactly as cards.list returned it"
+           }
+          },
+          "required": [
+           "cardNumber"
           ]
          },
-         "text": {
-          "type": "string"
+         "call": {
+          "type": "object",
+          "description": "call metadata the bank logs; not checked in test",
+          "properties": {
+           "ani": {
+            "type": "string",
+            "description": "the caller's number"
+           },
+           "lang": {
+            "type": "string",
+            "description": "tr"
+           }
+          }
          }
-        },
-        "required": [
-         "customer_id",
-         "product_id",
-         "reason"
-        ]
+        }
        }
       }
      }
     },
     "responses": {
      "200": {
-      "description": "`ok` is false when the action was not carried out.",
+      "description": "the card's statement debt",
       "content": {
        "application/json": {
         "schema": {
          "type": "object",
          "properties": {
-          "ok": {
-           "type": "boolean"
+          "data": {
+           "type": "object",
+           "properties": {
+            "cardNumber": {
+             "type": "string"
+            },
+            "cardNumberLast4": {
+             "type": "string"
+            },
+            "productName": {
+             "type": "string"
+            },
+            "statementDate": {
+             "type": "string"
+            },
+            "lastPayDate": {
+             "type": "string"
+            },
+            "nextStatementDate": {
+             "type": "string"
+            },
+            "nextLastPayDate": {
+             "type": "string"
+            },
+            "debtTL": {
+             "type": "object",
+             "properties": {
+              "statementPaymentStatus": {
+               "type": "string"
+              },
+              "transferAmount": {
+               "type": "number"
+              },
+              "statementDebt": {
+               "type": "number"
+              },
+              "minPayment": {
+               "type": "number"
+              },
+              "remainingDebt": {
+               "type": "number"
+              },
+              "remainingMinPayment": {
+               "type": "number"
+              },
+              "currentPeriodExpense": {
+               "type": "number"
+              },
+              "totalDebt": {
+               "type": "number"
+              },
+              "totalDebtPaymentStatus": {
+               "type": "string"
+              },
+              "remainAutomaticPaymentAmount": {
+               "type": "number"
+              }
+             }
+            },
+            "debtUSD": {
+             "type": "object",
+             "properties": {
+              "statementPaymentStatus": {
+               "type": "string"
+              },
+              "transferAmount": {
+               "type": "number"
+              },
+              "statementDebt": {
+               "type": "number"
+              },
+              "minPayment": {
+               "type": "number"
+              },
+              "remainingDebt": {
+               "type": "number"
+              },
+              "remainingMinPayment": {
+               "type": "number"
+              },
+              "currentPeriodExpense": {
+               "type": "number"
+              },
+              "totalDebt": {
+               "type": "number"
+              },
+              "totalDebtPaymentStatus": {
+               "type": "string"
+              },
+              "remainAutomaticPaymentAmount": {
+               "type": "number"
+              }
+             }
+            },
+            "debtEUR": {
+             "type": "object",
+             "properties": {
+              "statementPaymentStatus": {
+               "type": "string"
+              },
+              "transferAmount": {
+               "type": "number"
+              },
+              "statementDebt": {
+               "type": "number"
+              },
+              "minPayment": {
+               "type": "number"
+              },
+              "remainingDebt": {
+               "type": "number"
+              },
+              "remainingMinPayment": {
+               "type": "number"
+              },
+              "currentPeriodExpense": {
+               "type": "number"
+              },
+              "totalDebt": {
+               "type": "number"
+              },
+              "totalDebtPaymentStatus": {
+               "type": "string"
+              },
+              "remainAutomaticPaymentAmount": {
+               "type": "number"
+              }
+             }
+            },
+            "debtGBP": {
+             "type": "object",
+             "properties": {
+              "statementPaymentStatus": {
+               "type": "string"
+              },
+              "transferAmount": {
+               "type": "number"
+              },
+              "statementDebt": {
+               "type": "number"
+              },
+              "minPayment": {
+               "type": "number"
+              },
+              "remainingDebt": {
+               "type": "number"
+              },
+              "remainingMinPayment": {
+               "type": "number"
+              },
+              "currentPeriodExpense": {
+               "type": "number"
+              },
+              "totalDebt": {
+               "type": "number"
+              },
+              "totalDebtPaymentStatus": {
+               "type": "string"
+              },
+              "remainAutomaticPaymentAmount": {
+               "type": "number"
+              }
+             }
+            },
+            "statementPaymentStatus": {
+             "type": "string"
+            },
+            "totalDebtPaymentStatus": {
+             "type": "string"
+            },
+            "automaticPaymentFlag": {
+             "type": "string"
+            }
+           }
           },
-          "error": {
-           "type": "string"
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string",
+             "nullable": true
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string",
+               "nullable": true
+              },
+              "errorOrigin": {
+               "type": "string",
+               "nullable": true
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "card not found (FB_IVR_CHANNEL_120)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object"
           }
          }
         }
@@ -290,110 +540,206 @@
       }
      },
      "500": {
-      "description": "The service failed. Nothing was recorded. The call may be repeated."
-     }
-    }
-   }
-  },
-  "/schedule_callback": {
-   "post": {
-    "summary": "Book a callback.",
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "type": "object",
-        "properties": {
-         "customer_id": {
-          "type": "string"
-         },
-         "date": {
-          "type": "string",
-          "format": "date"
-         },
-         "time": {
-          "type": "string",
-          "description": "HH:MM"
-         }
-        },
-        "required": [
-         "customer_id",
-         "date",
-         "time"
-        ]
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "`ok` is false when the action was not carried out.",
+      "description": "technical error (FBE00099)",
       "content": {
        "application/json": {
         "schema": {
          "type": "object",
          "properties": {
-          "ok": {
-           "type": "boolean"
-          },
-          "error": {
-           "type": "string"
+          "result": {
+           "type": "object"
           }
          }
         }
        }
       }
-     },
-     "500": {
-      "description": "The service failed. Nothing was recorded. The call may be repeated."
      }
     }
    }
   },
-  "/transfer_to_agent": {
+  "/statement.week.get": {
    "post": {
-    "summary": "Hand the call to a person.",
+    "operationId": "statement_week_get",
+    "summary": "The card's current statement week and day, and whether it shares a statement with another card",
+    "description": "data.statementWeek 1 to 4 and data.statementDay (numbers), statementDate, lastPayDate, nextStatementDate, nextLastPayDate, relationType empty, M (this is the main card of a shared statement) or C (this card is linked to a main card), relatedCardNumber and relatedCardProductName for the other card. No field says whether the week may still be changed. 404 FB_IVR_CHANNEL_121, 500 FBE00099.",
     "requestBody": {
      "required": true,
      "content": {
       "application/json": {
        "schema": {
         "type": "object",
+        "required": [
+         "data"
+        ],
         "properties": {
-         "customer_id": {
-          "type": "string"
-         },
-         "queue": {
-          "type": "string",
-          "enum": [
-           "restructuring",
-           "general",
-           "support"
+         "data": {
+          "type": "object",
+          "properties": {
+           "cardNumber": {
+            "type": "string",
+            "description": "the cardNumber exactly as cards.list returned it"
+           }
+          },
+          "required": [
+           "cardNumber"
           ]
+         },
+         "call": {
+          "type": "object",
+          "description": "call metadata the bank logs; not checked in test",
+          "properties": {
+           "ani": {
+            "type": "string",
+            "description": "the caller's number"
+           },
+           "lang": {
+            "type": "string",
+            "description": "tr"
+           }
+          }
          }
-        },
-        "required": [
-         "customer_id",
-         "queue"
-        ]
+        }
        }
       }
      }
     },
     "responses": {
      "200": {
-      "description": "`ok` is false when the action was not carried out.",
+      "description": "the card's statement week",
       "content": {
        "application/json": {
         "schema": {
          "type": "object",
          "properties": {
-          "ok": {
-           "type": "boolean"
+          "data": {
+           "type": "object",
+           "properties": {
+            "cardNumber": {
+             "type": "string"
+            },
+            "cardNumberLast4": {
+             "type": "string"
+            },
+            "productName": {
+             "type": "string"
+            },
+            "statementWeek": {
+             "type": "number"
+            },
+            "statementDay": {
+             "type": "number"
+            },
+            "statementDate": {
+             "type": "string"
+            },
+            "lastPayDate": {
+             "type": "string"
+            },
+            "nextStatementDate": {
+             "type": "string"
+            },
+            "nextLastPayDate": {
+             "type": "string"
+            },
+            "relationType": {
+             "type": "string"
+            },
+            "relatedCardNumber": {
+             "type": "string"
+            },
+            "relatedCardProductName": {
+             "type": "string"
+            }
+           }
           },
-          "error": {
-           "type": "string"
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string",
+             "nullable": true
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string",
+               "nullable": true
+              },
+              "errorOrigin": {
+               "type": "string",
+               "nullable": true
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "card not found (FB_IVR_CHANNEL_121)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
           }
          }
         }
@@ -401,61 +747,229 @@
       }
      },
      "500": {
-      "description": "The service failed. Nothing was recorded. The call may be repeated."
+      "description": "technical error (FBE00099)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
      }
     }
    }
   },
-  "/close_call": {
+  "/statement.week.decide": {
    "post": {
-    "summary": "End the call. Always the last tool call. Nothing is accepted after it.",
+    "operationId": "statement_week_decide",
+    "summary": "Preview of a statement week change: the dates the card would get; changes nothing",
+    "description": "data.statementDate and data.statementDueDate are the first statement and due date under the requested week, data.statementDay the new day, data.responseCode 0 and data.responseMessage. Do not call it for the week the card already has. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099.",
     "requestBody": {
      "required": true,
      "content": {
       "application/json": {
        "schema": {
         "type": "object",
+        "required": [
+         "data"
+        ],
         "properties": {
-         "customer_id": {
-          "type": "string"
-         },
-         "outcome": {
-          "type": "string",
-          "enum": [
-           "promise",
-           "paid",
-           "transferred",
-           "no_promise",
-           "not_verified",
-           "not_reached"
+         "data": {
+          "type": "object",
+          "properties": {
+           "cardNumber": {
+            "type": "string",
+            "description": "the cardNumber exactly as cards.list returned it"
+           },
+           "newStatementWeek": {
+            "type": "string",
+            "description": "the requested week, 1 to 4, never the card's current week"
+           },
+           "statementDay": {
+            "type": "string",
+            "description": "the card's current statementDay from statement.week.get"
+           }
+          },
+          "required": [
+           "cardNumber",
+           "newStatementWeek",
+           "statementDay"
           ]
          },
-         "reason": {
-          "type": "string",
-          "description": "Required for every outcome except promise and paid. See the table in the brief."
+         "call": {
+          "type": "object",
+          "description": "call metadata the bank logs; not checked in test",
+          "properties": {
+           "ani": {
+            "type": "string",
+            "description": "the caller's number"
+           },
+           "lang": {
+            "type": "string",
+            "description": "tr"
+           }
+          }
          }
-        },
-        "required": [
-         "customer_id",
-         "outcome"
-        ]
+        }
        }
       }
      }
     },
     "responses": {
      "200": {
-      "description": "`ok` is false when the action was not carried out.",
+      "description": "the dates under the requested week",
       "content": {
        "application/json": {
         "schema": {
          "type": "object",
          "properties": {
-          "ok": {
-           "type": "boolean"
+          "data": {
+           "type": "object",
+           "properties": {
+            "statementDate": {
+             "type": "string"
+            },
+            "statementDueDate": {
+             "type": "string"
+            },
+            "statementDay": {
+             "type": "number"
+            },
+            "responseCode": {
+             "type": "number"
+            },
+            "responseMessage": {
+             "type": "string"
+            }
+           }
           },
-          "error": {
-           "type": "string"
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string",
+             "nullable": true
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string",
+               "nullable": true
+              },
+              "errorOrigin": {
+               "type": "string",
+               "nullable": true
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "invalid arguments",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
           }
          }
         }
@@ -463,7 +977,677 @@
       }
      },
      "500": {
-      "description": "The service failed. Nothing was recorded. The call may be repeated."
+      "description": "technical error (FBE00099)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/statement.week.change": {
+   "post": {
+    "operationId": "statement_week_change",
+    "summary": "Changes the card's statement week; only after the caller agreed to the dates from statement.week.decide",
+    "description": "Success is data.exitState OK with data.responseCode 0; data.statementWeek and data.statementDay come back as strings; tell the caller the dates from the preview. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099. No automatic retry: the call has a side effect.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "data"
+        ],
+        "properties": {
+         "data": {
+          "type": "object",
+          "properties": {
+           "cardNumber": {
+            "type": "string",
+            "description": "the cardNumber exactly as cards.list returned it"
+           },
+           "newStatementWeek": {
+            "type": "string",
+            "description": "the requested week, 1 to 4"
+           },
+           "statementDay": {
+            "type": "string",
+            "description": "the card's current statementDay from statement.week.get"
+           }
+          },
+          "required": [
+           "cardNumber",
+           "newStatementWeek",
+           "statementDay"
+          ]
+         },
+         "call": {
+          "type": "object",
+          "description": "call metadata the bank logs; not checked in test",
+          "properties": {
+           "ani": {
+            "type": "string",
+            "description": "the caller's number"
+           },
+           "lang": {
+            "type": "string",
+            "description": "tr"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "the change was made (exitState OK)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "data": {
+           "type": "object",
+           "properties": {
+            "responseCode": {
+             "type": "number"
+            },
+            "responseMessage": {
+             "type": "string"
+            },
+            "statementWeek": {
+             "type": "string"
+            },
+            "statementDay": {
+             "type": "string"
+            },
+            "exitState": {
+             "type": "string"
+            }
+           }
+          },
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string",
+             "nullable": true
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string",
+               "nullable": true
+              },
+              "errorOrigin": {
+               "type": "string",
+               "nullable": true
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "invalid arguments",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object"
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "technical error (FBE00099)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/contact.email.get": {
+   "post": {
+    "operationId": "contact_email_get",
+    "summary": "The customer's registered e-mail address and phone",
+    "description": "The registered e-mail is data.ibanEmail (data.ttsEmail is the same address for reading aloud); data.communicationType Both, Phone or Email. No registered e-mail: communicationType Phone and/or an empty ibanEmail; check the field. The iban prefix is historical. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "data"
+        ],
+        "properties": {
+         "data": {
+          "type": "object",
+          "properties": {
+           "customerNo": {
+            "type": "string",
+            "description": "the customer number"
+           },
+           "intAddressInfoType": {
+            "type": "string",
+            "description": "E for e-mail, P for phone, B for both; never empty"
+           }
+          },
+          "required": [
+           "customerNo",
+           "intAddressInfoType"
+          ]
+         },
+         "call": {
+          "type": "object",
+          "description": "call metadata the bank logs; not checked in test",
+          "properties": {
+           "ani": {
+            "type": "string",
+            "description": "the caller's number"
+           },
+           "lang": {
+            "type": "string",
+            "description": "tr"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "the registered contact details",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "data": {
+           "type": "object",
+           "properties": {
+            "communicationType": {
+             "type": "string"
+            },
+            "ibanCountryCode": {
+             "type": "string"
+            },
+            "ibanAreaCode": {
+             "type": "string"
+            },
+            "ibanPhoneNum": {
+             "type": "string"
+            },
+            "ibanEmail": {
+             "type": "string"
+            },
+            "ttsEmail": {
+             "type": "string"
+            },
+            "commGramType": {
+             "type": "string"
+            },
+            "exitState": {
+             "type": "string"
+            }
+           }
+          },
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string",
+             "nullable": true
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string",
+               "nullable": true
+              },
+              "errorOrigin": {
+               "type": "string",
+               "nullable": true
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "invalid arguments",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "technical error (FBE00099)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/statement.pdf.send": {
+   "post": {
+    "operationId": "statement_pdf_send",
+    "summary": "Sends the last issued statement PDF by e-mail; only after the caller clearly agreed",
+    "description": "Success is data.exitState DONE. 404 FB_IVR_CHANNEL_107: no statement document to send. 400 INVALID_ARGUMENTS_ERROR, 500 FBE00099. No automatic retry: the call has a side effect.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "data"
+        ],
+        "properties": {
+         "data": {
+          "type": "object",
+          "properties": {
+           "customerNo": {
+            "type": "string",
+            "description": "the customer number"
+           },
+           "cardNumber": {
+            "type": "string",
+            "description": "the cardNumber exactly as cards.list returned it"
+           },
+           "currencyType": {
+            "type": "string",
+            "description": "TL, USD, EUR or GBP"
+           },
+           "statementDate": {
+            "type": "string",
+            "description": "the statementDate from cards.balance, dd.MM.yyyy"
+           },
+           "emailAddress": {
+            "type": "string",
+            "description": "the registered address from contact.email.get; the service sends to whatever is here and does not check it"
+           }
+          },
+          "required": [
+           "customerNo",
+           "cardNumber",
+           "currencyType",
+           "statementDate",
+           "emailAddress"
+          ]
+         },
+         "call": {
+          "type": "object",
+          "description": "call metadata the bank logs; not checked in test",
+          "properties": {
+           "ani": {
+            "type": "string",
+            "description": "the caller's number"
+           },
+           "lang": {
+            "type": "string",
+            "description": "tr"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "the statement was sent (exitState DONE)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "data": {
+           "type": "object",
+           "properties": {
+            "exitState": {
+             "type": "string"
+            }
+           }
+          },
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string",
+             "nullable": true
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string",
+               "nullable": true
+              },
+              "errorOrigin": {
+               "type": "string",
+               "nullable": true
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "no statement document to send (FB_IVR_CHANNEL_107)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "technical error (FBE00099)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "result": {
+           "type": "object",
+           "properties": {
+            "guid": {
+             "type": "string"
+            },
+            "returnCode": {
+             "type": "string"
+            },
+            "messageText": {
+             "type": "string"
+            },
+            "code": {
+             "type": "string"
+            },
+            "message": {
+             "type": "string"
+            },
+            "type": {
+             "type": "string"
+            },
+            "details": {
+             "type": "object",
+             "properties": {
+              "guid": {
+               "type": "string"
+              },
+              "rootCause": {
+               "type": "string"
+              },
+              "errorOrigin": {
+               "type": "string"
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
      }
     }
    }

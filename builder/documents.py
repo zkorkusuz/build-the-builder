@@ -19,9 +19,20 @@ FIRST = ("brief.md", "readme.md")
 DATE_FORMATS = {14, 15, 16, 17, 22}  # Excel's built-in date formats; times and plain numbers are not dates
 
 
+ABRIDGE_AT = 60000     # characters; a data file of hundreds of records is shown by its first part, the rest is served by the mock
+
+
 def folder_to_briefs(folder):
     """Ordered (relative name, markdown) pairs for every file in the folder: BRIEF.md, README.md, then the rest by path."""
-    return [(name, document_text(path, name)) for name, path in ordered_files(folder)]
+    return [(name, abridge(document_text(path, name), name)) for name, path in ordered_files(folder)]
+
+
+def abridge(text, name):
+    """A document longer than ABRIDGE_AT characters is cut to its first part, with a note that says so and how much was left out."""
+    if len(text) <= ABRIDGE_AT:
+        return text
+    half = ABRIDGE_AT // 2
+    return text[:half] + "\n\n[... abridged: " + str(len(text) - half) + " more characters of " + name + " are left out here; the whole file is in the folder and the services return the rest ...]\n"
 
 
 def image_paths(folder):

@@ -1,11 +1,11 @@
 name = "bank-mock"
-main = "src/index.js"
+main = "src/final.js"
 compatibility_date = "2025-10-01"
 workers_dev = true
 
 [vars]
 # Bump to "2", "3", ... and deploy to start with an empty ledger (old records stay in the old object).
-LEDGER_EPOCH = "1"
+LEDGER_EPOCH = "2"
 
 [[durable_objects.bindings]]
 name = "BANK"

@@ -16,13 +16,14 @@ def describe_run(argv):
     return "builder: commit " + commit + " | python " + platform.python_version() + " | " + pathlib.Path(sys.executable).name + " " + " ".join(argv)
 
 
-def probe(workflow_id, trace, left):
+def probe(workflow_id, trace, left, test_variables=None):
     """One chat turn with the published agent: proves the workflow can start a call and speaks its opening with the call's variables.
     The customer is made up (no practice case exists for a hidden brief); the chat is ended right after. Never fails the build."""
     if left() < 14 * 60:                     # two calls, each up to 6.5 minutes inside the wrapper's retries, must stay inside the cap
         trace("self-test: chat probe skipped, " + str(round(left() / 60)) + " minutes left")
         return
     variables = {"first_name": "Probe", "last_name": "Customer", "title": "Ms", "customer_id": "probe-0000", "now": time.strftime("%Y-%m-%dT%H:%M")}
+    variables.update({k: str(v) for k, v in (test_variables or {}).items()})     # a designed workflow names its own call variables
     t0 = time.time()
     try:
         r = freya.api("POST", "/api/v2/chat/message", {"workflowId": workflow_id, "customerVariables": variables, "message": "Hello?"})

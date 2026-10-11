@@ -4,12 +4,12 @@ import asyncio, json, os, re, time
 MODEL = os.environ.get("BUILDER_MODEL", "claude-opus-5-5")
 
 
-def ask(prompt, workdir, trace, purpose, system=None, timeout=300):
+def ask(prompt, workdir, trace, purpose, system=None, timeout=300, max_turns=2):
     """Return the model's text answer within `timeout` seconds. Logs model, purpose, duration and cost to the trace."""
     from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, TextBlock, query
 
     async def run():
-        options = ClaudeAgentOptions(cwd=str(workdir), model=MODEL, allowed_tools=[], permission_mode="dontAsk", max_turns=2, setting_sources=[],
+        options = ClaudeAgentOptions(cwd=str(workdir), model=MODEL, allowed_tools=[], permission_mode="dontAsk", max_turns=max_turns, setting_sources=[],
                                      system_prompt=system or "You answer with the requested JSON only, no commentary.")
         text, cost = "", 0.0
         async for m in query(prompt=prompt, options=options):

@@ -4,6 +4,8 @@
     python3 builder/build.py <folder of documents> <mock url>
 
 Stages: normalize (Claude) -> render (code) -> adapt (Claude) -> lint and dry run -> save and publish -> export -> optional self-test.
+A folder whose documents do not describe the collections call the template was built for (the model decides, or --design forces it)
+goes through design (Claude writes the whole workflow from the documents and the tool API) -> lint -> repair (Claude) -> dry run -> save.
 Writes a plain-text trace to traces/<slot>-<start>.log. Stops itself well inside 30 minutes and always leaves a saved workflow.
 --policy skips the normalize stage and renders from a given policy file (for tests; never for a hidden brief).
 """
@@ -11,7 +13,7 @@ import json, pathlib, re, shutil, subprocess, sys, time, urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import freya
-from builder import adapt, documents, lint, llm, normalize, render, selfcheck
+from builder import adapt, design, documents, lint, llm, normalize, render, selfcheck
 
 BUDGET_S = 27 * 60          # the rule is 30 minutes; keep a margin for the export and the trace
 
@@ -30,38 +32,53 @@ def main(argv):
     left = lambda: BUDGET_S - (time.time() - start)
     given = json.loads(pathlib.Path(opts["policy"]).read_text()) if opts["policy"] else None   # read before the work folder is wiped
     workdir = isolate(slot, briefs, spec_path)
-    ask = lambda prompt, wd, tr, purpose: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120))
+    ask = lambda prompt, wd, tr, purpose, **kw: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120), **kw)
     texts = documents.folder_to_briefs(folder) if folder else [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
     if folder:
         unread = [n for n, t in texts if t.removeprefix("# Document: " + n).lstrip().startswith(("not readable", "pdf not readable", "skipped"))]
         trace("documents: " + str(len(texts)) + " read in this order: " + ", ".join(n for n, _ in texts))
-        trace("documents: " + ("NOT readable: " + ", ".join(unread) if unread else "every document readable") + " | image files listed, not read: " + str(len(documents.image_paths(folder))))
+        trace("documents: " + ("NOT readable: " + ", ".join(unread) if unread else "every document readable") + " | image files listed, not read: " + str(len(documents.image_paths(folder)))
+              + " | abridged: " + (", ".join(n for n, t in texts if "[... abridged: " in t) or "none"))
     spec = tool_spec(spec_path, mock_url, texts, workdir, trace, ask)
     (workdir / "openapi.json").write_text(json.dumps(spec, indent=1))
 
-    policy = given if given is not None else read_policy(opts, texts, json.dumps(spec, indent=1), workdir, trace, ask)
-    if given is not None:
-        trace("normalize: skipped, policy from " + opts["policy"])
+    designed = folder is not None and given is None and (opts["design"] or not design.fits_template(texts, workdir, trace, ask, llm.parse_json))
+    if designed:
+        workflow, policy = designed_workflow(texts, spec, workdir, trace, ask, left)
+    else:
+        policy = given if given is not None else read_policy(opts, texts, json.dumps(spec, indent=1), workdir, trace, ask)
+        if given is not None:
+            trace("normalize: skipped, policy from " + opts["policy"])
+        try:
+            workflow = render.render(policy, spec)
+        except Exception as e:
+            trace("render: FAILED on this policy, " + str(e)[:200] + "; rendering the bare template")
+            workflow = render.render({}, spec)
+        trace("render: steps " + ", ".join(workflow["nodes"]) + "; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts")
+        try:
+            trace("fields: " + json.dumps({t: {r: n for r, n in m.items() if n != r} for t, m in render.field_names(policy, spec).items() if any(n != r for r, n in m.items())} or "the role names, as in the practice file"))
+        except Exception as e:                        # a malformed api_fields section must not stop the build before the save
+            trace("fields: could not be listed (" + str(e)[:120] + ")")
     (workdir / "policy.json").write_text(json.dumps(policy, indent=1))
-    try:
-        workflow = render.render(policy, spec)
-    except Exception as e:
-        trace("render: FAILED on this policy, " + str(e)[:200] + "; rendering the bare template")
-        workflow = render.render({}, spec)
     trace("render: " + str(len(workflow["nodes"])) + " steps, " + str(count_tools(workflow)) + " tools, lint " + (" | ".join(lint.check(workflow)) or "clean"))
-    trace("render: steps " + ", ".join(workflow["nodes"]) + "; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts")
-    try:
-        trace("fields: " + json.dumps({t: {r: n for r, n in m.items() if n != r} for t, m in render.field_names(policy, spec).items() if any(n != r for r, n in m.items())} or "the role names, as in the practice file"))
-    except Exception as e:                        # a malformed api_fields section must not stop the build before the save
-        trace("fields: could not be listed (" + str(e)[:120] + ")")
     try:
         saved = save(slot, workflow, trace, left)     # a valid agent exists from here on
     except Rejected as e:
-        trace("save: the platform rejected the workflow (" + str(e) + "); saving the bare template")
-        workflow = render.render({}, spec)
-        saved = save(slot, workflow, trace, left)
+        if designed and left() > 12 * 60:             # the platform's own reason goes back to the model once
+            trace("save: the platform rejected the designed workflow (" + str(e) + "); one repair pass")
+            workflow, problems = design.repair(workflow, [str(e)], workdir, trace, ask, llm.parse_json)
+            try:
+                saved = save(slot, workflow, trace, left)
+            except Rejected as e2:
+                e = e2; saved = None
+        else:
+            saved = None
+        if saved is None:
+            trace("save: the platform rejected the workflow (" + str(e) + "); saving the bare template")
+            workflow = render.render({}, spec)
+            saved = save(slot, workflow, trace, left)
 
-    if not opts["no_adapt"] and not opts["policy"] and left() > 6 * 60:
+    if not designed and not opts["no_adapt"] and not opts["policy"] and left() > 6 * 60:
         try:
             adapted = adapt.adapt(json.loads(json.dumps(workflow)), policy, workdir, trace, ask, llm.parse_json)
             if not lint.check(adapted):
@@ -79,7 +96,7 @@ def main(argv):
     trace("export: " + str(export_path))
     (ROOT / "traces" / (log_path.stem + ".policy.json")).write_text(json.dumps(policy, indent=1))   # the policy that produced this agent, kept with its trace for audit
 
-    selfcheck.probe(saved["workflow_id"], trace, left)
+    selfcheck.probe(saved["workflow_id"], trace, left, workflow.get("test_variables"))
     if opts["selftest"] and left() > 13 * 60:
         selftest(saved["agent_id"], opts, trace)
     elif opts["selftest"]:
@@ -103,6 +120,22 @@ def read_policy(opts, texts, spec_text, workdir, trace, ask):
     for line in summary(policy):
         trace("policy: " + line)
     return policy
+
+
+def designed_workflow(texts, spec, workdir, trace, ask, left):
+    """The model's workflow, repaired once when the lint objects; the policy file records that the design path ran."""
+    try:
+        workflow, problems = design.design(texts, spec, workdir, trace, ask, llm.parse_json)
+        if problems and left() > 12 * 60:
+            workflow, problems = design.repair(workflow, problems, workdir, trace, ask, llm.parse_json)
+        if problems:
+            trace("design: lint still objects (" + " | ".join(problems)[:300] + "); the dry run decides")
+    except Exception as e:                        # a build always ends with a saved workflow, even a bare one
+        trace("design: FAILED, " + " ".join(str(e).split())[:200] + "; rendering the bare template")
+        workflow, problems = render.render({}, spec), ["design failed: " + str(e)[:200]]
+    policy = {"path": "design: the model wrote the workflow from the documents and the tool API", "documents": [n for n, _ in texts],
+              "steps": list((workflow.get("nodes") or {}).keys()), "lint": problems}
+    return workflow, policy
 
 
 def summary(p):
@@ -179,10 +212,11 @@ def source(files):
 
 
 def parse(argv):
-    opts, files, i = {"no_adapt": False, "selftest": None, "brief_id": None, "policy": None}, [], 0
+    opts, files, i = {"no_adapt": False, "selftest": None, "brief_id": None, "policy": None, "design": False}, [], 0
     while i < len(argv):
         a = argv[i]
         if a == "--no-adapt": opts["no_adapt"] = True
+        elif a == "--design": opts["design"] = True
         elif a in ("--selftest", "--brief-id", "--policy"): opts[a[2:].replace("-", "_")] = argv[i + 1]; i += 1
         else: files.append(a)
         i += 1
