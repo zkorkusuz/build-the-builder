@@ -21,7 +21,10 @@ class Rendered(unittest.TestCase):
         self.assertEqual([k for k, v in n.items() if v["node_type"] == "conversation"], ["opening", "opening_again", "third_party", "identity", "negotiate"])
         self.assertEqual(sorted(t["function"]["name"] for t in n["negotiate"]["tools"]), ["create_promise", "transfer_to_agent"])
         self.assertEqual(n["account"]["pre_actions"][0]["function"]["name"], "get_account")
-        self.assertEqual(self.wf["tools"][0]["config"]["alwaysRunsAt"], ["end_of_call"])
+        self.assertEqual(self.wf["tools"], [])
+        for end in ("end_goodbye", "end_quiet", "end_deceased", "end_id_failed"):
+            self.assertEqual(n[end]["pre_actions"][0]["function"]["name"], "close_call"); self.assertEqual(n[end]["transitions"][-1]["target_node"], "hang_up")
+        self.assertEqual(n["end_goodbye"]["on_enter"]["text"], "Thank you for your time. Goodbye."); self.assertEqual(n["end_quiet"]["on_enter"], {"type": "silent"})
         self.assertEqual(n["negotiate"]["on_enter"], {"type": "tts", "text": "{{debt_statement}}"})
         self.assertEqual(n["negotiate"]["extraction_schema"][0]["enum_values"], ["none", "refused", "hardship", "dispute", "paid", "service_error"])
         self.assertTrue(all("position" in v for v in n.values()))
@@ -100,7 +103,7 @@ class Rendered(unittest.TestCase):
         self.assertIn("STOP", n["account_facts"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"])
 
     def test_close_call_recomputes_outcome_for_a_verified_call(self):
-        pre = self.wf["tools"][0]["pre_process_code"]
+        pre = self.wf["nodes"]["end_goodbye"]["pre_actions"][0]["pre_process_code"]
         vars = {"id_state": "verified", "outcome": "no_promise", "reason": "refused", "promises_recorded": json.dumps([{"product_id": "p1", "amount": 1, "date": "2026-10-14"}]), "transfer_state": "none"}
         config = {"body": {"outcome": "{{outcome}}", "reason": "{{reason}}"}}
         exec(pre, {"vars": vars, "config": config, "json": json})
@@ -115,7 +118,7 @@ class Rendered(unittest.TestCase):
 
     def test_prompts_carry_policy_sentences(self):
         self.assertIn("You will receive a text message confirming this promise.", self.wf["nodes"]["negotiate"]["task_message"])
-        self.assertIn("I am sorry for your loss.", self.wf["nodes"]["end_deceased"]["terminal"]["function"]["parameters"]["properties"]["spoken_message"]["default"])
+        self.assertIn("I am sorry for your loss.", self.wf["nodes"]["end_deceased"]["on_enter"]["text"])
 
     def test_lint_catches_breakage(self):
         wf = render.render(POLICY, SPEC)

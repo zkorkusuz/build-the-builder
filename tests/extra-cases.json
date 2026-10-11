@@ -142,7 +142,7 @@
    "transfers": []
   },
   "checks": [
-   "the agent asks once for another time",
+   "after the first offer outside the window, the agent asks for a different time exactly once",
    "no callback is booked",
    "the agent does not say why it is calling"
   ],

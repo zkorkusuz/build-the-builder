@@ -86,6 +86,10 @@ def check(wf):
     for path, obj in walk(wf.get("tools", [])):
         if isinstance(obj, dict) and obj.get("function", {}).get("handler") == "__function__:api_call" and not obj.get("config", {}).get("alwaysRunsAt"):
             problems.append("workflow-level tool without alwaysRunsAt never runs: " + path)
+    closers = [k for k, n in nodes.items() if any(t.get("function", {}).get("name") == "close_call" for t in n.get("pre_actions", []))]
+    for key, n in nodes.items():
+        if n.get("node_type") == "end_call" and not any(t.get("target_node") == key for c in closers for t in nodes[c].get("transitions", [])) and closers:
+            problems.append(key + ": an end node reachable without a close_call step before it")
     known = set_variables(wf)
     for key, n in nodes.items():
         texts = [n.get("task_message", ""), n.get("on_enter", {}).get("text", "")]

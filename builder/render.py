@@ -6,7 +6,7 @@ DATES_SRC = pathlib.Path(dates.__file__).read_text()
 # Variables the workflow sets itself. A model-filled tool field must not share one of these names.
 OWN_VARS = {"today", "now", "outcome", "reason", "products", "debt_summary", "debt_statement", "product_count", "id_state", "transfer_state",
             "callback_state", "promise_state", "end_reason", "who", "identity_signal", "third_party_result", "conversation_done"}
-COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_"]
+COLUMNS = ["prepare", "opening opening_again", "third_party_prep mark_confirmed", "third_party identity", "account", "account_facts", "negotiate", "set_outcome stop_offers wrap_up wrap_up_ outcome_", "end_", "hang_up"]
 
 
 def always(target):
@@ -60,7 +60,7 @@ def tool(spec, name, hook_map, descriptions, mapping=None, retries=0, lifecycle=
             if prop.get("enum"):
                 leaf["enum"] = prop["enum"]; leaf["description"] += " One of: " + ", ".join(prop["enum"]) + "."
         body[field] = leaf
-    if lifecycle:
+    if name == "close_call":
         body["outcome"]["default"], body["reason"]["default"] = "{{outcome}}", "{{reason}}"
     t = {"type": "function", "config": {"timeoutMs": 12000, "maxRetries": retries},
          "function": {"name": name, "handler": "__function__:api_call", "description": descriptions.get(name, op.get("summary", name)),
@@ -236,10 +236,14 @@ def render(policy, spec):
         nodes["outcome_" + sit] = code_node("outcome_" + sit, fixed_outcome_code(policy, sit), end)
     for sit in ("unclear", "no_callback", "id_declined"):
         nodes["outcome_" + sit + "_quiet"] = code_node("outcome_" + sit + "_quiet", fixed_outcome_code(policy, sit), "end_quiet")
-    nodes["end_goodbye"] = end_node("end_goodbye", goodbye)
-    nodes["end_quiet"] = end_node("end_quiet", "")
-    nodes["end_deceased"] = end_node("end_deceased", (str((policy.get("third_party") or {}).get("deceased_sentence") or "") + " " + goodbye).strip())
-    nodes["end_id_failed"] = end_node("end_id_failed", (str((policy.get("identity") or {}).get("on_fail_sentence") or "") + " " + goodbye).strip())
+    farewells = {"end_goodbye": goodbye, "end_quiet": "", "end_deceased": (str((policy.get("third_party") or {}).get("deceased_sentence") or "") + " " + goodbye).strip(),
+                 "end_id_failed": (str((policy.get("identity") or {}).get("on_fail_sentence") or "") + " " + goodbye).strip()}
+    for name, spoken in farewells.items():
+        # The farewell is spoken on entry, close_call runs as the step's own action, then the call hangs up: close_call is the last tool
+        # call and does not depend on the platform's post-call analysis, which sometimes never arrives.
+        nodes[name] = {"name": name, "node_type": "api_request", "passthrough": True, "passthrough_default_transition": "hang_up", "disable_inactivity_monitor": True,
+                       "on_enter": {"type": "tts", "text": spoken} if spoken else {"type": "silent"}, "suppress_tool_results": True,
+                       "pre_actions": [T("close_call", lifecycle=None)], "transitions": [always("hang_up")]}
+    nodes["hang_up"] = end_node("hang_up", "")
     positions(nodes)
-    return {"initial_node": "prepare", "system_prompt": prompts.system_prompt(policy), "nodes": nodes, "global_nodes": {},
-            "tools": [T("close_call", lifecycle="end_of_call")]}
+    return {"initial_node": "prepare", "system_prompt": prompts.system_prompt(policy), "nodes": nodes, "global_nodes": {}, "tools": []}
