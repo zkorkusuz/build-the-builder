@@ -23,7 +23,7 @@ Answer with one JSON object in a ```json fence and nothing else: the workflow, t
 Work like this:
 1. Read every document completely. Later documents (mails, corrections, memos) override earlier ones when they conflict; where documents disagree, follow the most recent binding source and keep the agent consistent with the example conversations.
 2. Design the call as a graph of nodes exactly as the platform reference describes: conversation nodes for dialogue, api_request or code nodes for calls the engine runs on entry, end_call nodes for every way the call ends. Every path reaches an end_call node. Each conversation node's task_message is a complete instruction for that step, written in English; every sentence the agent must say to the caller is in the documents' language, quoted verbatim where the documents give it.
-3. Tools: every service the agent uses is a tool with handler __function__:api_call whose url is the tool API's servers url plus the documented path, with the documented method, headers and request fields (each body field a leaf under body.properties with its own default, type, description and enum). A field whose value comes from a call variable or an earlier result is baked with a "{{variable}}" default; a field the model must fill has a default "{{<field name>}}" that nothing sets. Read every result through response_mapping (paths start with data.) and route on the mapped variables or the flattened <tool>_response.data.<field> keys. Give every api_call tool a post_process_code hook, written as the reference shows, that pops the header and adds a plain-English what_to_do_next line inside result["data"] for every outcome the service documents (each success shape and each error status), so the agent knows what to say or do next; hooks never raise (try, except Exception: pass).
+3. Tools: a variable used as a "{{variable}}" default in an engine-run call must be set by an earlier node on every path that reaches it (the engine drops a field whose variable is empty when the node is entered, before any hook runs); a hook that computes a request value must assign config["body"] completely. Every service the agent uses is a tool with handler __function__:api_call whose url is the tool API's servers url plus the documented path, with the documented method, headers and request fields (each body field a leaf under body.properties with its own default, type, description and enum). A field whose value comes from a call variable or an earlier result is baked with a "{{variable}}" default; a field the model must fill has a default "{{<field name>}}" that nothing sets. Read every result through response_mapping (paths start with data.) and route on the mapped variables or the flattened <tool>_response.data.<field> keys. Give every api_call tool a post_process_code hook, written as the reference shows, that pops the header and adds a plain-English what_to_do_next line inside result["data"] for every outcome the service documents (each success shape and each error status), so the agent knows what to say or do next; hooks never raise (try, except Exception: pass).
 4. Call variables: use exactly the variables the documents say every call provides, with those names, and put example values for them in test_variables. Never ask the caller for something the documents say the agent already has. Every date or time decision uses the call's own time variable, never the system clock; compute dates in a code node (json, re and datetime only, no double braces, never raises) and give the model finished facts as text through variables.
 5. Prompts: one or two short sentences per turn in the caller's language; say every number, amount, date and time in words in that language; call one tool per message and speak after every tool result; never say an action was done unless the tool result says so; never invent amounts, dates or facts; do only what the documents allow and hand over to a person exactly as the documents say. Rules that hold in every step go in system_prompt.
 6. Routing: deterministic conditions before matches_intent; fork on an extracted enum (min_confidence on every extraction) rather than on several competing intents; every passthrough node ends with an always transition; every node with max_node_turns has a max_turn_transition; no null anywhere; no const; tools only on conversation nodes; pre_actions only on api_request and code nodes; each node's name equals its key; leave agent_config out.
@@ -72,9 +72,59 @@ def repair(workflow, problems, workdir, trace, ask, parse_json):
     return fixed, remaining
 
 
+# The engine removes a request field whose {{variable}} has no value when the node is entered, before the pre-hook runs, so a hook
+# that computes the value cannot fill the field. This epilogue, appended to every api_call pre-hook, restores such fields from vars.
+RESTORE = """
+try:
+    _body = config.get('body') if isinstance(config, dict) else None
+    if not isinstance(_body, dict):
+        _body = dict()
+        config['body'] = _body
+    for _path, _var in __TEMPLATE__:
+        _value = vars.get(_var)
+        if _value is None or _value == '':
+            continue
+        _d = _body
+        for _key in _path[:-1]:
+            if not isinstance(_d.get(_key), dict):
+                _d[_key] = dict()
+            _d = _d[_key]
+        if _d.get(_path[-1]) in (None, '', '{' + '{' + _var + '}' + '}'):
+            _d[_path[-1]] = _value
+except Exception:
+    pass
+"""
+
+
+def placeholders(schema, path=()):
+    """[(path, variable)] for every leaf of a body schema whose default is one {{variable}}."""
+    out = []
+    for name, prop in ((schema or {}).get("properties") or {}).items():
+        if not isinstance(prop, dict):
+            continue
+        default = prop.get("default")
+        if isinstance(default, str) and default.startswith("{{") and default.endswith("}}") and default.count("{{") == 1:
+            out.append((list(path) + [name], default[2:-2].strip()))
+        elif prop.get("type") == "object" or "properties" in prop:
+            out += placeholders(prop, path + (name,))
+    return out
+
+
+def restore_dropped_fields(workflow):
+    for node in (workflow.get("nodes") or {}).values():
+        for tool in (node.get("pre_actions") or []) + (node.get("tools") or []):
+            fn = tool.get("function") or {}
+            if fn.get("handler") != "__function__:api_call":
+                continue
+            template = placeholders(((fn.get("parameters") or {}).get("properties") or {}).get("body"))
+            if template:
+                tool["pre_process_code"] = (tool.get("pre_process_code") or "").rstrip() + "\n" + RESTORE.replace("__TEMPLATE__", json.dumps(template))
+    return workflow
+
+
 def tidy(workflow):
-    """Mechanical fixes for what the platform punishes silently: node names, misplaced tools, agent_config, nulls."""
-    workflow = strip_null(workflow)
+    """Mechanical fixes for what the platform punishes silently: node names, misplaced tools, agent_config, nulls, dropped request fields."""
+    workflow = restore_dropped_fields(strip_null(workflow))
     workflow.pop("agent_config", None)
     for key, node in (workflow.get("nodes") or {}).items():
         if isinstance(node, dict):
