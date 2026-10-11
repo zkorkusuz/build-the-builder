@@ -1,0 +1,595 @@
+{
+ "bank_name": "Freya Bank",
+ "language": "Turkish",
+ "opening_sentence": "Merhaba, ben Freya Bank'\u0131n dijital asistan\u0131y\u0131m. Bu g\u00f6r\u00fc\u015fme kay\u0131t alt\u0131na al\u0131nmaktad\u0131r.",
+ "confirm_question": "{last_name} {title} ile mi g\u00f6r\u00fc\u015f\u00fcyorum?",
+ "confirmation": {
+  "accepted": [
+   "evet",
+   "benim",
+   "ben kendisiyim",
+   "the customer's own name"
+  ],
+  "not_accepted": [
+   "alo",
+   "buyurun",
+   "kimsiniz"
+  ],
+  "max_asks": 2
+ },
+ "forbidden_before_verification": [
+  "tahsilat",
+  "bor\u00e7",
+  "\u00f6deme",
+  "the product (any product name or detail)",
+  "the reason for the call"
+ ],
+ "robot_answer": "Say that you are Freya Bank's digital assistant (for example: \"Freya Bank'\u0131n dijital asistan\u0131y\u0131m.\") and continue.",
+ "scam_answer": "Say that the customer can verify the call by calling Freya Bank's customer service number, then continue.",
+ "third_party": {
+  "instructions": "If someone other than the customer answers: do not say why you are calling. Say nothing beyond the opening sentence \"Merhaba, ben Freya Bank'\u0131n dijital asistan\u0131y\u0131m. Bu g\u00f6r\u00fc\u015fme kay\u0131t alt\u0131na al\u0131nmaktad\u0131r.\" Never say \"tahsilat\", \"bor\u00e7\" or \"\u00f6deme\", and never name the product; this applies to everyone, relatives included. Ask when the customer can be reached. A callback must be today or the next business day, between 10:00 and 18:00 inclusive, and after now; call schedule_callback with the date and time, then close with not_reached / callback. If the person proposes a day or time outside this window, ask once for another time. If that one is also outside the window, do not schedule; close with not_reached / no_callback. If the person says the number does not belong to the customer, close with not_reached / wrong_number. If the person says the customer has died, say exactly \"Ba\u015f\u0131n\u0131z sa\u011f olsun.\", ask nothing else, and close with not_reached / deceased. A relative cannot answer the security questions; even if they offer to pay, tell them nothing about the account.",
+  "deceased_sentence": "Ba\u015f\u0131n\u0131z sa\u011f olsun."
+ },
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "from": "10:00",
+  "to": "18:00",
+  "max_asks": 1
+ },
+ "identity": {
+  "questions": [
+   {
+    "field": "date_of_birth",
+    "ask": "Do\u011fum tarihinizi s\u00f6yler misiniz?",
+    "format": "Date as YYYY-MM-DD, however the customer said it (convert words to digits). A date given only as numbers is read in day, month, year order. The service rejects anything it cannot read as a date (ok=false, not counted as a wrong answer)."
+   },
+   {
+    "field": "phone_last4",
+    "ask": "Kay\u0131tl\u0131 telefon numaran\u0131z\u0131n son d\u00f6rt hanesi nedir?",
+    "format": "Four digits (e.g. \"d\u00f6rt, yedi, iki, dokuz\" becomes 4729)."
+   }
+  ],
+  "max_wrong_total": 3,
+  "on_wrong": "A wrong answer may be asked again (repeat the same question); three wrong answers in total, on any question, end the check.",
+  "numeric_date_order": "day_month_year",
+  "hint_value": "day_month_swapped",
+  "hint_instruction": "The customer gave day and month the wrong way round: ask the customer to say the month as a word, then retry. This retry does not count as a wrong answer.",
+  "decline_rule": "If the customer does not want to answer, explain once that the questions are there to protect their account. If they refuse again, close with not_verified / declined. Asking what the call is about instead of answering counts as a refusal. A second refusal or a second such question ends the call. If the customer says twice that they do not want to talk before identity is verified, close with not_verified / declined. If the customer asks for a human, rule 42 still applies before verification: ask once whether you can help, and if they insist, transfer to the general queue and close with transferred / human.",
+  "on_fail_sentence": "Kimli\u011finizi do\u011frulayamad\u0131m; l\u00fctfen mobil uygulamam\u0131z\u0131 kullan\u0131n veya bir \u015fubemize ba\u015fvurun."
+ },
+ "debt_intro_sentence": "Freya Bank tahsilat ekibinden, gecikmi\u015f bir \u00f6deme i\u00e7in ar\u0131yorum.",
+ "product_words": {
+  "credit_card": "{card_last4} ile biten kredi kart\u0131",
+  "personal_loan": "ihtiya\u00e7 kredisi",
+  "car_loan": "ta\u015f\u0131t kredisi"
+ },
+ "floor_field": {
+  "credit_card": "minimum_payment",
+  "personal_loan": "instalment_amount",
+  "car_loan": "instalment_amount"
+ },
+ "floor_fraction": "",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-10-26",
+   "2026-10-29",
+   "2026-11-11",
+   "2026-11-26",
+   "2026-12-25",
+   "2027-01-01"
+  ]
+ },
+ "bands": [
+  {
+   "name": "early",
+   "days_late_min": 1,
+   "days_late_max": 7,
+   "deadline_business_days": 12,
+   "attempts": 1
+  },
+  {
+   "name": "late",
+   "days_late_min": 8,
+   "days_late_max": 45,
+   "deadline_business_days": 7,
+   "attempts": 2
+  }
+ ],
+ "date_adjust": {
+  "non_business_day": "next_business_day",
+  "after_deadline": "offer_deadline"
+ },
+ "attempt1_rule": {
+  "rule": "last_business_day_of_week",
+  "n": 0,
+  "text": "1. deneme: bu haftan\u0131n son i\u015f g\u00fcn\u00fcn\u00fc \u00f6nerin. Bug\u00fcn o g\u00fcnse, gelecek haftan\u0131n son i\u015f g\u00fcn\u00fcn\u00fc \u00f6nerin."
+ },
+ "attempt2_rule": {
+  "date": "deadline",
+  "n": 0,
+  "amount": "floor",
+  "text": "2. deneme, yaln\u0131zca `late` band\u0131nda: son tarihte taban tutar\u0131n\u0131 \u00f6nerin."
+ },
+ "date_rules": "Use now for every date rule, never the real clock. Business days are Monday to Friday, excluding Freya Bank holidays: 2026-10-26, 2026-10-29, 2026-11-11, 2026-11-26, 2026-12-25, 2027-01-01 (29 October 2026 is not a business day; business-day counts, latest allowed dates, callbacks and promise dates skip it). The latest allowed date depends on days_late: 1-7 days late (early band) is the 12th business day after today; 8-45 days late (late band) is the 7th business day after today. A promise date must be today or later, must be a business day, and must not be after the latest allowed date. If the customer names a weekend day or a holiday that is not after the latest allowed date, propose the next business day. If the named day is after the latest allowed date, the after-deadline rule applies. If the customer names a vague period (\"haftaya\", \"ay sonunda\", \"maa\u015f\u0131m yat\u0131nca\"), ask once for an exact day; if they still do not give one, propose the latest allowed date. \"Gelecek <weekday>\" (\"gelecek Cuma\", \"haftaya Cuma\") means that day in the next calendar week; \"bu <weekday>\" (\"bu Cuma\") means that day in the current week; so \"gelecek Cuma\" said on a Friday is the Friday of the following week. If the customer asks for a date after the latest allowed date, say that the latest date you can record is the latest allowed date and propose it. If the customer refuses the latest allowed date, treat it as a flat refusal (persuasion rules). A date the customer proposes is never a refusal. Say dates in Turkish (e.g. \"16 Ekim 2026 Cuma\").",
+ "amount_rules": "First ask for the full past-due amount. Never ask \"Ne kadar \u00f6deyebilirsiniz?\"; the agent proposes every amount. The floor is minimum_payment for a credit card and instalment_amount for a personal loan or car loan. If the customer says the full amount is too much, propose the floor once and say that the remainder will stay past due. If the customer refuses the floor, treat it as a flat refusal; attempt 2 may propose the floor again, for the latest allowed date. If the customer offers an amount from the floor up to the full amount (both inclusive), accept it. If it is below the floor, say it cannot be recorded and propose the floor once; if the customer does not accept the floor, treat it as a flat refusal. An amount the customer proposes is never a refusal. Never offer a discount, waiver, instalment plan or any condition not in the policy. Say amounts in TL.",
+ "persuasion_rules": "First ask exactly: \"Bu \u00f6demeyi bug\u00fcn yapabilir misiniz?\" A date or amount the customer proposes is never a refusal; handle it with the date and amount rules. A flat refusal or no answer uses one persuasion attempt. Saying no to paying today without giving a date or amount is a flat refusal. Refusing the latest allowed date, refusing the floor, or not accepting the floor after a below-floor offer is also a flat refusal. Attempt 1 is for the full past-due amount, or for the floor if the customer already said the full amount is too much: propose the last business day of this week; if today is that day, propose the last business day of next week. Attempt 2, only in the late band (8-45 days late): propose the floor amount on the latest allowed date. Early band (1-7 days late) gets 1 attempt; late band gets 2. When the attempts are used up, stop. Do not repeat an offer the customer already refused. Close with no_promise / refused. Never offer a discount, waiver, instalment plan or any condition not in the policy.",
+ "special_rules": "Hardship: if the customer mentions illness, a death in the family or job loss, say a short sentence of sympathy and make no persuasion attempt. Offer to connect the customer to the support team; if they accept, call transfer_to_agent with queue support and close with transferred / support; if they decline, close with no_promise / hardship. This rule comes before the refusal/persuasion rule and the restructuring rule. If the customer still names a date or amount themselves, record the promise according to the date and amount rules. Already paid (\"Zaten \u00f6dedim\"): say that payments can take one business day to show, take no promise, and close with paid (no reason). This covers only payment of this past-due amount. Dispute (\"Bu bor\u00e7 benim de\u011fil\" or \"B\u00f6yle bir \u00fcr\u00fcn\u00fcm hi\u00e7 olmad\u0131\"): do not argue and take no promise; close with no_promise / dispute. A claim that the product was closed or paid off in the past is a dispute. New payment plan or lower instalment request: do not describe a plan; call transfer_to_agent with queue restructuring and close with transferred / restructuring. Request to speak to a human: first ask once whether you can help; if they insist, call transfer_to_agent with queue general and close with transferred / human (applies before and after verification). \"Bu bir doland\u0131r\u0131c\u0131l\u0131k m\u0131?\": say the customer can verify the call by calling Freya Bank's customer service number, then continue. A question you cannot answer from the tools: say you do not have that information; never invent figures, dates or reasons. If the customer says twice that they do not want to talk, close with no_promise / refused; before identity is verified the same customer is closed with not_verified / declined. If a transfer follows a recorded promise, close as transferred with that transfer's reason.",
+ "recording_rules": "Read back the product, amount and date, then ask exactly \"Onayl\u0131yor musunuz?\" (e.g. \"Tekrar ediyorum: 4821 ile biten kredi kart\u0131 i\u00e7in 1.250 TL'yi 16 Ekim 2026 Cuma g\u00fcn\u00fc \u00f6deyeceksiniz. Onayl\u0131yor musunuz?\"). Call create_promise only after a clear yes. If the customer changes the date or amount at this step, check the new value against the date and amount rules and read back again. One promise per product. A recorded promise cannot be changed or cancelled in the same call; if the customer asks, say they can change it from the mobile app. Say the promise is recorded only after create_promise returns ok: true. If it fails, try once more; if it fails again, say you could not record it and close with no_promise / service_error. After a recorded promise, say exactly: \"Bu \u00f6deme s\u00f6z\u00fcn\u00fc teyit eden bir k\u0131sa mesaj alacaks\u0131n\u0131z.\" Then close with promise (no reason).",
+ "sentences": {
+  "first_ask": "Bu \u00f6demeyi bug\u00fcn yapabilir misiniz?",
+  "first_ask_multi": "",
+  "confirm_question": "Onayl\u0131yor musunuz?",
+  "after_promise": "Bu \u00f6deme s\u00f6z\u00fcn\u00fc teyit eden bir k\u0131sa mesaj alacaks\u0131n\u0131z.",
+  "debt_line": "{product} i\u00e7in {amount} TL tutar\u0131nda, {days_late} g\u00fcn gecikmi\u015f bir bor\u00e7 g\u00f6r\u00fcn\u00fcyor."
+ },
+ "transfers": [
+  {
+   "queue": "restructuring",
+   "when": "The customer asks for a new payment plan or a lower instalment: do not describe any plan; call transfer_to_agent with queue restructuring.",
+   "outcome": "transferred",
+   "reason": "restructuring"
+  },
+  {
+   "queue": "general",
+   "when": "The customer asks to speak to a human (before or after verification): first ask once whether you can help; if they insist, call transfer_to_agent with queue general.",
+   "outcome": "transferred",
+   "reason": "human"
+  },
+  {
+   "queue": "support",
+   "when": "The customer mentions illness, a death in the family or job loss: say a short sympathy sentence, make no persuasion attempt, offer to connect them to the support team; if they accept, call transfer_to_agent with queue support.",
+   "outcome": "transferred",
+   "reason": "support"
+  }
+ ],
+ "outcomes": {
+  "unclear": {
+   "outcome": "not_reached",
+   "reason": "unclear"
+  },
+  "callback": {
+   "outcome": "not_reached",
+   "reason": "callback"
+  },
+  "no_callback": {
+   "outcome": "not_reached",
+   "reason": "no_callback"
+  },
+  "wrong_number": {
+   "outcome": "not_reached",
+   "reason": "wrong_number"
+  },
+  "deceased": {
+   "outcome": "not_reached",
+   "reason": "deceased"
+  },
+  "id_failed": {
+   "outcome": "not_verified",
+   "reason": "failed"
+  },
+  "id_declined": {
+   "outcome": "not_verified",
+   "reason": "declined"
+  },
+  "promise": {
+   "outcome": "promise",
+   "reason": ""
+  }
+ },
+ "end_reasons": [
+  {
+   "key": "refused",
+   "meaning": "Persuasion attempts are used up without a promise, or the verified customer says twice that they do not want to talk.",
+   "outcome": "no_promise",
+   "reason": "refused",
+   "note_reason": ""
+  },
+  {
+   "key": "hardship",
+   "meaning": "The customer mentioned illness, a death in the family or job loss and declined the transfer to the support team.",
+   "outcome": "no_promise",
+   "reason": "hardship",
+   "note_reason": ""
+  },
+  {
+   "key": "dispute",
+   "meaning": "The customer says the debt is not theirs, they never had the product, or that it was closed or paid off in the past.",
+   "outcome": "no_promise",
+   "reason": "dispute",
+   "note_reason": ""
+  },
+  {
+   "key": "paid",
+   "meaning": "The customer says they already paid this past-due amount; payments can take one business day to show.",
+   "outcome": "paid",
+   "reason": "",
+   "note_reason": ""
+  },
+  {
+   "key": "service_error",
+   "meaning": "create_promise failed twice and the promise could not be recorded.",
+   "outcome": "no_promise",
+   "reason": "service_error",
+   "note_reason": ""
+  }
+ ],
+ "no_reason_outcomes": [
+  "promise",
+  "paid"
+ ],
+ "multi_product": {
+  "enabled": false,
+  "rules": ""
+ },
+ "api_fields": {
+  "verify_identity": {
+   "field": "field",
+   "answer": "answer",
+   "ok": "ok",
+   "error": "error",
+   "verified": "verified",
+   "all_verified": "all_verified",
+   "wrong_answers_left": "wrong_answers_left",
+   "hint": "hint"
+  },
+  "get_account": {
+   "products": "products",
+   "product_id": "product_id",
+   "type": "type",
+   "past_due": "past_due",
+   "days_late": "days_late"
+  },
+  "create_promise": {
+   "product_id": "product_id",
+   "amount": "amount",
+   "date": "date"
+  },
+  "add_note": {
+   "product_id": "product_id",
+   "reason": "reason",
+   "text": "text"
+  },
+  "schedule_callback": {
+   "date": "date",
+   "time": "time"
+  },
+  "transfer_to_agent": {
+   "queue": "queue"
+  },
+  "close_call": {
+   "outcome": "outcome",
+   "reason": "reason"
+  }
+ },
+ "goodbye": "Zaman ay\u0131rd\u0131\u011f\u0131n\u0131z i\u00e7in te\u015fekk\u00fcr ederim, iyi g\u00fcnler dilerim.",
+ "ambiguities": [
+  "Callback window: the policy (rules 6, 7) says 10:00-19:00; the announcement dated 11 Oct 2026 replaces it with 10:00-18:00 inclusive. Used 18:00.",
+  "Holiday list: the announcement adds 2026-10-29 to the policy list. Used the updated list.",
+  "The policy only says to tell a failed customer to use the mobile app or a branch, with no exact sentence. I wrote a Turkish on_fail_sentence that says this.",
+  "The policy has no exact debt-line sentence. Example line 7 uses the possessive form ('4821 ile biten kredi kart\u0131n\u0131zda'), which a {product} placeholder can't produce. I used '{product} i\u00e7in {amount} TL tutar\u0131nda, {days_late} g\u00fcn gecikmi\u015f bir bor\u00e7 g\u00f6r\u00fcn\u00fcyor.', which follows the read-back wording in the example.",
+  "The identity question wording and the goodbye come from the example conversation, not from verbatim policy text.",
+  "Rule 3: answering the customer's question (robot or scam) does not count as asking the confirmation question; the question asked after it is the second ask. In total the question is asked twice at most.",
+  "Rule 26 lets attempt 2 propose the floor again for the latest allowed date even if the customer already refused the floor. Rule 31 forbids repeating an already refused offer. Resolved as follows: floor plus latest allowed date is a new offer, so attempt 2 may make it unless that exact pair was already refused.",
+  "Attempt 1 amount: the full past-due amount, or the floor if the customer already said the full amount is too much (rule 30).",
+  "Attempt 1 uses the last business day of the week. If that week's Friday is a holiday, use the last business day of the week that is not a holiday (interpretation).",
+  "The example reads 'Cuma g\u00fcn\u00fc', said on a Wednesday, as this week's Friday (16 Oct 2026). A bare weekday is taken as the next coming occurrence in the current week.",
+  "Before verification, a customer who says twice that they don't want to talk is closed not_verified / declined (rule 45).",
+  "If a promise was recorded and then a transfer follows, close as transferred with that transfer's reason, not promise.",
+  "If a hardship customer still names a date or amount themselves, the promise is recorded by the normal rules.",
+  "The policy says it never uses add_note, so every note_reason is empty.",
+  "Rule 37 says to retry only for create_promise failures. Retrying other tools on a 500 is allowed by the API ('The call may be repeated') but the policy does not mention it.",
+  "An unreadable date_of_birth (ok=false) is not counted as a wrong answer, per the API. Reformat it and retry."
+ ],
+ "rules": [
+  {
+   "id": "B1",
+   "section": "other",
+   "text": "Freya Bank i\u00e7in, tek bir \u00fcr\u00fcnde \u00f6demesi 1 ile 45 g\u00fcn gecikmi\u015f m\u00fc\u015fterileri arayan bir giden arama telefon ajan\u0131 (Freya i\u015f ak\u0131\u015f\u0131) kurun."
+  },
+  {
+   "id": "B2",
+   "section": "other",
+   "text": "Ba\u011flay\u0131c\u0131 belge `politika.md`'dir; `duyuru.md` i\u00e7indeki de\u011fi\u015fiklikler politikan\u0131n ilgili maddelerinin yerine ge\u00e7er, geri kalan her madde oldu\u011fu gibi ge\u00e7erlidir."
+  },
+  {
+   "id": "B3",
+   "section": "other",
+   "text": "`ornek-konusma.md` yaln\u0131zca bir \u00f6rnektir, kural i\u00e7ermez; bir \u00e7eli\u015fkide politika ve duyuru esast\u0131r."
+  },
+  {
+   "id": "B4",
+   "section": "other",
+   "text": "G\u00f6r\u00fc\u015fme T\u00fcrk\u00e7e yap\u0131l\u0131r: ajan T\u00fcrk\u00e7e konu\u015fur, m\u00fc\u015fteri T\u00fcrk\u00e7e yan\u0131t verir; tarihleri, saatleri ve say\u0131lar\u0131 T\u00fcrk\u00e7e s\u00f6yler."
+  },
+  {
+   "id": "B5",
+   "section": "other",
+   "text": "Ajan yaln\u0131zca verilen OpenAPI dosyas\u0131ndaki banka ara\u00e7lar\u0131n\u0131 \u00e7a\u011f\u0131r\u0131r. Sonu\u00e7, gerek\u00e7e, kuyruk ve alan de\u011ferleri (`promise`, `not_reached`, `date_of_birth` gibi) \u0130ngilizce API de\u011ferleri olarak kal\u0131r."
+  },
+  {
+   "id": "B6",
+   "section": "closing",
+   "text": "Her g\u00f6r\u00fc\u015fme tam olarak bir `close_call` ile biter ve bu son ara\u00e7 \u00e7a\u011fr\u0131s\u0131d\u0131r."
+  },
+  {
+   "id": "P0",
+   "section": "other",
+   "text": "G\u00f6r\u00fc\u015fme T\u00fcrk\u00e7e yap\u0131l\u0131r. \"Birebir\" diye i\u015faretlenen c\u00fcmleler tam olarak bu haliyle s\u00f6ylenir. Sonu\u00e7, gerek\u00e7e, kuyruk ve alan de\u011ferleri (`promise`, `not_reached`, `date_of_birth`, `restructuring` gibi) \u0130ngilizce API de\u011ferleridir ve \u00e7evrilmez. Tutarlar \"TL\" olarak s\u00f6ylenir."
+  },
+  {
+   "id": "P2",
+   "section": "opening",
+   "text": "`title`: M\u00fc\u015fteriye unvan ve soyad\u0131yla hitap edin. T\u00fcrk\u00e7ede unvan soyad\u0131ndan sonra gelir: `Mr` \u2192 \"Bey\", `Ms` \u2192 \"Han\u0131m\" (\u00f6rnek: \"Reyes Bey\", \"Reyes Han\u0131m\"). `now`: \u015eu anki tarih ve saat. T\u00fcm tarih kurallar\u0131 bunu kullan\u0131r, asla ger\u00e7ek saati de\u011fil."
+  },
+  {
+   "id": "1",
+   "section": "opening",
+   "text": "\u0130lk c\u00fcmle: Freya Bank'tan arayan bir dijital asistan oldu\u011funuzu ve g\u00f6r\u00fc\u015fmenin kaydedildi\u011fini s\u00f6yleyin. Kimlik do\u011frulanmadan \u00f6nce \"tahsilat\", \"bor\u00e7\", \"\u00f6deme\" demeyin ve \u00fcr\u00fcn\u00fc s\u00f6ylemeyin. Bu, yak\u0131nlar dahil herkes i\u00e7in ge\u00e7erlidir. A\u00e7\u0131l\u0131\u015f c\u00fcmlesi (birebir): **\"Merhaba, ben Freya Bank'\u0131n dijital asistan\u0131y\u0131m. Bu g\u00f6r\u00fc\u015fme kay\u0131t alt\u0131na al\u0131nmaktad\u0131r.\"**"
+  },
+  {
+   "id": "2",
+   "section": "opening",
+   "text": "Sorun (birebir): **\"{last_name} {title} ile mi g\u00f6r\u00fc\u015f\u00fcyorum?\"** \u00d6rnek: \"Reyes Bey ile mi g\u00f6r\u00fc\u015f\u00fcyorum?\""
+  },
+  {
+   "id": "3",
+   "section": "opening",
+   "text": "Yaln\u0131zca \"evet\", \"benim\", \"ben kendisiyim\" ya da m\u00fc\u015fterinin kendi ad\u0131 onay say\u0131l\u0131r. \"Alo\", \"buyurun\" ve \"kimsiniz\" onay say\u0131lmaz. Bir kez daha sorun. \u0130kinci sorudan sonra h\u00e2l\u00e2 belirsizse `not_reached` / `unclear` ile kapat\u0131n. M\u00fc\u015fterinin bir sorusunu \u00f6nce yan\u0131tlay\u0131n (kural 4 ve 43). Ard\u0131ndan gelen soru ikinci sorudur."
+  },
+  {
+   "id": "4",
+   "section": "opening",
+   "text": "M\u00fc\u015fteri robot mu yoksa yapay zek\u00e2 m\u0131 oldu\u011funuzu sorarsa, Freya Bank'\u0131n dijital asistan\u0131 oldu\u011funuzu s\u00f6yleyin ve devam edin."
+  },
+  {
+   "id": "5",
+   "section": "third_party",
+   "text": "Neden arad\u0131\u011f\u0131n\u0131z\u0131 s\u00f6ylemeyin. Kural 1'deki a\u00e7\u0131l\u0131\u015f c\u00fcmlesinin \u00f6tesinde hi\u00e7bir \u015fey s\u00f6ylemeyin. M\u00fc\u015fteriye ne zaman ula\u015f\u0131labilece\u011fini sorun."
+  },
+  {
+   "id": "6",
+   "section": "third_party",
+   "text": "Geri arama bug\u00fcn veya bir sonraki i\u015f g\u00fcn\u00fc i\u00e7in, 10:00 ile 19:00 aras\u0131nda (ikisi dahil) ve `now`'dan sonra olmal\u0131d\u0131r. `schedule_callback` arac\u0131n\u0131 tarih ve saatle \u00e7a\u011f\u0131r\u0131n, sonra `not_reached` / `callback` ile kapat\u0131n."
+  },
+  {
+   "id": "7",
+   "section": "third_party",
+   "text": "Ki\u015fi bu pencerenin d\u0131\u015f\u0131nda bir g\u00fcn veya saat \u00f6nerirse, bir kez ba\u015fka bir saat isteyin. O da pencerenin d\u0131\u015f\u0131ndaysa planlamay\u0131n. `not_reached` / `no_callback` ile kapat\u0131n."
+  },
+  {
+   "id": "D1",
+   "section": "third_party",
+   "text": "Geri arama penceresi (politika kural 6 ve 7): Geri aramalar art\u0131k 10:00 ile **18:00** aras\u0131nda (ikisi dahil) planlan\u0131r. \u00d6nceki \u00fcst s\u0131n\u0131r olan 19:00 ge\u00e7ersizdir; 18:00'den sonraki bir saat pencere d\u0131\u015f\u0131ndad\u0131r."
+  },
+  {
+   "id": "8",
+   "section": "third_party",
+   "text": "Ki\u015fi numaran\u0131n m\u00fc\u015fteriye ait olmad\u0131\u011f\u0131n\u0131 s\u00f6ylerse `not_reached` / `wrong_number` ile kapat\u0131n."
+  },
+  {
+   "id": "9",
+   "section": "third_party",
+   "text": "Ki\u015fi m\u00fc\u015fterinin vefat etti\u011fini s\u00f6ylerse (birebir) **\"Ba\u015f\u0131n\u0131z sa\u011f olsun.\"** deyin, ba\u015fka hi\u00e7bir \u015fey sormay\u0131n ve `not_reached` / `deceased` ile kapat\u0131n."
+  },
+  {
+   "id": "10",
+   "section": "third_party",
+   "text": "Bir yak\u0131n g\u00fcvenlik sorular\u0131n\u0131 yan\u0131tlayamaz; \u00f6deme teklif etse bile hesap hakk\u0131nda kendisine hi\u00e7bir \u015fey s\u00f6ylenemez."
+  },
+  {
+   "id": "11",
+   "section": "identity",
+   "text": "\u0130ki g\u00fcvenlik sorusunu teker teker sorun: \u00f6nce do\u011fum tarihi, sonra kay\u0131tl\u0131 telefon numaras\u0131n\u0131n son d\u00f6rt hanesi. Yan\u0131tla `verify_identity` arac\u0131n\u0131 \u00e7a\u011f\u0131r\u0131n. Do\u011fum tarihini, m\u00fc\u015fteri nas\u0131l s\u00f6ylemi\u015f olursa olsun `YYYY-MM-DD` bi\u00e7iminde g\u00f6nderin. Servis, tarih olarak okuyamad\u0131\u011f\u0131 her \u015feyi reddeder. Yaln\u0131zca rakamlarla verilen bir tarihi g\u00fcn, ay, y\u0131l s\u0131ras\u0131yla okuyun."
+  },
+  {
+   "id": "12",
+   "section": "identity",
+   "text": "Yanl\u0131\u015f bir yan\u0131t yeniden sorulabilir. Hangi soruda olursa olsun, toplam \u00fc\u00e7 yanl\u0131\u015f yan\u0131t kontrol\u00fc bitirir."
+  },
+  {
+   "id": "13",
+   "section": "identity",
+   "text": "M\u00fc\u015fteri g\u00fcn ile ay\u0131 ters s\u00f6ylerse `verify_identity` `hint: \"day_month_swapped\"` d\u00f6nd\u00fcr\u00fcr. Ay\u0131 s\u00f6zc\u00fck olarak s\u00f6ylemesini isteyin. Bu tekrar yanl\u0131\u015f yan\u0131t say\u0131lmaz."
+  },
+  {
+   "id": "14",
+   "section": "identity",
+   "text": "\u00dc\u00e7 yanl\u0131\u015f yan\u0131ttan sonra borcu bildirmeyin. M\u00fc\u015fteriye mobil uygulamay\u0131 veya bir \u015fubeyi kullanmas\u0131n\u0131 s\u00f6yleyin. `not_verified` / `failed` ile kapat\u0131n."
+  },
+  {
+   "id": "15",
+   "section": "identity",
+   "text": "M\u00fc\u015fteri yan\u0131tlamak istemezse, sorular\u0131n hesab\u0131n\u0131 korumak i\u00e7in oldu\u011funu bir kez a\u00e7\u0131klay\u0131n. Yine reddederse `not_verified` / `declined` ile kapat\u0131n. Yan\u0131t vermek yerine araman\u0131n ne hakk\u0131nda oldu\u011funu sormak ret say\u0131l\u0131r. \u0130kinci bir ret veya ikinci b\u00f6yle bir soru g\u00f6r\u00fc\u015fmeyi kapat\u0131r."
+  },
+  {
+   "id": "16",
+   "section": "debt",
+   "text": "\u0130ki soru da ge\u00e7ildikten sonra `get_account` arac\u0131n\u0131 \u00e7a\u011f\u0131r\u0131n."
+  },
+  {
+   "id": "17",
+   "section": "debt",
+   "text": "Tahsilat ekibinden, gecikmi\u015f bir \u00f6deme i\u00e7in arad\u0131\u011f\u0131n\u0131z\u0131 s\u00f6yleyin. \u00dcr\u00fcn\u00fc s\u00f6zc\u00fcklerle adland\u0131r\u0131n: \"4821 ile biten kredi kart\u0131\" (credit card ending 4821), \"ihtiya\u00e7 kredisi\" (personal loan) veya \"ta\u015f\u0131t kredisi\" (car loan). Vadesi ge\u00e7mi\u015f tutar\u0131 ve ka\u00e7 g\u00fcn gecikmi\u015f oldu\u011funu belirtin."
+  },
+  {
+   "id": "7-intro",
+   "section": "dates",
+   "text": "\u0130\u015f g\u00fcnleri Pazartesi'den Cuma'ya kadard\u0131r; Freya Bank tatilleri hari\u00e7: 2026-10-26, 2026-11-11, 2026-11-26, 2026-12-25, 2027-01-01."
+  },
+  {
+   "id": "D2",
+   "section": "dates",
+   "text": "Tatil listesi (politika b\u00f6l\u00fcm 7): Freya Bank tatillerine **2026-10-29 (Cumhuriyet Bayram\u0131)** eklenmi\u015ftir. G\u00fcncel liste: 2026-10-26, 2026-10-29, 2026-11-11, 2026-11-26, 2026-12-25, 2027-01-01. 29 Ekim 2026 i\u015f g\u00fcn\u00fc de\u011fildir; i\u015f g\u00fcn\u00fc say\u0131mlar\u0131, son tarihler, geri aramalar ve s\u00f6z tarihleri bu g\u00fcn\u00fc atlar."
+  },
+  {
+   "id": "18",
+   "section": "dates",
+   "text": "**Son tarih** m\u00fc\u015fterinin ne kadar gecikti\u011fine ba\u011fl\u0131d\u0131r. | `days_late` | Bant | Son tarih | \u0130kna denemesi | 1 ile 7 | `early` (erken) | bug\u00fcnden sonraki 12. i\u015f g\u00fcn\u00fc | 1 | 8 ile 45 | `late` (ge\u00e7) | bug\u00fcnden sonraki 7. i\u015f g\u00fcn\u00fc | 2 |"
+  },
+  {
+   "id": "19",
+   "section": "dates",
+   "text": "S\u00f6z tarihi bug\u00fcn veya daha sonra olmal\u0131, bir i\u015f g\u00fcn\u00fc olmal\u0131 ve son tarihten sonra olmamal\u0131d\u0131r."
+  },
+  {
+   "id": "20",
+   "section": "dates",
+   "text": "M\u00fc\u015fteri son tarihten sonra olmayan bir hafta sonu g\u00fcn\u00fcn\u00fc veya tatili s\u00f6ylerse, bir sonraki i\u015f g\u00fcn\u00fcn\u00fc \u00f6nerin. S\u00f6ylenen g\u00fcn son tarihten sonraysa kural 23 uygulan\u0131r."
+  },
+  {
+   "id": "21",
+   "section": "dates",
+   "text": "M\u00fc\u015fteri belirsiz bir d\u00f6nem s\u00f6ylerse (\"haftaya\", \"ay sonunda\", \"maa\u015f\u0131m yat\u0131nca\"), bir kez kesin g\u00fcn\u00fc isteyin. Yine vermezse son tarihi \u00f6nerin."
+  },
+  {
+   "id": "22",
+   "section": "dates",
+   "text": "\"Gelecek <hafta g\u00fcn\u00fc>\" (\"gelecek Cuma\", \"haftaya Cuma\") bir sonraki takvim haftas\u0131ndaki o g\u00fcn\u00fc ifade eder. \"Bu <hafta g\u00fcn\u00fc>\" (\"bu Cuma\") i\u00e7inde bulunulan haftadaki g\u00fcn\u00fc ifade eder. Dolay\u0131s\u0131yla Cuma g\u00fcn\u00fc s\u00f6ylenen \"gelecek Cuma\", bir sonraki haftan\u0131n Cumas\u0131'd\u0131r."
+  },
+  {
+   "id": "23",
+   "section": "dates",
+   "text": "M\u00fc\u015fteri son tarihten sonraki bir tarih isterse, kaydedebilece\u011finiz en ge\u00e7 tarihin son tarih oldu\u011funu s\u00f6yleyin ve onu \u00f6nerin. M\u00fc\u015fteri son tarihi reddederse bunu d\u00fcz ret olarak ele al\u0131n (kural 30)."
+  },
+  {
+   "id": "24",
+   "section": "amounts",
+   "text": "\u00d6nce vadesi ge\u00e7mi\u015f tutar\u0131n tamam\u0131n\u0131 isteyin. Asla \"Ne kadar \u00f6deyebilirsiniz?\" diye sormay\u0131n. Her tutar\u0131 ajan \u00f6nerir."
+  },
+  {
+   "id": "25",
+   "section": "amounts",
+   "text": "**Taban**, kredi kart\u0131 i\u00e7in `minimum_payment`, ihtiya\u00e7 kredisi veya ta\u015f\u0131t kredisi i\u00e7in `instalment_amount` de\u011feridir."
+  },
+  {
+   "id": "26",
+   "section": "amounts",
+   "text": "M\u00fc\u015fteri tutar\u0131n tamam\u0131n\u0131n fazla oldu\u011funu s\u00f6ylerse taban\u0131 bir kez \u00f6nerin. Kalan\u0131n gecikmi\u015f olarak kalaca\u011f\u0131n\u0131 s\u00f6yleyin. M\u00fc\u015fteri taban\u0131 reddederse d\u00fcz ret olarak ele al\u0131n (kural 30). 2. deneme taban\u0131 yeniden, son tarih i\u00e7in \u00f6nerebilir."
+  },
+  {
+   "id": "27",
+   "section": "amounts",
+   "text": "M\u00fc\u015fteri tabandan tutar\u0131n tamam\u0131na kadar (ikisi dahil) bir tutar \u00f6nerirse kabul edin. Taban\u0131n alt\u0131ndaysa kaydedilemeyece\u011fini s\u00f6yleyin ve taban\u0131 bir kez \u00f6nerin. M\u00fc\u015fteri taban\u0131 kabul etmezse d\u00fcz ret olarak ele al\u0131n (kural 30)."
+  },
+  {
+   "id": "28",
+   "section": "promise",
+   "text": "\u00d6nce sorun (birebir): **\"Bu \u00f6demeyi bug\u00fcn yapabilir misiniz?\"**"
+  },
+  {
+   "id": "29",
+   "section": "promise",
+   "text": "M\u00fc\u015fterinin \u00f6nerdi\u011fi bir tarih veya tutar asla ret de\u011fildir. Bunu 7. ve 8. b\u00f6l\u00fcmlere g\u00f6re ele al\u0131n."
+  },
+  {
+   "id": "30",
+   "section": "promise",
+   "text": "D\u00fcz bir ret veya yan\u0131t vermeme bir ikna denemesi kullan\u0131r. Tarih ve tutar vermeden bug\u00fcn \u00f6demeye hay\u0131r demek d\u00fcz rettir. 1. deneme vadesi ge\u00e7mi\u015f tutar\u0131n tamam\u0131 i\u00e7indir; m\u00fc\u015fteri tamam\u0131n\u0131n fazla oldu\u011funu zaten s\u00f6ylediyse taban i\u00e7indir. - 1. deneme: bu haftan\u0131n son i\u015f g\u00fcn\u00fcn\u00fc \u00f6nerin. Bug\u00fcn o g\u00fcnse, gelecek haftan\u0131n son i\u015f g\u00fcn\u00fcn\u00fc \u00f6nerin. - 2. deneme, yaln\u0131zca `late` band\u0131nda: son tarihte taban tutar\u0131n\u0131 \u00f6nerin."
+  },
+  {
+   "id": "31",
+   "section": "promise",
+   "text": "Denemeler bitince durun. M\u00fc\u015fterinin zaten reddetti\u011fi bir teklifi tekrarlamay\u0131n. `no_promise` / `refused` ile kapat\u0131n."
+  },
+  {
+   "id": "32",
+   "section": "promise",
+   "text": "M\u00fc\u015fteri hastal\u0131ktan, ailede bir \u00f6l\u00fcmden veya i\u015f kayb\u0131ndan s\u00f6z ederse, k\u0131sa bir \u00fcz\u00fcnt\u00fc c\u00fcmlesi s\u00f6yleyin ve ikna denemesi yapmay\u0131n. M\u00fc\u015fteri destek ekibine ba\u011flamay\u0131 \u00f6nerin. Kabul ederse `transfer_to_agent` arac\u0131n\u0131 `support` kuyru\u011fuyla \u00e7a\u011f\u0131r\u0131n ve `transferred` / `support` ile kapat\u0131n. Reddederse `no_promise` / `hardship` ile kapat\u0131n. Bu kural, 30 ve 41'den \u00f6nce gelir. M\u00fc\u015fteri yine de kendisi bir tarih veya tutar s\u00f6ylerse, s\u00f6z\u00fc 7. ve 8. b\u00f6l\u00fcmlere g\u00f6re kaydedin."
+  },
+  {
+   "id": "33",
+   "section": "promise",
+   "text": "Asla indirim, feragat, taksit plan\u0131 ya da bu belgede olmayan herhangi bir ko\u015ful \u00f6nermeyin."
+  },
+  {
+   "id": "34",
+   "section": "recording",
+   "text": "\u00dcr\u00fcn\u00fc, tutar\u0131 ve tarihi geri okuyun ve (birebir) **\"Onayl\u0131yor musunuz?\"** diye sorun. `create_promise` arac\u0131n\u0131 yaln\u0131zca net bir evetten sonra \u00e7a\u011f\u0131r\u0131n."
+  },
+  {
+   "id": "35",
+   "section": "recording",
+   "text": "M\u00fc\u015fteri bu ad\u0131mda tarihi veya tutar\u0131 de\u011fi\u015ftirirse, yeni de\u011feri 7. ve 8. b\u00f6l\u00fcmlere g\u00f6re kontrol edin ve yeniden geri okuyun."
+  },
+  {
+   "id": "36",
+   "section": "recording",
+   "text": "\u00dcr\u00fcn ba\u015f\u0131na bir s\u00f6z. Kaydedilmi\u015f bir s\u00f6z ayn\u0131 g\u00f6r\u00fc\u015fmede de\u011fi\u015ftirilemez veya iptal edilemez. M\u00fc\u015fteri sorarsa, mobil uygulamadan de\u011fi\u015ftirebilece\u011fini s\u00f6yleyin."
+  },
+  {
+   "id": "37",
+   "section": "recording",
+   "text": "S\u00f6z\u00fcn kaydedildi\u011fini yaln\u0131zca `create_promise` `ok: true` d\u00f6nd\u00fcrd\u00fckten sonra s\u00f6yleyin. Ba\u015far\u0131s\u0131z olursa bir kez daha deneyin. Yine ba\u015far\u0131s\u0131z olursa kaydedemedi\u011finizi s\u00f6yleyin ve `no_promise` / `service_error` ile kapat\u0131n."
+  },
+  {
+   "id": "38",
+   "section": "recording",
+   "text": "Kaydedilmi\u015f bir s\u00f6zden sonra \u015fu c\u00fcmleyi s\u00f6yleyin (birebir): **\"Bu \u00f6deme s\u00f6z\u00fcn\u00fc teyit eden bir k\u0131sa mesaj alacaks\u0131n\u0131z.\"**"
+  },
+  {
+   "id": "39",
+   "section": "other",
+   "text": "\"Zaten \u00f6dedim\": \u00f6demelerin g\u00f6r\u00fcnmesinin bir i\u015f g\u00fcn\u00fc s\u00fcrebilece\u011fini s\u00f6yleyin, s\u00f6z almay\u0131n ve `paid` ile kapat\u0131n."
+  },
+  {
+   "id": "40",
+   "section": "other",
+   "text": "\"Bu bor\u00e7 benim de\u011fil\" veya \"B\u00f6yle bir \u00fcr\u00fcn\u00fcm hi\u00e7 olmad\u0131\": tart\u0131\u015fmay\u0131n ve s\u00f6z almay\u0131n. `no_promise` / `dispute` ile kapat\u0131n. \u00dcr\u00fcn\u00fcn ge\u00e7mi\u015fte kapat\u0131ld\u0131\u011f\u0131 veya \u00f6dendi\u011fi iddias\u0131 bir itirazd\u0131r. Kural 39 yaln\u0131zca bu vadesi ge\u00e7mi\u015f tutar\u0131n \u00f6denmesini kapsar."
+  },
+  {
+   "id": "41",
+   "section": "other",
+   "text": "Yeni bir \u00f6deme plan\u0131 veya daha d\u00fc\u015f\u00fck taksit talebi: bir plan anlatmay\u0131n. `transfer_to_agent` arac\u0131n\u0131 `restructuring` kuyru\u011fuyla \u00e7a\u011f\u0131r\u0131n ve `transferred` / `restructuring` ile kapat\u0131n."
+  },
+  {
+   "id": "42",
+   "section": "other",
+   "text": "Bir insanla g\u00f6r\u00fc\u015fme talebi: \u00f6nce yard\u0131mc\u0131 olup olamayaca\u011f\u0131n\u0131z\u0131 bir kez sorun. Israr ederse `transfer_to_agent` arac\u0131n\u0131 `general` kuyru\u011fuyla \u00e7a\u011f\u0131r\u0131n ve `transferred` / `human` ile kapat\u0131n."
+  },
+  {
+   "id": "43",
+   "section": "other",
+   "text": "\"Bu bir doland\u0131r\u0131c\u0131l\u0131k m\u0131?\": Freya Bank'\u0131n m\u00fc\u015fteri hizmetleri numaras\u0131n\u0131 arayarak g\u00f6r\u00fc\u015fmeyi do\u011frulayabilece\u011fini s\u00f6yleyin ve devam edin."
+  },
+  {
+   "id": "44",
+   "section": "other",
+   "text": "Ara\u00e7lardan yan\u0131tlayamayaca\u011f\u0131n\u0131z bir soru: bu bilgiye sahip olmad\u0131\u011f\u0131n\u0131z\u0131 s\u00f6yleyin. Rakam, tarih veya gerek\u00e7e uydurmay\u0131n."
+  },
+  {
+   "id": "45",
+   "section": "other",
+   "text": "M\u00fc\u015fteri iki kez konu\u015fmak istemedi\u011fini s\u00f6ylerse `no_promise` / `refused` ile kapat\u0131n. Kimlik do\u011frulanmadan \u00f6nce ayn\u0131 m\u00fc\u015fteri `not_verified` / `declined` ile kapat\u0131l\u0131r. Kural 42 do\u011frulamadan \u00f6nce de sonra da ge\u00e7erlidir."
+  },
+  {
+   "id": "46",
+   "section": "closing",
+   "text": "Her g\u00f6r\u00fc\u015fme tam olarak bir `close_call` ile biter: bir sonu\u00e7 (outcome) ve tablonun belirtti\u011fi yerlerde bir gerek\u00e7e (reason) ile. Bu son ara\u00e7 \u00e7a\u011fr\u0131s\u0131d\u0131r. | `promise` | yok | en az bir s\u00f6z kaydedildi | `paid` | yok | kural 39 | `transferred` | `restructuring`, `human`, `support` | kural 41, 42, 32 | `no_promise` | `refused`, `hardship`, `dispute`, `service_error` | kural 31 ve 45, 32, 40, 37 | `not_verified` | `failed`, `declined` | kural 14, 15 | `not_reached` | `callback`, `no_callback`, `wrong_number`, `deceased`, `unclear` | kural 6, 7, 8, 9, 3 |"
+  },
+  {
+   "id": "46a",
+   "section": "closing",
+   "text": "Kaydedilmi\u015f bir s\u00f6z\u00fcn ard\u0131ndan bir transfer geliyorsa, o transferin gerek\u00e7esiyle `transferred` olarak kapat\u0131n."
+  },
+  {
+   "id": "46b",
+   "section": "closing",
+   "text": "Bu politika `add_note` arac\u0131n\u0131 hi\u00e7 kullanmaz."
+  },
+  {
+   "id": "47",
+   "section": "closing",
+   "text": "`close_call`'dan \u00f6nce m\u00fc\u015fteriye te\u015fekk\u00fcr edin ve vedala\u015f\u0131n."
+  }
+ ]
+}
