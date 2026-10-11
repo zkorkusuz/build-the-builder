@@ -221,7 +221,7 @@ def render(policy, spec):
     meanings = " ".join(str(e.get("key")) + ": " + str(e.get("meaning", "")) for e in ends)
     # The extractor only classifies the latest reply; a code step counts refusals against the attempts allowed and ends the call when they are used up.
     stops = [{"target_node": "count_refusal", "description": "the customer refused", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
-                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "refusal"}]}]}},
+                {"variable": "last_reply", "operator": "equals", "operand": "refusal"}]}]}},
              {"target_node": "offer_deadline", "description": "no exact day after being asked", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
                 {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "no_exact_day"}]}]}},
              {"target_node": "resolve_proposal", "description": "the customer named a day", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
@@ -259,9 +259,18 @@ def render(policy, spec):
         "        elif why:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '; it ' + why + '.'\n"
         "        else:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '. Read back exactly this date and record ' + day.isoformat() + ' once confirmed; do not compute the date yourself.'\n"
         "except Exception:\n    pass\n"), "negotiate")
-    nodes["count_refusal"] = code_node("count_refusal", (
-        "try:\n    n = int(float(vars.get('refusals') or 0)) + 1\n    vars['refusals'] = str(n)\n    vars['last_reply'] = 'other'\n    vars['offer_now'] = ''\n"
-        "    allowed = int(float(vars.get('attempts_allowed') or 99))\n    vars['refusals_over'] = 'yes' if n > allowed else 'no'\nexcept Exception:\n    vars['refusals_over'] = 'no'\n"),
+    refused_note = next((e.get("note_reason") for e in ends if e.get("key") == "refused" and e.get("note_reason")), "refused")
+    # with several products the refusals are counted per product, against that product's own attempts, and a used-up product is noted and left
+    nodes["count_refusal"] = code_node("count_refusal", "import json\nNOTE_REFUSED = " + json.dumps(str(refused_note)) + "\n" + (
+        "try:\n    facts = json.loads(vars.get('product_facts_json') or '[]')\n    vars['last_reply'] = 'other'\n    vars['offer_now'] = ''\n"
+        "    if len(facts) > 1:\n"
+        "        handled = [str(x.get('product_id')) for x in json.loads(vars.get('promises_recorded') or '[]') + json.loads(vars.get('notes_recorded') or '[]')] + [str(x) for x in json.loads(vars.get('service_error_products') or '[]')]\n"
+        "        cur = next((f for f in facts if str(f.get('product_id')) not in handled), None)\n        vars['refusals_over'] = 'no'\n"
+        "        if cur is not None:\n            key = 'refusals_' + str(cur.get('product_id'))\n            n = int(float(vars.get(key) or 0)) + 1\n            vars[key] = str(n)\n            allowed = int(float(cur.get('attempts') or 0))\n"
+        "            if n > allowed:\n                vars['offer_now'] = 'The persuasion attempts for ' + str(cur.get('words')) + ' (id ' + str(cur.get('product_id')) + ') are used up: make no further offer for it. CALL add_note with that product_id and reason ' + json.dumps(NOTE_REFUSED) + ', then continue with the next product that has no promise and no note, starting at its own attempt 1; if none is left, thank the customer, say goodbye and call transition_to_wrap_up.'\n"
+        "            else:\n                vars['offer_now'] = 'Refusal ' + str(n) + ' of ' + str(allowed) + ' allowed for ' + str(cur.get('words')) + ' (id ' + str(cur.get('product_id')) + '): make its next persuasion attempt exactly as its product line in your facts says, for this product only; do not ask about today again.'\n"
+        "    else:\n        n = int(float(vars.get('refusals') or 0)) + 1\n        vars['refusals'] = str(n)\n"
+        "        allowed = int(float(vars.get('attempts_allowed') or 99))\n        vars['refusals_over'] = 'yes' if n > allowed else 'no'\nexcept Exception:\n    vars['refusals_over'] = 'no'\n"),
         "negotiate", before=[when("stop_offers", "persuasion attempts used up", ("refusals_over", "yes"))])
     nodes["wrap_up"] = code_node("wrap_up", outcome_code(policy), "end_quiet")
     for e in ends:
