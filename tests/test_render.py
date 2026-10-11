@@ -199,6 +199,11 @@ class Rendered(unittest.TestCase):
         exec(note["pre_process_code"], {"vars": vars, "config": config, "json": json})
         self.assertEqual(json.loads(vars["note_attempt"]), {"product_id": "p2", "reason": "refused"})
 
+    def test_every_call_variable_in_the_confirmation_question(self):
+        wf = render.render(dict(POLICY, confirm_question="Am I speaking with {first_name} {last_name}?"), SPEC)
+        self.assertIn("{{first_name}} {{last_name}}", wf["nodes"]["opening"]["on_enter"]["text"])
+        self.assertNotIn("{first_name}", json.dumps(wf).replace("{{first_name}}", ""))
+
     def test_no_null_anywhere(self):
         self.assertNotIn("null", json.dumps(self.wf))
 

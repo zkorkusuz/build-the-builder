@@ -1,4 +1,5 @@
 """Prompt texts for the workflow, assembled from the policy. Nothing here knows a particular bank's rules."""
+import re
 
 
 def _rules(policy, *sections):
@@ -30,7 +31,7 @@ def system_prompt(p):
 
 def opening_task(p):
     c = p.get("confirmation") or {}
-    q = str(p.get("confirm_question") or "").replace("{title}", "{{title}}").replace("{last_name}", "{{last_name}}")
+    q = call_vars(p.get("confirm_question"))
     return (
         "Your only job here is to find out whether the person on the line is the customer, {{title}} {{last_name}}. You have already said the opening line and asked.\n"
         + ("Only these count as confirmation: " + ", ".join(c.get("accepted") or []) + ". " if c.get("accepted") else "")
@@ -105,6 +106,11 @@ def negotiate_task(p):
     if rules:
         parts.append("The bank's rules, verbatim:\n" + rules)
     return "\n".join(parts)
+
+
+def call_vars(text):
+    """{title}, {first_name} and {last_name} in a brief's sentence become the call's variables; any other brace is left alone."""
+    return re.sub(r"\{(title|first_name|last_name)\}", r"{{\1}}", str(text or ""))
 
 
 def tool_descriptions(p, fields=None):

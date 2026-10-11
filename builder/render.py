@@ -171,7 +171,7 @@ def render(policy, spec):
     nodes = {}
     nodes["prepare"] = code_node("prepare", facts_code(policy, "unclear"), "opening")
     c = policy.get("confirmation") or {}
-    q = str(policy.get("confirm_question") or "").replace("{title}", "{{title}}").replace("{last_name}", "{{last_name}}")
+    q = prompts.call_vars(policy.get("confirm_question"))
     who = extraction("who", ["customer", "other_person", "wrong_number", "deceased", "unclear"], "Who is on the line. customer only if they clearly confirmed being the customer (yes, that's me, speaking, their own name). other_person if someone else answered or the customer is not available. wrong_number if the number does not belong to the customer. deceased if the customer has died. unclear otherwise.")
     routes = lambda: [when("mark_confirmed", "the customer confirmed", ("who", "customer")), when("third_party_prep", "someone else answered", ("who", "other_person")),
                       when("outcome_wrong_number", "wrong number", ("who", "wrong_number")), when("outcome_deceased", "customer has died", ("who", "deceased"))]
@@ -225,7 +225,7 @@ def render(policy, spec):
              {"target_node": "offer_deadline", "description": "no exact day after being asked", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
                 {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "no_exact_day"}]}]}},
              {"target_node": "resolve_proposal", "description": "the customer named a day", "condition": {"logic": "or", "conditions": [{"logic": "and", "conditions": [
-                {"variable": "product_count", "operator": "equals", "operand": "1"}, {"variable": "last_reply", "operator": "equals", "operand": "proposal"}, {"variable": "proposed_day_words", "operator": "is_set"}]}]}}]
+                {"variable": "last_reply", "operator": "equals", "operand": "proposal"}, {"variable": "proposed_day_words", "operator": "is_set"}]}]}}]
     nodes["negotiate"] = {"name": "negotiate", "node_type": "conversation", "task_message": prompts.negotiate_task(policy), "max_node_turns": 60, "max_turn_transition": "set_outcome", "tools": tools,
         "on_enter": {"type": "tts", "text": "{{debt_statement}}"}, "on_enter_first_entry_only": True,
         "extraction_schema": [extraction("end_reason", keys, "Why the call is ending without a promise, if it is. " + meanings + " none while the conversation continues or a promise was recorded."),
@@ -249,7 +249,11 @@ def render(policy, spec):
         "try:\n    words = str(vars.get('proposed_day_words') or '')\n    vars['proposed_day_words'] = ''\n    vars['last_reply'] = 'other'\n"
         "    facts = json.loads(vars.get('product_facts_json') or '[]')\n    today = datetime.date.fromisoformat(str(vars.get('today'))[:10])\n"
         "    day = parse_day_words(words, today) if words else None\n"
-        "    if day is not None and facts and not json.loads(vars.get('promises_recorded') or '[]'):\n"
+        "    if day is not None and len(facts) > 1 and not json.loads(vars.get('promises_recorded') or '[]'):\n"
+        "        parts = []\n        for f in facts:\n            dl = datetime.date.fromisoformat(str(f.get('deadline'))[:10])\n            use, why = adjust_day(day, today, dl, CAL, ADJ)\n            use = use or dl\n"
+        "            parts.append(str(f.get('words')) + ' (id ' + str(f.get('product_id')) + '): ' + use.isoformat() + ((', its latest allowed date, because the named day ' + why.split(';')[0]) if why else ''))\n"
+        "        vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '. Record these dates: ' + '; '.join(parts) + '. Read all of them back together with these exact dates, ask for one confirmation, then CALL create_promise once per product with exactly these dates; do not compute any date yourself.'\n"
+        "    elif day is not None and facts and not json.loads(vars.get('promises_recorded') or '[]'):\n"
         "        deadline = datetime.date.fromisoformat(str(facts[0].get('deadline'))[:10])\n        use, why = adjust_day(day, today, deadline, CAL, ADJ)\n"
         "        if why and use is not None:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '; it ' + why + '. Read back ' + say(use) + ' and record exactly ' + use.isoformat() + ' once confirmed.'\n"
         "        elif why:\n            vars['offer_now'] = 'The customer said ' + json.dumps(words) + ', which is ' + say(day) + '; it ' + why + '.'\n"
