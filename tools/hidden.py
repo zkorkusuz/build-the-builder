@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 import freya
 
 # Markers are matched at the start of a trace line (after its time stamp), never inside it: the policy lines echo the brief's own words.
-RERUN = ("render: FAILED", "normalize: FAILED", "save: the platform rejected", "save: failed, ", "tool api: FAILED")      # a crash or a fallback: build again
+RERUN = ("render: FAILED", "normalize: FAILED", "design: FAILED", "save: the platform rejected", "save: failed, ", "tool api: FAILED")      # a crash or a fallback: build again
 WARN = ("normalize: repairing", "normalize: still incomplete", "documents: NOT readable", "tool api: written by the model",
         "export: written from the saved workflow", "self-test: chat probe: no answer",
         "self-test: chat probe skipped", "self-test skipped", "adapt: skipped", "adapt: result failed lint", "dry run: skipped")

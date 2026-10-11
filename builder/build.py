@@ -32,7 +32,7 @@ def main(argv):
     left = lambda: BUDGET_S - (time.time() - start)
     given = json.loads(pathlib.Path(opts["policy"]).read_text()) if opts["policy"] else None   # read before the work folder is wiped
     workdir = isolate(slot, briefs, spec_path)
-    ask = lambda prompt, wd, tr, purpose, **kw: llm.ask(prompt, wd, tr, purpose, timeout=min(600, left() - 120), **kw)
+    ask = lambda prompt, wd, tr, purpose, timeout=600, **kw: llm.ask(prompt, wd, tr, purpose, timeout=min(timeout, left() - 120), **kw)   # a stage may ask for longer, never past the budget
     texts = documents.folder_to_briefs(folder) if folder else [(pathlib.Path(b).name, pathlib.Path(b).read_text()) for b in briefs]
     if folder:
         unread = [n for n, t in texts if t.removeprefix("# Document: " + n).lstrip().startswith(("not readable", "pdf not readable", "skipped"))]
@@ -131,7 +131,7 @@ def designed_workflow(texts, spec, workdir, trace, ask, left):
         if problems:
             trace("design: lint still objects (" + " | ".join(problems)[:300] + "); the dry run decides")
     except Exception as e:                        # a build always ends with a saved workflow, even a bare one
-        trace("design: FAILED, " + " ".join(str(e).split())[:200] + "; rendering the bare template")
+        trace("design: FAILED, " + type(e).__name__ + " " + " ".join(str(e).split())[:200] + "; rendering the bare template")
         workflow, problems = render.render({}, spec), ["design failed: " + str(e)[:200]]
     policy = {"path": "design: the model wrote the workflow from the documents and the tool API", "documents": [n for n, _ in texts],
               "steps": list((workflow.get("nodes") or {}).keys()), "lint": problems}
