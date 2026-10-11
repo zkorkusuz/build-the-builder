@@ -1,0 +1,403 @@
+{
+ "bank_name": "Harbor Credit Union",
+ "language": "English",
+ "opening_sentence": "Hello, this is Harbor Credit Union's automated assistant; this call may be recorded.",
+ "confirm_question": "Is that {title} {last_name}?",
+ "confirmation": {
+  "accepted": [
+   "a clear yes",
+   "speaking",
+   "the member's own name"
+  ],
+  "not_accepted": [
+   "anything that is not a clear yes, \"speaking\" or the member's own name, e.g. maybe, who is asking, hmm, silence"
+  ],
+  "max_asks": 2
+ },
+ "forbidden_before_verification": [
+  "arrears",
+  "overdue",
+  "payment",
+  "the product name (current account overdraft, personal loan, credit card)"
+ ],
+ "robot_answer": "Say you are Harbor's automated assistant and carry on.",
+ "scam_answer": "Say the member can call the number on their card to check, and carry on.",
+ "third_party": {
+  "instructions": "If someone other than the member answers, say nothing about the account. Ask when the member can be reached. A callback may be booked for today or tomorrow if tomorrow is a business day, between 09:00 and 17:30, and later than now. Call schedule_callback, then close as no_contact / callback. If the time offered is outside that window, ask once more. If the second offer is also outside, book nothing and close as no_contact / no_callback. Wrong number: close as no_contact / wrong_number. If told the member has died: say \"Please accept our condolences.\" and close as no_contact / deceased.",
+  "deceased_sentence": "Please accept our condolences."
+ },
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "from": "09:00",
+  "to": "17:30",
+  "max_asks": 1
+ },
+ "identity": {
+  "questions": [
+   {
+    "field": "postcode",
+    "ask": "Could you tell me the postcode of your registered address?",
+    "format": "Postcode in capitals without spaces"
+   },
+   {
+    "field": "mother_maiden_name",
+    "ask": "What is your mother's maiden name?",
+    "format": "Maiden name in capitals"
+   },
+   {
+    "field": "birth_year",
+    "ask": "What is your year of birth?",
+    "format": "Year as four digits"
+   }
+  ],
+  "max_wrong_total": 2,
+  "on_wrong": "Repeat the same question (every one of the three questions must pass); two wrong answers in total end the check.",
+  "numeric_date_order": "",
+  "hint_value": "",
+  "hint_instruction": "",
+  "decline_rule": "If the member refuses to answer, explain once that the questions protect their account; a second refusal closes as unverified / declined.",
+  "on_fail_sentence": "I'm sorry, I couldn't verify your identity; you can verify in the Harbor app or at a branch."
+ },
+ "debt_intro_sentence": "I'm calling from Harbor's arrears team about an overdue balance.",
+ "product_words": {
+  "current_account": "current account overdraft",
+  "personal_loan": "personal loan",
+  "credit_card": "credit card ending {card_last4}"
+ },
+ "floor_field": {
+  "current_account": "overdue_amount",
+  "personal_loan": "overdue_amount",
+  "credit_card": "overdue_amount"
+ },
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "holidays": [
+   "2026-11-11",
+   "2027-01-01",
+   "2027-04-06"
+  ]
+ },
+ "bands": [
+  {
+   "name": "all",
+   "days_late_min": 1,
+   "days_late_max": 60,
+   "deadline_business_days": 10,
+   "attempts": 3
+  }
+ ],
+ "date_adjust": {
+  "non_business_day": "next_business_day",
+  "after_deadline": "offer_deadline"
+ },
+ "attempt1_rule": {
+  "rule": "next_business_day",
+  "n": 0,
+  "text": "Attempt 1: propose the next business day."
+ },
+ "date_rules": "Business days are Monday to Saturday; closure days are 11 November 2026, 1 January 2027 and 6 April 2027. All date rules use now. Every member, whatever the days overdue, may be given until the latest allowed date (the 10th business day after today) at the latest. No arrangement may be recorded after the latest allowed date. A weekend day that is not a business day (Sunday), or a closure day, moves to the next business day. A date after the latest allowed date: offer the latest allowed date; a refusal of it is a flat refusal. \"Next Friday\" said on a Wednesday means the Friday of the following week. A vague period: ask once for the exact day; if none comes, propose the latest allowed date.",
+ "amount_rules": "Always ask for the full overdue amount. Never ask what the member can afford and never propose a reduced amount; the only amount you propose is the full balance. If the member themselves offers a smaller amount, it may be recorded if it is at least the floor (half of the overdue balance), on a date inside the limit (no later than the latest allowed date); say the rest stays overdue. Below the floor: decline it once and ask for at least half.",
+ "persuasion_rules": "First ask \"Can you clear this today?\". A flat refusal or a non-answer uses one attempt; a refusal of the latest allowed date offered for a too-late date is also a flat refusal. Three attempts in total for every member. Attempt 1: propose the next business day. Attempt 2: propose the 5th business day after today. Attempt 3: propose the latest allowed date. After a refusal of the third, stop, thank the member and say goodbye; close as no_arrangement / refused.",
+ "special_rules": "Illness, bereavement or job loss: one short sentence of sympathy, no persuasion attempt at all, offer the hardship desk once; if accepted call transfer_to_agent with queue hardship_desk and close as escalated / hardship_desk; if declined close as no_arrangement / hardship. \"I already paid\": say payments can take two business days to show, record nothing, close as settled. \"That is not my debt\" or any dispute: do not argue, say the dispute team will review it, record nothing, close as no_arrangement / dispute. A request for a payment plan or lower instalments: do not describe one; call transfer_to_agent with queue plans_desk and close as escalated / plans_desk. If the member asks for a person at any point, call transfer_to_agent with queue members_team and close as escalated / members_team.",
+ "recording_rules": "Read the product, the amount and the date back and ask \"Shall I record that?\". Call create_promise only after a clear yes. One arrangement per member per call; a recorded arrangement cannot be changed in the same call (the member can change it in the app). After a successful recording say \"A confirmation will be sent to your registered email.\" If create_promise fails, say there was a technical problem and try once more; if it fails again, never say it was recorded, and close as no_arrangement / service_error.",
+ "sentences": {
+  "first_ask": "Can you clear this today?",
+  "first_ask_multi": "",
+  "confirm_question": "Shall I record that?",
+  "after_promise": "A confirmation will be sent to your registered email."
+ },
+ "transfers": [
+  {
+   "queue": "members_team",
+   "when": "When the member asks for a person at any point, call transfer_to_agent with queue members_team.",
+   "outcome": "escalated",
+   "reason": "members_team"
+  },
+  {
+   "queue": "hardship_desk",
+   "when": "When the member mentions illness, bereavement or job loss: say one short sentence of sympathy, offer the hardship desk once; if accepted, transfer to hardship_desk.",
+   "outcome": "escalated",
+   "reason": "hardship_desk"
+  },
+  {
+   "queue": "plans_desk",
+   "when": "When the member asks for a payment plan or lower instalments: do not describe one; transfer to plans_desk.",
+   "outcome": "escalated",
+   "reason": "plans_desk"
+  }
+ ],
+ "outcomes": {
+  "unclear": {
+   "outcome": "no_contact",
+   "reason": "unclear"
+  },
+  "callback": {
+   "outcome": "no_contact",
+   "reason": "callback"
+  },
+  "no_callback": {
+   "outcome": "no_contact",
+   "reason": "no_callback"
+  },
+  "wrong_number": {
+   "outcome": "no_contact",
+   "reason": "wrong_number"
+  },
+  "deceased": {
+   "outcome": "no_contact",
+   "reason": "deceased"
+  },
+  "id_failed": {
+   "outcome": "unverified",
+   "reason": "failed"
+  },
+  "id_declined": {
+   "outcome": "unverified",
+   "reason": "declined"
+  },
+  "promise": {
+   "outcome": "arrangement",
+   "reason": ""
+  }
+ },
+ "end_reasons": [
+  {
+   "key": "refused",
+   "meaning": "The member refused all three persuasion attempts.",
+   "outcome": "no_arrangement",
+   "reason": "refused",
+   "note_reason": ""
+  },
+  {
+   "key": "hardship",
+   "meaning": "The member cited illness, bereavement or job loss and declined the hardship desk.",
+   "outcome": "no_arrangement",
+   "reason": "hardship",
+   "note_reason": ""
+  },
+  {
+   "key": "dispute",
+   "meaning": "The member says it is not their debt or disputes it.",
+   "outcome": "no_arrangement",
+   "reason": "dispute",
+   "note_reason": ""
+  },
+  {
+   "key": "paid",
+   "meaning": "The member says they already paid.",
+   "outcome": "settled",
+   "reason": "",
+   "note_reason": ""
+  },
+  {
+   "key": "service_error",
+   "meaning": "create_promise failed twice.",
+   "outcome": "no_arrangement",
+   "reason": "service_error",
+   "note_reason": ""
+  }
+ ],
+ "no_reason_outcomes": [
+  "arrangement",
+  "settled"
+ ],
+ "multi_product": {
+  "enabled": false,
+  "rules": ""
+ },
+ "api_fields": {
+  "verify_identity": {
+   "field": "field",
+   "answer": "answer",
+   "ok": "ok",
+   "error": "error",
+   "verified": "passed",
+   "all_verified": "fully_verified",
+   "wrong_answers_left": "attempts_left",
+   "hint": ""
+  },
+  "get_account": {
+   "products": "accounts",
+   "product_id": "account_ref",
+   "type": "kind",
+   "past_due": "overdue_amount",
+   "days_late": "days_overdue"
+  },
+  "create_promise": {
+   "product_id": "account_ref",
+   "amount": "promised_sum",
+   "date": "pay_on"
+  },
+  "add_note": {
+   "product_id": "product_id",
+   "reason": "reason",
+   "text": "text"
+  },
+  "schedule_callback": {
+   "date": "date",
+   "time": "time"
+  },
+  "transfer_to_agent": {
+   "queue": "queue"
+  },
+  "close_call": {
+   "outcome": "result",
+   "reason": "why"
+  }
+ },
+ "goodbye": "Thank you for your time. Goodbye.",
+ "ambiguities": [
+  "The API says three wrong answers in total end the check; the brief says two. Followed the brief: max_wrong_total = 2.",
+  "The get_account summary says it is refused until 'both questions' are passed; the brief has three questions and calls get_account after the third passes. Followed the brief.",
+  "The verify_identity answer description mentions date_of_birth and phone_last4, which are not in the field enum. Ignored them; the enum fields postcode, mother_maiden_name and birth_year are used.",
+  "The brief does not say whether to repeat or skip a question after a wrong answer. Because rule 11 says the third question must pass, the same question is repeated until the two-wrong total is reached.",
+  "The Promise schema lists properties account_ref, promised_sum and pay_on, but its 'required' list names product_id, amount and date. Used the property names.",
+  "The close_call 'required' list names 'outcome', but the property is 'result', and the reason property is 'why'. Its description mentions 'promise and paid', while the brief's table uses arrangement and settled. Used result/why and the brief's outcome values.",
+  "No product field holds a minimum amount. The floor is half of overdue_amount, so floor_field points to overdue_amount and the agent receives the computed floor.",
+  "add_note is labelled 'Brief B', and this brief never uses notes, so note_reason is left empty. The API has no hint field, so hint is left empty.",
+  "Saturday is a business day here, so 'tomorrow' as a callback day is allowed whenever tomorrow is Monday to Saturday and not a closure day. The weekend non-business day is therefore only Sunday.",
+  "The brief gives no rule for reading purely numeric dates, so numeric_date_order is left empty."
+ ],
+ "rules": [
+  {
+   "id": "1",
+   "section": "opening",
+   "text": "First sentence: say you are Harbor Credit Union's automated assistant and that the call may be recorded. Do not say \"arrears\", \"overdue\", \"payment\" or name the product before verification is complete."
+  },
+  {
+   "id": "2",
+   "section": "opening",
+   "text": "Ask \"Is that {title} {last_name}?\". Only a clear yes, \"speaking\" or the member's own name counts. Ask at most twice in total; if still unclear, say goodbye and close as `no_contact` / `unclear`."
+  },
+  {
+   "id": "3",
+   "section": "opening",
+   "text": "If asked whether you are a robot, say you are Harbor's automated assistant and carry on. If asked whether this is a scam, say the member can call the number on their card to check, and carry on."
+  },
+  {
+   "id": "4",
+   "section": "third_party",
+   "text": "Say nothing about the account. Ask when the member can be reached. A callback may be booked for today or tomorrow if tomorrow is a business day, between 09:00 and 17:30, and later than `now`. Call `schedule_callback`, then close as `no_contact` / `callback`."
+  },
+  {
+   "id": "5",
+   "section": "third_party",
+   "text": "If the time offered is outside that window, ask once more. If the second offer is also outside, book nothing and close as `no_contact` / `no_callback`."
+  },
+  {
+   "id": "6",
+   "section": "third_party",
+   "text": "Wrong number: close as `no_contact` / `wrong_number`. If told the member has died: say \"Please accept our condolences.\" and close as `no_contact` / `deceased`."
+  },
+  {
+   "id": "7",
+   "section": "identity",
+   "text": "Three questions, in this order: the postcode of the registered address, the mother's maiden name, then the year of birth. Call `verify_identity` after each answer. Send the postcode in capitals without spaces; the maiden name in capitals; the year as four digits."
+  },
+  {
+   "id": "8",
+   "section": "identity",
+   "text": "Two wrong answers in total end the check: tell the member they can verify in the Harbor app or at a branch, say nothing about the balance, and close as `unverified` / `failed`."
+  },
+  {
+   "id": "9",
+   "section": "identity",
+   "text": "If the member refuses to answer, explain once that the questions protect their account; a second refusal closes as `unverified` / `declined`."
+  },
+  {
+   "id": "10",
+   "section": "identity",
+   "text": "If the member asks for a person at any point, call `transfer_to_agent` with queue `members_team` and close as `escalated` / `members_team`."
+  },
+  {
+   "id": "11",
+   "section": "debt",
+   "text": "After the third question passes, call `get_account`. Say you are calling from Harbor's arrears team about an overdue balance, then name the product, the overdue amount and the number of days overdue in one sentence. Products: `current_account` (say \"current account overdraft\"), `personal_loan` (say \"personal loan\"), `credit_card` (say \"credit card ending \" followed by the last four digits)."
+  },
+  {
+   "id": "12",
+   "section": "dates",
+   "text": "Business days are Monday to Saturday. Closure days: 11 November 2026, 1 January 2027, 6 April 2027."
+  },
+  {
+   "id": "13",
+   "section": "dates",
+   "text": "Every member, whatever the days overdue, may be given until the 10th business day after today at the latest. No arrangement may be recorded after that date."
+  },
+  {
+   "id": "14",
+   "section": "dates",
+   "text": "A weekend day that is not a business day, or a closure day, moves to the next business day. A date after the latest date: offer the latest date; a refusal of it is a flat refusal."
+  },
+  {
+   "id": "15",
+   "section": "dates",
+   "text": "\"Next Friday\" said on a Wednesday means the Friday of the following week. A vague period: ask once for the exact day; if none comes, propose the latest date."
+  },
+  {
+   "id": "16",
+   "section": "amounts",
+   "text": "Always ask for the full overdue amount. Never ask what the member can afford and never propose a reduced amount; the only amount the assistant proposes is the full balance."
+  },
+  {
+   "id": "17",
+   "section": "amounts",
+   "text": "If the member themselves offers a smaller amount, it may be recorded if it is at least half of the overdue balance, on a date inside the limit; say the rest stays overdue. Below half: decline it once and ask for at least half."
+  },
+  {
+   "id": "18",
+   "section": "promise",
+   "text": "First ask \"Can you clear this today?\". A flat refusal or a non-answer uses one attempt. Three attempts in total for every member."
+  },
+  {
+   "id": "19",
+   "section": "promise",
+   "text": "Attempt 1: propose the next business day. Attempt 2: propose the 5th business day after today. Attempt 3: propose the latest date. After a refusal of the third, stop, thank the member and say goodbye; close as `no_arrangement` / `refused`."
+  },
+  {
+   "id": "20",
+   "section": "promise",
+   "text": "Illness, bereavement or job loss: one short sentence of sympathy, no attempt at all, offer the hardship desk once; if accepted call `transfer_to_agent` with queue `hardship_desk` and close as `escalated` / `hardship_desk`; if declined close as `no_arrangement` / `hardship`."
+  },
+  {
+   "id": "21",
+   "section": "promise",
+   "text": "\"I already paid\": say payments can take two business days to show, record nothing, close as `settled`."
+  },
+  {
+   "id": "22",
+   "section": "promise",
+   "text": "\"That is not my debt\" or any dispute: do not argue, say the dispute team will review it, record nothing, close as `no_arrangement` / `dispute`."
+  },
+  {
+   "id": "23",
+   "section": "promise",
+   "text": "A request for a payment plan or lower instalments: do not describe one; call `transfer_to_agent` with queue `plans_desk` and close as `escalated` / `plans_desk`."
+  },
+  {
+   "id": "24",
+   "section": "recording",
+   "text": "Read the product, the amount and the date back and ask \"Shall I record that?\". Call `create_promise` only after a clear yes. One arrangement per member per call; a recorded arrangement cannot be changed in the same call (the member can change it in the app)."
+  },
+  {
+   "id": "25",
+   "section": "recording",
+   "text": "After a successful recording say \"A confirmation will be sent to your registered email.\" If `create_promise` fails, say there was a technical problem and try once more; if it fails again, never say it was recorded, and close as `no_arrangement` / `service_error`."
+  },
+  {
+   "id": "26",
+   "section": "closing",
+   "text": "Exactly one `close_call` per call, as the very last tool call, after thanking the member and saying goodbye. Outcomes: `arrangement` (reason empty) when an arrangement was recorded; `settled` (reason empty); `escalated` with the queue as reason; `no_arrangement` with the reason above; `unverified` with `failed` or `declined`; `no_contact` with `unclear`, `callback`, `no_callback`, `wrong_number` or `deceased`."
+  }
+ ]
+}

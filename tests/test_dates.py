@@ -116,6 +116,26 @@ class ProductFacts(unittest.TestCase):
     def test_empty_products(self):
         self.assertEqual(dates.product_facts([], POLICY, NOW)["count"], 0)
 
+    def test_floor_as_a_fraction_and_a_second_attempt_rule(self):
+        import json
+        pol = dict(json.loads(json.dumps(POLICY)), floor_field={}, floor_fraction="0.5", attempt2_rule={"date": "nth_business_day", "n": 5, "amount": "full"})
+        p = [{"product_id": "p1", "type": "credit_card", "card_last4": "4821", "past_due": 420, "days_late": 12}]
+        r = dates.product_facts(p, pol, NOW)
+        self.assertEqual(r["facts"][0]["floor"], 210.0)
+        self.assertIn("after a second flat refusal propose the full amount on " + dates.say(datetime.date(2026, 10, 21)), r["summary"])
+
+    def test_no_floor_and_three_attempts(self):
+        import json
+        pol = json.loads(json.dumps(POLICY)); pol["floor_field"] = {}
+        for b in pol["bands"]:
+            b["attempts"] = 3
+        p = [{"product_id": "p1", "type": "personal_loan", "past_due": 300, "days_late": 12}]
+        s = dates.product_facts(p, pol, NOW)["summary"]
+        self.assertIn("floor amount none (only the full amount is proposed)", s)
+        self.assertIn("after a second flat refusal propose the full amount on", s)
+        self.assertIn("after a third flat refusal propose the latest allowed date", s)
+        self.assertNotIn("None", s)
+
 
 class DayWords(unittest.TestCase):
     def test_phrases(self):
@@ -125,7 +145,10 @@ class DayWords(unittest.TestCase):
                                  ("tomorrow", wed, "2026-10-15"), ("the 30th", wed, "2026-10-30"), ("2026-10-23", wed, "2026-10-23"), ("next week", wed, None), ("when my salary comes", wed, None),
                                  # "next <weekday>" is the following calendar week even for a weekday earlier in the week than today
                                  ("next Monday", wed, "2026-10-19"), ("next Tuesday", wed, "2026-10-20"), ("next Sunday", wed, "2026-10-25"), ("next Monday", datetime.date(2026, 10, 15), "2026-10-19"),
-                                 ("next Monday", datetime.date(2026, 10, 19), "2026-10-26"), ("Monday", wed, "2026-10-19"), ("Wednesday", wed, "2026-10-14")]:
+                                 ("next Monday", datetime.date(2026, 10, 19), "2026-10-26"), ("Monday", wed, "2026-10-19"), ("Wednesday", wed, "2026-10-14"),
+                                 # ordinals said in words; cardinals stay words so "in one week" is still a vague period
+                                 ("the twenty-second of October", wed, "2026-10-22"), ("October twenty second", wed, "2026-10-22"), ("the sixteenth", wed, "2026-10-16"),
+                                 ("Friday the sixteenth", wed, "2026-10-16"), ("the thirtieth", wed, "2026-10-30"), ("the twentieth of November", wed, "2026-11-20"), ("in one week", wed, None)]:
             got = dates.parse_day_words(text, today)
             self.assertEqual(got.isoformat() if got else None, exp, text)
 

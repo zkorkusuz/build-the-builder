@@ -69,6 +69,19 @@ def attempt1_date(today, cal, rule):
 
 
 MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+_ORD = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth",
+        "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth"]
+
+
+def _ordinals(n):
+    """The spellings of an ordinal day number: only ordinals, because "one week" must stay a vague period and not become the 1st."""
+    if n < 20:
+        return {_ORD[n]}
+    tens, unit = ("twenty", "twentieth") if n < 30 else ("thirty", "thirtieth"), n % 10
+    return {tens[0] + "-" + _ORD[unit], tens[0] + " " + _ORD[unit]} if unit else {tens[1]}
+
+
+NUMBER_WORDS = sorted(((w, n) for n in range(1, 32) for w in _ordinals(n)), key=lambda x: -len(x[0]))   # longest first: "twenty-second" before "second"
 
 
 def parse_day_words(text, today):
@@ -77,6 +90,8 @@ def parse_day_words(text, today):
     t = " " + str(text or "").strip().lower().replace(",", " ") + " "
     if not t.strip():
         return None
+    for word, n in NUMBER_WORDS:                                  # "the twenty-second" is the 22nd
+        t = t.replace(" " + word + " ", " " + str(n) + " ")
     # a time of day is not a day number
     t = re.sub(r"\bat \d{1,2}(:\d{2})?\s*(am|pm)?|\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(am|pm)\b", " ", t)
     digits = [int(x) for x in re.findall(r"\d+", t)]
@@ -280,6 +295,11 @@ def product_facts(products, policy, now_value):
         band = band_for(p.get(name_of("days_late")), policy.get("bands") or [])
         deadline = nth_business_day_after(today, int(band.get("deadline_business_days", 5)), cal)
         floor = p.get(floor_field.get(ptype, ""), None)
+        if floor is None and str(policy.get("floor_fraction") or "").strip():      # a brief may define the minimum as a share of the balance
+            try:
+                floor = round(float(p.get(name_of("past_due")) or 0) * float(policy["floor_fraction"]), 2)
+            except (TypeError, ValueError):
+                floor = None
         name = words.get(ptype, ptype.replace("_", " "))
         try:
             name = name.format(**{k: str(v) for k, v in p.items()})
@@ -291,15 +311,19 @@ def product_facts(products, policy, now_value):
              "deadline": deadline.isoformat(), "floor": floor, "attempt1_date": first.isoformat() if first else ""}
         facts.append(f)
         attempts = f["attempts"]
+        r2 = policy.get("attempt2_rule") or {}                   # absent means the floor on the latest allowed date
+        second = deadline if str(r2.get("date") or "deadline") == "deadline" else (attempt1_date(today, cal, {"rule": r2.get("date"), "n": r2.get("n")}) or deadline)
+        amount2 = "the full amount" if str(r2.get("amount") or "floor") == "full" or floor is None else "the floor amount " + money(floor)
         if attempts <= 0:
             offers = "no persuasion attempt: after a refusal, stop, thank the customer and say goodbye"
         elif attempts == 1:
             offers = ("one persuasion attempt only: after a flat refusal propose " + (say(first) if first else "the latest allowed date") + " for the amount in play; if that is refused too, STOP: make no further offer of any amount or date, thank the customer and say goodbye")
         else:
-            offers = ("persuasion attempts: after a flat refusal propose " + (say(first) if first else "the latest allowed date") + " for the amount in play; after a second flat refusal propose the floor amount " + money(floor) + " on " + say(deadline)
+            offers = ("persuasion attempts: after a flat refusal propose " + (say(first) if first else "the latest allowed date") + " for the amount in play; after a second flat refusal propose " + amount2 + " on " + say(second)
+                      + ("; after a third flat refusal propose the latest allowed date " + say(deadline) + " for the amount in play" if attempts >= 3 else "")
                       + "; after that STOP: make no further offer, thank the customer and say goodbye")
         lines.append("Product " + str(i + 1) + ": id " + f["product_id"] + ", " + name + ", past due " + money(f["past_due"]) + ", " + str(f["days_late"])
-                     + " days late, band " + f["band"] + ", floor amount " + money(floor) + ", latest allowed date " + say(deadline)
+                     + " days late, band " + f["band"] + ", floor amount " + (money(floor) if floor is not None else "none (only the full amount is proposed)") + ", latest allowed date " + say(deadline)
                      + " (propose this when the customer gives a vague period and no exact day, or asks for a later date); " + offers + ".")
         spoken.append("Your " + name + " is " + money(f["past_due"]) + " past due and " + str(f["days_late"]) + " days late.")
     return {"facts": facts, "summary": "\n".join(lines), "count": len(facts), "spoken": " ".join(spoken)}
