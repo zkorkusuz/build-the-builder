@@ -91,13 +91,11 @@ def parse_day_words(text, today):
         return today + datetime.timedelta(days=1)
     month = next((k + 1 for k, m in enumerate(MONTHS) if " " + m + " " in t or " " + m[:3] + " " in t), None)
     day = next((d for d in digits if 1 <= d <= 31), None)
-    if not (month and day):
-        for i, name in enumerate(WEEKDAYS):
-            if " " + name.lower() + " " in t or " " + name.lower()[:3] + " " in t:
-                ahead = (i - today.weekday()) % 7
-                if " next " in t:
-                    return today + datetime.timedelta(days=ahead + 7 if ahead else 7)
-                return today + datetime.timedelta(days=ahead)
+    weekday = next((i for i, name in enumerate(WEEKDAYS) if " " + name.lower() + " " in t or " " + name.lower()[:3] + " " in t), None)
+    if weekday is not None and not (month and day):
+        by_weekday = _weekday_date(weekday, day, today, " next " in t)
+        if by_weekday is not None:
+            return by_weekday
     if day:
         try:
             cand = datetime.date(today.year, month or today.month, day)
@@ -109,6 +107,21 @@ def parse_day_words(text, today):
         except ValueError:
             return None
     return None
+
+
+def _weekday_date(weekday, day, today, is_next):
+    """A weekday with a day number ("Monday 2") is the next date that is both, as when the customer accepts a date the agent offered;
+    a bare weekday is the one in the current week, "next" the following week. None when the pair never matches within two months."""
+    if day:
+        for n in range(62):
+            cand = today + datetime.timedelta(days=n)
+            if cand.day == day and cand.weekday() == weekday:
+                return cand
+        return None
+    ahead = (weekday - today.weekday()) % 7
+    if is_next:
+        return today + datetime.timedelta(days=ahead + 7 if ahead else 7)
+    return today + datetime.timedelta(days=ahead)
 
 
 def adjust_day(day, today, deadline, cal, rules):
