@@ -25,7 +25,8 @@ your own copy: `cd mock && npm install && npx wrangler login && npx wrangler dep
 - The run: `traces/final.log` (commit 96322cf, clean tree, 21:42 Istanbul, 894 s): 19 documents read, the mock's
   OpenAPI, the plan step chose the design path, one design call of 878 s, lint clean, the data-path dry run reached a
   conversation step with the live services, the platform's dry run accepted, saved as version 4 (13 steps, 8 tools),
-  exported to `final.workflow.json`. The builder's own trace and the policy it kept are `traces/final-20261011-214233.*`.
+  exported to `final.workflow.json`. The builder's own trace and the policy it kept are `traces/final-20261011-214233.*`;
+  the Claude Code session logs of the run's two model calls (the SDK runs the Claude Code CLI) are in `traces/final-session/`.
 - The mock: `https://bank-mock.bank-mock.workers.dev` (`/voice/v1/<service>`, `/openapi.json`, `/ledger/<customer>`).
 - What the agent does well on our self-test: the single-card reading with amounts and dates in Turkish words and currency
   names in full, the card choice, the week change with preview and explicit confirmation, the e-mail send after
