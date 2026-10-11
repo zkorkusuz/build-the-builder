@@ -237,6 +237,32 @@ class Rendered(unittest.TestCase):
         exec(transfer["post_process_code"], {"vars": vars, "result": result, "json": json})
         self.assertNotIn("transfer_state", vars)
 
+    def test_hooks_read_an_empty_or_counter_bearing_answer_right(self):
+        """An empty answer (a 500, a lost call) is a failure; a counter or a stringified false under an error-like key is not."""
+        promise = next(t for t in self.wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "create_promise")
+        vars = {"promise_attempt": json.dumps({"product_id": "p1", "amount": 100, "date": "2026-10-16", "words": "card"}), "promises_recorded": "[]"}
+        result = {"status_code": 500}
+        exec(promise["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertNotEqual(vars.get("promise_state"), "recorded"); self.assertEqual(vars["promises_recorded"], "[]")
+        self.assertIn("NOT recorded", result["data"]["what_to_do_next"])
+        verify = next(t for t in self.wf["nodes"]["identity"]["tools"] if t["function"]["name"] == "verify_identity")
+        for data in ({"verified": "true", "failed_attempts": 1}, {"verified": "true", "error": "false"}, {"verified": "true", "errors": []}):
+            vars, result = {"id_current_field": "date_of_birth"}, {"data": data}
+            exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+            self.assertTrue(result["data"]["what_to_do_next"].startswith("Correct."), data)
+        # a hint the policy did not name is still not a wrong answer
+        wf = render.render(dict(POLICY, identity=dict(POLICY["identity"], hint_value="", hint_instruction="")), SPEC)
+        verify = next(t for t in wf["nodes"]["identity"]["tools"] if t["function"]["name"] == "verify_identity")
+        vars, result = {"id_current_field": "date_of_birth"}, {"data": {"verified": "false", "hint": "day_month_swapped"}}
+        exec(verify["post_process_code"], {"vars": vars, "result": result, "json": json})
+        self.assertNotIn("id_wrong_total", vars); self.assertIn("hint", result["data"]["what_to_do_next"])
+        # questions spelled differently from the service's field names still complete the check by count
+        vars = {"id_current_field": "dob"}
+        exec(verify["post_process_code"], {"vars": vars, "result": {"data": {"verified": "true"}}, "json": json})
+        vars["id_current_field"] = "phone"
+        exec(verify["post_process_code"], {"vars": vars, "result": {"data": {"verified": "true"}}, "json": json})
+        self.assertEqual(vars.get("id_state"), "verified")
+
     def test_transfer_and_note_pre_hooks_keep_the_values(self):
         transfer = next(t for t in self.wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "transfer_to_agent")
         vars, config = {}, {"body": {"customer_id": "c1", "queue": "general"}}

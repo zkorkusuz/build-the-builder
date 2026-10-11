@@ -29,10 +29,12 @@ def _d(result):
 def _flag(x):
     return str(x).lower() == 'true'
 def _ok(d, F):
-    # a service without a success flag answers 200 with data and names a failure in an error field
+    # an empty answer is a failed or lost call; a service without a success flag names a failure in an error field
+    if not d:
+        return False
     if F.get('ok') in d:
         return _flag(d.get(F['ok']))
-    return not any(v for k, v in d.items() if 'error' in str(k).lower() or 'fail' in str(k).lower())
+    return not any(v is not None and str(v).strip().lower() not in ('', 'false', '0', '[]', '{}') for k, v in d.items() if str(k).lower().startswith('error'))
 def _load(name, default):
     try:
         v = vars.get(name)
@@ -128,8 +130,9 @@ try:
         if _flag(d.get(F['all_verified'])):
             vars['id_state'] = 'verified'
             d['what_to_do_next'] = 'All security questions passed. The identity check is complete.'
-        elif hint and P.get('hint_value') and hint == str(P.get('hint_value')):
-            d['what_to_do_next'] = str(P.get('hint_instruction') or 'The service returned the hint ' + hint + '. Follow your instructions for it and CALL verify_identity again with the same field.')
+        elif hint.lower() not in ('', 'false', '0'):
+            # a hint is never a wrong answer, whether or not the policy named it
+            d['what_to_do_next'] = str(P.get('hint_instruction') if hint == str(P.get('hint_value')) and P.get('hint_instruction') else 'The service returned the hint ' + hint + '. Follow your instructions for it and CALL verify_identity again with the same field. This is not counted as a wrong answer.')
         elif not _ok(d, F):
             d['what_to_do_next'] = 'The answer could not be read in the required format (' + str(d.get(F['error']) or '') + '). Ask the customer to repeat it, then CALL verify_identity again with the same field. This is not counted as a wrong answer.'
         elif _flag(d.get(F['verified'])):
@@ -140,7 +143,7 @@ try:
                 done.append(field)
             vars['id_verified_fields'] = json.dumps(done)
             needed = [str(q.get('field')) for q in (P.get('questions') or [])]
-            if needed and all(f in done for f in needed):
+            if needed and (all(f in done for f in needed) or len(done) >= len(needed)):
                 vars['id_state'] = 'verified'
                 d['what_to_do_next'] = 'All security questions passed. The identity check is complete.'
             else:
