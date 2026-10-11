@@ -79,9 +79,10 @@ try:
                 vars['id_block'] = 'INCOMPLETE answer for ' + field + ': so far ' + json.dumps(combined) + ', which is not a full date. Ask the customer only for the missing part (day, month or year) and CALL verify_identity again with just that part; the parts are combined for you. This is not a wrong answer.'
                 _block(b)
         elif digits_needed:
-            # digits are always appended, one or more per turn, and the last ones count; number words become digits
-            spoken = re.sub(r'[a-z]+', lambda w: str(WORDS[w.group(0)]) if w.group(0) in WORDS else w.group(0), (prev + ' ' + answer).lower())
-            digits = re.sub(r'\\D', '', spoken)
+            # number words become digits; a value that extends the digits held so far is the model's own join, anything else is the next part
+            spoken = re.sub(r'[a-z]+', lambda w: str(WORDS[w.group(0)]) if w.group(0) in WORDS else w.group(0), answer.lower())
+            new = re.sub(r'\\D', '', spoken)
+            digits = new if (prev and new.startswith(prev) and len(new) > len(prev)) else prev + new
             if len(digits) >= digits_needed:
                 b['answer'] = digits[-digits_needed:]
                 vars['id_partial_' + field] = ''
