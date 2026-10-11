@@ -44,3 +44,12 @@ Times are Istanbul. The briefs open at 20:00, the form closes at 23:00; the targ
 - Do not change builder code, templates or prompts after 20:00 except for a crash fix as above.
 - Do not run a simulation of a hidden agent unless there is time to spare and the workspace is free; the organizers score
   on their own platform, and our runs do not count.
+
+## The window, minute by minute
+- 20:00 to 20:05: save each brief and its API file under `briefs/` exactly as received. Nothing from them goes anywhere else: not into code, prompts, tests, the tracker or memory.
+- 20:05 to 20:20: the two builds, one after the other. While each runs, read in its trace the policy summary lines (identity questions in order, bands and deadlines, holidays, callback window, outcomes), the ambiguity lines and the `fields:` line. A read, not an edit.
+- 20:20 to 20:40: sanity without customers. The export's step and tool counts, lint clean, not the bare template. One chat probe per agent of the opening and the first security question (needs no valid customer). No simulation unless practice customers for the hidden briefs are handed out; then one run each, read only.
+- Rerun rule: a second build of the same brief only after a crash or a bare-template save, never to choose the nicer of two readings; the organizers rerun the top ten builders and drop a rerun that scores clearly lower.
+- 20:40 to 21:15: commit, push, make the repository public, fill the form from `docs/submission.md`. Target 21:15, hard stop 22:30.
+- 21:15 to 23:00: buffer for a platform outage only. The watcher stays on; a stuck simulation is cancelled with `freya.cancel_simulation`.
+- What wastes the window: test customers written from the hidden briefs, an edit to "fix" an ambiguity, two builds at once, any change that is not a crash fix.
