@@ -39,6 +39,16 @@ def render(cases, now):
         fill = lambda s: s.format(**t) if isinstance(s, str) else s
         c["title"], c["script"], c["checks"] = fill(c["title"]), fill(c["script"]), [fill(x) for x in c["checks"]]
         rule = c.pop("date_rule", "none")
+        if rule == "tomorrow_callback":
+            # the person offers "tomorrow": a callback only when tomorrow is a business day, otherwise the brief closes as no callback
+            tomorrow = today + datetime.timedelta(days=1)
+            if dates.is_business_day(tomorrow, POLICY["calendar"]):
+                for cb in c["expected"]["callbacks"]:
+                    cb["date"] = tomorrow.isoformat()
+            else:
+                c["expected"]["callbacks"], c["expected"]["reason"] = [], "no_callback"
+                c["checks"] = [x for x in c["checks"] if "callback scheduled" not in x] + ["no callback is booked, because tomorrow is not a business day and the person offers no other time"]
+            rule = "none"
         if rule != "none" and rule != "fixed":
             key = {"today": "today_iso", "attempt1": "attempt1_iso", "deadline": "deadline_iso", "next_friday": "next_friday_iso", "next_bd": "next_bd_iso"}[rule]
             for p in c["expected"]["promises"]:
@@ -55,7 +65,7 @@ if __name__ == "__main__":
     now, target = sys.argv[1], sys.argv[2]
     src = json.loads((ROOT / "tests" / "extra-cases.json").read_text())
     pub = json.loads((ROOT / "public-test-set.json").read_text())
-    base = [dict(c, date_rule={"PUB-01": "today", "PUB-02": "next_bd"}.get(c["id"], "none")) for c in pub if c["id"] in ("PUB-01", "PUB-02", "PUB-03")]
+    base = [dict(c, date_rule={"PUB-01": "today", "PUB-02": "tomorrow_callback"}.get(c["id"], "none")) for c in pub if c["id"] in ("PUB-01", "PUB-02", "PUB-03")]
     cases = render(base + src, now)
     json.dump(cases, open(target, "w"), indent=1)
     print(len(cases), "cases for now =", now, "->", target)
