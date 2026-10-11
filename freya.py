@@ -80,7 +80,7 @@ def patient(call, tries=120):
     for n in range(tries):
         try: return call()
         except Exception as e:
-            if n == tries - 1: raise
+            if n == tries - 1 or "-> 4" in str(e): raise      # a 4xx (deleted simulation, bad id) is an answer, not an outage
             print("read failed, waiting 20 s: " + str(e)[:80], flush=True); time.sleep(20)
 def get_iteration(sim_id, it_id):
     """One iteration with ALL its runs. The route returns 30 runs by default and 100 at most, so this reads page by page."""
