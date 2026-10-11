@@ -1,0 +1,1 @@
+../../../briefs/brief-b.md

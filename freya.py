@@ -20,6 +20,10 @@ def api(method, path, body=None, **params):
             if method == "GET" and e.code >= 500 and attempt < 2:    # a gateway error on a status poll must not orphan a running simulation
                 time.sleep(15); continue
             raise RuntimeError(f"{method} {path} -> {e.code}: {e.read().decode()[:1500]}") from None
+        except (urllib.error.URLError, TimeoutError):               # a hung or dropped connection on a poll is the same case
+            if method == "GET" and attempt < 2:
+                time.sleep(15); continue
+            raise
     return out.get("data", {}).get("result", out) if isinstance(out, dict) else out
 
 _ws = None
