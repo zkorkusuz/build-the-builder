@@ -1,0 +1,31 @@
+{
+ "path": "design: the model wrote the workflow from the documents and the tool API",
+ "documents": [
+  "BRIEF.md",
+  "statement-debt-call-flow.pdf"
+ ],
+ "steps": [
+  "setup",
+  "load_account",
+  "second_factor",
+  "build_cards",
+  "card_none",
+  "choose_card",
+  "select_card",
+  "read_debt",
+  "offer_handover",
+  "reset_menu",
+  "do_transfer",
+  "close_info",
+  "end_info",
+  "close_not_verified",
+  "end_not_verified",
+  "close_service_error",
+  "end_service_error",
+  "close_transferred",
+  "end_transferred",
+  "close_transfer_failed",
+  "end_transfer_failed"
+ ],
+ "lint": []
+}

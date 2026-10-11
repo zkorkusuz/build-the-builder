@@ -1,0 +1,40 @@
+{
+ "path": "design: the model wrote the workflow from the documents and the tool API",
+ "documents": [
+  "BRIEF.md",
+  "README.md",
+  "cloudflare-mock/README.md",
+  "example-scenarios.md",
+  "statement-debt-call-flow.pdf",
+  "test-environment/test-customers.json",
+  "test-environment/test-customers.md",
+  "cloudflare-mock/example/example-response.json",
+  "cloudflare-mock/example/worker.js",
+  "cloudflare-mock/example/wrangler.toml",
+  "sources/documents/2025-08-14-cards-faq.md",
+  "sources/documents/2026-09-10-ivr-prompt-sheet.md",
+  "sources/documents/2026-10-01-service-contract.md",
+  "sources/emails/2026-09-24-kickoff-questions.txt",
+  "sources/emails/2026-10-09-decisions-recap.txt",
+  "sources/meetings/2026-10-07-analysis-session-transcript.txt",
+  "sources/meetings/2026-10-10-follow-up-session-transcript.txt",
+  "sources/emails/attachments/2026-09-02-statement-debt-analysis.md",
+  "sources/emails/attachments/2026-10-08-statement-debt-analysis.md"
+ ],
+ "steps": [
+  "fetch_cards",
+  "fetch_email",
+  "compute",
+  "choose_card",
+  "read_debt",
+  "email_step",
+  "week_step",
+  "end_menu",
+  "end_agent",
+  "end_error",
+  "end_tries",
+  "end_silence",
+  "end_info"
+ ],
+ "lint": []
+}
