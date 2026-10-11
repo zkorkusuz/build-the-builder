@@ -1,55 +1,52 @@
-# Runbook for the hidden briefs (Sunday 20:00 to 22:30 Istanbul)
+# Runbook for the hidden briefs (Sunday 20:00 to 23:00 Istanbul = 17:00 to 20:00 UTC)
 
-Everything here was rehearsed on Sunday afternoon: a fresh clone, the one command, and two platform outages.
-Times are Istanbul. The briefs open at 20:00, the form closes at 23:00; the target is a submission by 22:30.
+Rehearsed on Sunday afternoon: a fresh clone, the one command, the helper, and two platform outages.
+Times are Istanbul. The briefs open at 20:00, the form closes at 23:00; the target is a submission by 21:30.
 
 ## Before 20:00
-- `git status` clean on the submission commit; `.venv/bin/python -m unittest discover -s tests -q` passes.
-- `source env` in the terminal you will use. The watcher (`scratchpad/platform_watch.py`) is running or restarted.
-- The dashboard shows no simulation running. If one is stuck, cancel it:
-  `.venv/bin/python -c "import freya; print(freya.cancel_simulation('<id>'))"`.
-- Read the credit balance; a build costs about $0.60 of Claude credits and nothing on Freya.
+- Code committed and pushed; `git status` clean (the trace's `builder:` line names the commit and says whether the tree was clean).
+- `.venv/bin/python -m unittest discover -s tests -q` passes.
+- In the terminal you will use: `source env` and `source .venv/bin/activate` (so that `python3` is 3.14, the literal run command of the form).
+- No simulation running in the workspace (the helper warns; cancel a stuck one with
+  `python3 -c "import freya; print(freya.cancel_simulation('<id>'))"`). The platform watcher is running.
+- Read the credit balance. A build costs about $0.60 of Claude credits and nothing on Freya.
 
-## 20:00: build hidden brief 1, then hidden brief 2
-1. Save the files exactly as received under `briefs/`: `briefs/hidden-1.md` (several files if the brief comes as several,
-   for example `hidden-1-email.md`, `hidden-1-memo.md`, `hidden-1-codes.md`) and `briefs/hidden-1.openapi.json`.
-   The slot name is the brief file names joined with `_`, so keep them short.
-2. Run the one command, brief files first and the API file last:
-   `.venv/bin/python builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.console.log`
-3. Expect about 2 minutes. The build prints one JSON line at the end with `workflow_id`, `agent_id`, the export file
-   (`<slot>.workflow.json`) and the trace (`traces/<slot>-<start>.log`).
-4. Read two things in the trace while it runs: every `policy: ambiguity:` line (how the model resolved what the brief left
-   open) and the `fields:` line (which tool fields it mapped to other names). If a resolution contradicts the brief, note it
-   for the write-up and move on: the brief files are never edited, and the builder is not changed for it.
-5. Build hidden brief 2 the same way, after the first has printed its JSON line. One build at a time.
+## 20:00: save, build, check
+1. Save each brief exactly as received: `briefs/hidden-1.md` with `briefs/hidden-1.openapi.json`, `briefs/hidden-2.md` with
+   `briefs/hidden-2.openapi.json`. Each hidden brief is one Markdown file (organizers' FAQ). Nothing from them goes anywhere else:
+   not into code, prompts, tests, the tracker or memory.
+2. One command runs both builds in turn, checks each and prints the form:
+   `python3 tools/hidden.py briefs/hidden-1.md briefs/hidden-1.openapi.json briefs/hidden-2.md briefs/hidden-2.openapi.json --team <name>`
+   It waits for the platform first, builds hidden-1 (about 2 minutes), checks it, then hidden-2. Everything a build prints lands in
+   `traces/hidden-N.log`; the builder also writes `traces/hidden-N-<start>.log` and `.policy.json`; the export is `hidden-N.workflow.json`.
+   Without the helper, the literal command is `python3 builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.log`.
+3. Read the trace while it runs: the `policy:` lines (identity questions in order, bands and deadlines, holidays, callback window, outcomes),
+   every `ambiguity:` line, the `fields:` line, the `dry run:` line and the `self-test: chat probe` line (the agent's opening with the made-up
+   customer's name). A reading you disagree with is noted for the write-up, never edited: the briefs and the builder stay as they are.
+4. The helper's `check:` lines. `clean` means: every required trace line present, export read back from the platform with the trace's
+   workflow id and counts, no fallback, no key. `trace (kept): ...` notes are informational (a repair call, a skipped stage): the run is kept.
 
-## If something goes wrong
-- `save: failed ... trying again in 20 s`: the platform is away. The build keeps trying until ten minutes before its cap and
-  then raises. Wait for it; do not start a second build. If it raises, run the same command again: the slot is updated in place.
-- `render: FAILED on this policy`: the bare template was saved so that a workflow exists. Look at `work/<slot>/policy.json`,
-  then run the command again; if it fails the same way, that is the one case where a code fix after 20:00 is allowed
-  (a crash on an unexpected table format, per the hackathon rules). Keep the fix to the crash.
-- `export: written from the saved workflow`: fine, the file holds the workflow as saved.
-- The dry run failed with a 4xx: the build saves the bare template and says so. Run the command again after checking the policy.
+## When a build must be repeated, and how to find the cause
+- The helper builds a brief once more by itself after a crash (no result line) or a fallback (`FAILED`, `bare template`, `rejected`,
+  `out of time`), and prints the cause lines first. The slot is updated in place, so the last run's export and trace are the submission.
+- If the second build fails the same way, stop and look: `work/<slot>/policy.json` is what the renderer got; the trace's last lines say
+  which stage failed. The one allowed change after 20:00 is a crash fix that generalizes (a table format or a field type the code did not
+  expect), never a value, a name, a date or a reading from the brief. Add a unit test for the shape that crashed, commit, run the helper again
+  for that brief only. If the crash cannot be fixed in 20 minutes, submit the bare-template agent of the last run with its trace.
+- Never rerun to pick the nicer of two readings: the organizers rebuild the top entries and drop a submission that scores clearly above their rebuild.
+- The platform away: the helper waits up to 20 minutes before a build; inside a build the save retries until ten minutes before the cap.
+  Do not start a second build meanwhile. `export: written from the saved workflow` is a fallback to note, not to rerun.
 - Never pipe a run through `head`; never kill a runner while its simulation runs; never start a simulation while one runs.
 
-## Commit and submit (by 22:30)
-1. `git add -A && git commit -m "Hidden briefs built" && git push` (traces and exports are tracked; `env`, `work/`, `results/` are not).
-2. Note the commit hash. Make the repository public.
-3. The form: team, repository, commit, the run command above, the two `workflow_id`s and agent ids from the JSON lines,
-   the two export files and the two traces.
-4. After submitting, touch nothing.
+## Commit and submit (target 21:30, hard stop 22:30)
+1. `python3 tools/hidden.py ... --commit` commits the briefs, API files, logs, traces, policies and exports (or `git add` those files and
+   commit by hand). `git push`. Note the hash: it must be the commit that holds the files, on code identical to what ran (clean tree at 20:00).
+2. Make the repository public.
+3. Send the form from `work/form.json` (the text in `docs/submission.md`): team, repo, commit, the literal run command, the two export paths,
+   the two console logs.
+4. After sending, touch nothing: no edit to an export, no rebuild into the same slot.
 
 ## Do not
-- Do not change builder code, templates or prompts after 20:00 except for a crash fix as above.
-- Do not run a simulation of a hidden agent unless there is time to spare and the workspace is free; the organizers score
-  on their own platform, and our runs do not count.
-
-## The window, minute by minute
-- 20:00 to 20:05: save each brief and its API file under `briefs/` exactly as received. Nothing from them goes anywhere else: not into code, prompts, tests, the tracker or memory.
-- 20:05 to 20:20: the two builds, one after the other. While each runs, read in its trace the policy summary lines (identity questions in order, bands and deadlines, holidays, callback window, outcomes), the ambiguity lines and the `fields:` line. A read, not an edit.
-- 20:20 to 20:40: sanity without customers. The export's step and tool counts, lint clean, not the bare template. One chat probe per agent of the opening and the first security question (needs no valid customer). No simulation unless practice customers for the hidden briefs are handed out; then one run each, read only.
-- Rerun rule: a second build of the same brief only after a crash or a bare-template save, never to choose the nicer of two readings; the organizers rerun the top ten builders and drop a rerun that scores clearly lower.
-- 20:40 to 21:15: commit, push, make the repository public, fill the form from `docs/submission.md`. Target 21:15, hard stop 22:30.
-- 21:15 to 23:00: buffer for a platform outage only. The watcher stays on; a stuck simulation is cancelled with `freya.cancel_simulation`.
-- What wastes the window: test customers written from the hidden briefs, an edit to "fix" an ambiguity, two builds at once, any change that is not a crash fix.
+- Do not change builder code, templates or prompts after 20:00 except a generalizing crash fix as above.
+- Do not run a simulation of a hidden agent: no practice customers exist for it, the organizers score on their own platform.
+- Do not write test customers from the hidden briefs.

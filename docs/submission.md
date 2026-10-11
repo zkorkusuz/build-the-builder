@@ -1,16 +1,29 @@
-# Submission form text (fill the two hashes and the hidden-brief ids at 20:00)
+# Submission form (send before 20:00 UTC = 23:00 Istanbul to the address in the kit email)
 
-- Team: as registered.
-- Repository: https://github.com/zkorkusuz/build-the-builder (private until submission; made public right before the form is sent).
-- Commit: the hash printed by `git log --oneline -1` after the hidden builds are committed.
-- Run command (from the repository root, after `source env` and the setup in the README):
+`tools/hidden.py` prints this form filled in (and writes it to `work/form.json`); with `--commit` it also makes the commit and fills the hash.
 
+```json
+{
+  "team": "<as registered>",
+  "repo": "https://github.com/zkorkusuz/build-the-builder",
+  "commit": "<hash of the commit that holds the briefs, traces and exports>",
+  "run_command": "python3 builder/build.py {brief_path} {tool_api_path}",
+  "workflows": {
+    "hidden-1": "hidden-1.workflow.json",
+    "hidden-2": "hidden-2.workflow.json"
+  },
+  "traces": {
+    "hidden-1": "traces/hidden-1.log",
+    "hidden-2": "traces/hidden-2.log"
+  }
+}
 ```
-.venv/bin/python builder/build.py briefs/<brief>.md [more brief files] briefs/<brief>.openapi.json
-```
 
-  Several brief files are listed before the API file. The slot name is the brief file names joined with `_`.
-- Setup: `cp env.example env.sh`, fill the keys, `source env.sh`; `/opt/homebrew/bin/python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165` (Python 3.10 or newer). A build takes about 2 minutes and about $0.60 of Claude credits; it never runs a simulation unless `--selftest` is given.
-- Workflows: for each hidden brief, the `workflow_id` and `agent_id` from the build's last JSON line; the export file `<slot>.workflow.json` at the repository root.
-- Traces: `traces/<slot>-<start>.log` (start and end, every model call with its purpose and cost, workflow and agent ids, step and tool counts, lint and dry-run results, the resolved tool field names, every ambiguity the normalize stage resolved) and `traces/<slot>-<start>.policy.json` (the policy that produced the agent).
-- Practice evidence, if asked: `results/` is not committed; the tracker's run log and `docs/methodology.md` summarise it; `docs/figures/` holds the charts.
+- The run command is literal: `python3` is the venv's interpreter (`source .venv/bin/activate`, Python 3.10 or newer, `claude-agent-sdk==0.2.165`)
+  after `source env.sh`; the README has the four setup lines. `{brief_path}` is the one Markdown file of a hidden brief, `{tool_api_path}` its API file.
+- `traces/<brief>.log` is everything the build printed (the organizers' `tee` file). The builder's own copy, `traces/<brief>-<start>.log`, and the
+  policy it rendered, `traces/<brief>-<start>.policy.json`, are committed next to it.
+- The export `<brief>.workflow.json` at the repository root is written by `freya.export_workflow` right after the save. Its `workflow_id` and step
+  and tool counts match the trace's `end` line; `tools/hidden.py` checks that.
+- The repository is private until the files are committed and pushed; make it public right before sending the form.
+- Optional: Claude Code session logs may be shared with the write-up (`docs/presentation.md`, `docs/methodology.md`).

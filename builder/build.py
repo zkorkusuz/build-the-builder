@@ -10,7 +10,7 @@ import json, pathlib, shutil, subprocess, sys, time
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import freya
-from builder import adapt, lint, llm, normalize, render
+from builder import adapt, lint, llm, normalize, render, selfcheck
 
 BUDGET_S = 27 * 60          # the rule is 30 minutes; keep a margin for the export and the trace
 
@@ -24,6 +24,7 @@ def main(argv):
     log_path = ROOT / "traces" / (slot + "-" + time.strftime("%Y%m%d-%H%M%S") + ".log")
     trace = logger(log_path)
     trace("start " + time.strftime("%Y-%m-%dT%H:%M:%S%z") + " | briefs " + " ".join(briefs) + " | tool api " + spec_path + " | slot " + slot)
+    trace(selfcheck.describe_run(sys.argv))
     left = lambda: BUDGET_S - (time.time() - start)
     given = json.loads(pathlib.Path(opts["policy"]).read_text()) if opts["policy"] else None   # read before the work folder is wiped
     workdir = isolate(slot, briefs, spec_path)
@@ -67,12 +68,16 @@ def main(argv):
     trace("export: " + str(export_path))
     (ROOT / "traces" / (log_path.stem + ".policy.json")).write_text(json.dumps(policy, indent=1))   # the policy that produced this agent, kept with its trace for audit
 
+    selfcheck.probe(saved["workflow_id"], trace, left)
     if opts["selftest"] and left() > 13 * 60:
         selftest(saved["agent_id"], opts, trace)
     elif opts["selftest"]:
         trace("self-test skipped: " + str(round(left() / 60)) + " minutes left")
-    trace("end " + time.strftime("%Y-%m-%dT%H:%M:%S%z") + " | " + str(round(time.time() - start)) + " s | workflow " + saved["workflow_id"] + " | agent " + saved["agent_id"])
-    print(json.dumps({"slot": slot, "workflow_id": saved["workflow_id"], "agent_id": saved["agent_id"], "export": str(export_path), "trace": str(log_path)}))
+    steps, tools = len(workflow["nodes"]), count_tools(workflow)
+    trace("end " + time.strftime("%Y-%m-%dT%H:%M:%S%z") + " | " + str(round(time.time() - start)) + " s | workflow " + saved["workflow_id"] + " | agent " + saved["agent_id"]
+          + " | version " + str(saved.get("version")) + " | " + str(steps) + " steps | " + str(tools) + " tools")
+    print(json.dumps({"slot": slot, "workflow_id": saved["workflow_id"], "agent_id": saved["agent_id"], "version": saved.get("version"), "steps": steps, "tools": tools,
+                      "export": str(export_path), "trace": str(log_path)}))
 
 
 def read_policy(opts, briefs, spec_path, workdir, trace, ask):
@@ -159,6 +164,7 @@ def save(slot, workflow, trace, left=lambda: 1800):
     One attempt can take up to seven minutes inside the wrapper's own retries, so retrying stops ten minutes before the budget ends."""
     try:
         freya.validate_workflow(slot, workflow)
+        trace("dry run: the platform accepted the workflow")
     except Exception as e:
         if "-> 4" in str(e):
             raise Rejected(str(e)[:160]) from None

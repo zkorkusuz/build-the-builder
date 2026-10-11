@@ -2,7 +2,7 @@
 import json, pathlib
 
 SCHEMA = (pathlib.Path(__file__).parent / "policy_schema.json").read_text()
-REQUIRED = ["opening_sentence", "confirm_question", "identity", "calendar", "bands", "outcomes", "sentences", "product_words", "floor_field", "end_reasons"]
+REQUIRED = ["opening_sentence", "confirm_question", "identity", "calendar", "bands", "outcomes", "sentences", "product_words", "end_reasons"]
 SITUATIONS = ["unclear", "callback", "no_callback", "wrong_number", "deceased", "id_failed", "id_declined", "promise"]
 
 INSTRUCTIONS = """You are turning a bank's instructions for an outbound late-payment phone call into one JSON policy file.
@@ -28,6 +28,8 @@ def problems(policy):
     for k in REQUIRED:
         if not policy.get(k):
             out.append("missing " + k)
+    if not policy.get("floor_field") and not policy.get("floor_fraction"):      # a brief may give the floor as a product field or as a fraction
+        out.append("missing floor_field (or floor_fraction)")
     for s in SITUATIONS:
         if not (policy.get("outcomes", {}).get(s) or {}).get("outcome"):
             out.append("outcome for " + s + " missing")
@@ -57,7 +59,7 @@ def problems(policy):
 
 
 def normalize(briefs, spec_text, workdir, trace, ask, parse_json):
-    """One model call, one repair call at most. Returns the policy or raises."""
+    """One model call, one repair call at most. Returns the best policy it got; only a model answer that is not JSON raises."""
     text = ask(prompt(briefs, spec_text), workdir, trace, "normalize: briefs and tool API into policy.json")
     policy = parse_json(text)
     missing = problems(policy)
@@ -67,6 +69,6 @@ def normalize(briefs, spec_text, workdir, trace, ask, parse_json):
                   + json.dumps(policy, indent=1) + "\n```\n\n" + prompt(briefs, spec_text), workdir, trace, "normalize: repair missing fields")
         policy = parse_json(fix)
         missing = problems(policy)
-        if missing:
-            raise RuntimeError("policy still incomplete: " + "; ".join(missing))
+        if missing:                  # a brief may simply not have the thing (a floor, a situation): the renderer has a default for every missing section
+            trace("normalize: still incomplete after the repair, continuing with this policy: " + "; ".join(missing))
     return policy

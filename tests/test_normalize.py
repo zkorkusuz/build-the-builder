@@ -43,5 +43,23 @@ class ParseJson(unittest.TestCase):
         self.assertEqual(llm.parse_json("here: {\"a\": {\"b\": [1]}} done"), {"a": {"b": [1]}})
 
 
+class Incomplete(unittest.TestCase):
+    """A policy that is still incomplete after the repair is used, not thrown away: the bare template would score nothing."""
+
+    def test_fraction_floor_needs_no_floor_field(self):
+        p = json.loads(json.dumps(FIXTURE))
+        p["floor_field"], p["floor_fraction"] = {}, 0.5
+        self.assertEqual(normalize.problems(p), [])
+        p["floor_fraction"] = ""
+        self.assertIn("missing floor_field (or floor_fraction)", normalize.problems(p))
+
+    def test_still_incomplete_after_repair_is_kept(self):
+        p = json.loads(json.dumps(FIXTURE)); del p["outcomes"]["deceased"]
+        answers, lines = iter(["```json\n" + json.dumps(p) + "\n```"] * 2), []
+        policy = normalize.normalize([("b.md", "brief")], "{}", None, lines.append, lambda prompt, wd, tr, purpose: next(answers), llm.parse_json)
+        self.assertEqual(policy["bands"], p["bands"])
+        self.assertTrue(any(l.startswith("normalize: repairing") for l in lines) and any("still incomplete" in l for l in lines))
+
+
 if __name__ == "__main__":
     unittest.main()

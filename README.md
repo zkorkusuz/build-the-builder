@@ -6,15 +6,18 @@ One command turns a brief and its tool API file into a published Freya phone age
 
 ```bash
 cp env.example env.sh && source env.sh          # FREYA_API_KEY, FREYA_API_URL, FREYA_BANK_TEAM_KEY (any secret of 16+ characters)
-/opt/homebrew/bin/python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165   # Python 3.10 or newer; needs a Claude login or ANTHROPIC_API_KEY
-.venv/bin/python builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json   # several brief files: list them all before the API file
+python3 -m venv .venv && .venv/bin/pip install claude-agent-sdk==0.2.165 && source .venv/bin/activate   # Python 3.10 or newer (a Mac with an older python3: /opt/homebrew/bin/python3 -m venv .venv); needs a Claude login or ANTHROPIC_API_KEY
+python3 builder/build.py briefs/hidden-1.md briefs/hidden-1.openapi.json 2>&1 | tee traces/hidden-1.log   # several brief files: list them all before the API file
 ```
 
 Stages: normalize (one Claude call reads every brief file completely into `policy.json`), render (Python fills a fixed workflow template:
 date engine and per-product facts in code steps, hooks around every tool call, routes on extracted choices), adapt (one Claude call checks
 the brief's rules against the prompts), lint and dry run, save and publish in one slot per brief set, export to `<slot>.workflow.json`,
-optional self-test (`--selftest <cases.json> --brief-id A`). The trace is `traces/<slot>-<start>.log`. A build takes about 2 minutes and
-costs about $0.50 of Claude credits at `BUILDER_MODEL=claude-opus-5-5` (the default); it stops itself inside 30 minutes and always leaves
+a chat probe (one turn with the published agent, so the trace shows it can start a call and speaks its opening), optional self-test
+(`--selftest <cases.json> --brief-id A`). The trace is everything the build prints; the builder also writes it to `traces/<slot>-<start>.log`
+with the policy it rendered next to it. `tools/hidden.py` runs the command above for each hidden brief in turn, checks the export against the
+trace (counts, ids, no fallback, no key) and prints the submission form. A build takes about 2 minutes and
+costs about $0.60 of Claude credits at `BUILDER_MODEL=claude-opus-5-5` (the default); it stops itself inside 30 minutes and always leaves
 a saved workflow. The model runs in `work/<slot>/` with only the briefs and the API file. Tests: `.venv/bin/python -m unittest discover tests`.
 
 **Kit version 3** (10 October 2026). The file `VERSION` holds the number. When we update the kit, the number goes up and the changes are listed here.
