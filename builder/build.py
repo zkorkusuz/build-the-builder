@@ -41,7 +41,13 @@ def main(argv):
         workflow = render.render({}, spec)
     trace("render: " + str(len(workflow["nodes"])) + " steps, " + str(count_tools(workflow)) + " tools, lint " + (" | ".join(lint.check(workflow)) or "clean"))
     trace("render: steps " + ", ".join(workflow["nodes"]) + "; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts")
-    saved = save(slot, workflow, trace, left)     # a valid agent exists from here on
+    trace("fields: " + json.dumps({t: {r: n for r, n in m.items() if n != r} for t, m in render.field_names(policy, spec).items() if any(n != r for r, n in m.items())} or "the role names, as in the practice file"))
+    try:
+        saved = save(slot, workflow, trace, left)     # a valid agent exists from here on
+    except Rejected as e:
+        trace("save: the platform rejected the workflow (" + str(e) + "); saving the bare template")
+        workflow = render.render({}, spec)
+        saved = save(slot, workflow, trace, left)
 
     if not opts["no_adapt"] and not opts["policy"] and left() > 6 * 60:
         try:
@@ -139,11 +145,18 @@ def count_tools(workflow):
     return sum(len(n.get("tools", [])) + len(n.get("pre_actions", [])) for n in workflow["nodes"].values()) + len(workflow.get("tools", []))
 
 
-def save(slot, workflow, trace, left=lambda: 600):
-    """Validate, then save until it works: a platform hiccup must not end a build without a workflow."""
+class Rejected(Exception):
+    """The platform answered 4xx: the workflow itself is at fault, so retrying it is pointless."""
+
+
+def save(slot, workflow, trace, left=lambda: 1800):
+    """Validate, then save until it works: a platform hiccup must not end a build without a workflow.
+    One attempt can take up to seven minutes inside the wrapper's own retries, so retrying stops ten minutes before the budget ends."""
     try:
         freya.validate_workflow(slot, workflow)
     except Exception as e:
+        if "-> 4" in str(e):
+            raise Rejected(str(e)[:160]) from None
         trace("dry run: skipped, " + str(e)[:160])
     while True:
         try:
@@ -152,8 +165,10 @@ def save(slot, workflow, trace, left=lambda: 600):
                 saved = freya.save_workflow(slot, workflow, state_file=str(ROOT / ".freya-agents.json"))
             break
         except Exception as e:
-            trace("save: failed, " + str(e)[:160] + ("; trying again in 20 s" if left() > 180 else "; out of time"))
-            if left() <= 180:
+            if "-> 4" in str(e):
+                raise Rejected(str(e)[:160]) from None
+            trace("save: failed, " + str(e)[:160] + ("; trying again in 20 s" if left() > 600 else "; out of time"))
+            if left() <= 600:
                 raise
             time.sleep(20)
     trace("freya: workflow " + saved["workflow_id"] + " agent " + saved["agent_id"] + " version " + str(saved.get("version")))

@@ -272,12 +272,12 @@ def product_facts(products, policy, now_value):
     today, cal = now.date(), policy.get("calendar") or {}
     words, floor_field = policy.get("product_words") or {}, policy.get("floor_field") or {}
     rule, names = policy.get("attempt1_rule") or {}, policy.get("fields") or {}
-    k = lambda role: names.get(role) or role                     # the API file's own name for a product field
+    name_of = lambda role: names.get(role) or role               # the API file's own name for a product field
     a1 = attempt1_date(today, cal, rule)
     facts, lines, spoken = [], [], []
     for i, p in enumerate(products or []):
-        ptype = str(p.get(k("type"), ""))
-        band = band_for(p.get(k("days_late")), policy.get("bands") or [])
+        ptype = str(p.get(name_of("type"), ""))
+        band = band_for(p.get(name_of("days_late")), policy.get("bands") or [])
         deadline = nth_business_day_after(today, int(band.get("deadline_business_days", 5)), cal)
         floor = p.get(floor_field.get(ptype, ""), None)
         name = words.get(ptype, ptype.replace("_", " "))
@@ -286,8 +286,8 @@ def product_facts(products, policy, now_value):
         except (KeyError, IndexError, ValueError):
             pass
         first = deadline if str(rule.get("rule")) == "deadline" else a1
-        f = {"product_id": str(p.get(k("product_id"), "")), "type": ptype, "words": name, "past_due": p.get(k("past_due")),
-             "days_late": p.get(k("days_late")), "band": band.get("name", ""), "attempts": int(band.get("attempts", 1)),
+        f = {"product_id": str(p.get(name_of("product_id"), "")), "type": ptype, "words": name, "past_due": p.get(name_of("past_due")),
+             "days_late": p.get(name_of("days_late")), "band": band.get("name", ""), "attempts": int(band.get("attempts", 1)),
              "deadline": deadline.isoformat(), "floor": floor, "attempt1_date": first.isoformat() if first else ""}
         facts.append(f)
         attempts = f["attempts"]

@@ -4,6 +4,7 @@ Every hook is wrapped in try/except, reads and writes through `vars`, holds no b
 contains two braces in a row: policy values are inserted as indented JSON with `__NAME__` placeholders.
 """
 import json
+from builder.fields import default_fields
 
 
 def literal(value):
@@ -15,29 +16,6 @@ def fill(template, **values):
     for name, value in values.items():
         template = template.replace("__" + name.upper() + "__", value if isinstance(value, str) else literal(value))
     return template
-
-
-# Each tool's request and response fields by role, with the words that find a renamed field in an API file that the policy did not map:
-# (where, keywords). Hooks read names through F, so a bank that calls the amount "sum" or the products "accounts" still works.
-FIELD_ROLES = {
-    "verify_identity": {"field": ("request", ["field", "question", "type"]), "answer": ("request", ["answer", "value", "response"]), "ok": ("response", ["ok", "success"]),
-                        "error": ("response", ["error", "message"]), "all_verified": ("response", ["all", "fully", "complete"]), "verified": ("response", ["verified", "correct", "match", "pass"]),
-                        "wrong_answers_left": ("response", ["left", "remaining"]), "hint": ("response", ["hint"])},
-    "get_account": {"ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"]), "products": ("response", ["product", "account", "item", "debt", "loan"]),
-                    "product_id": ("product", ["id", "ref"]), "type": ("product", ["type", "kind"]), "past_due": ("product", ["past", "due", "overdue", "arrears", "balance"]), "days_late": ("product", ["day", "late"])},
-    "create_promise": {"product_id": ("request", ["product", "account", "id"]), "amount": ("request", ["amount", "sum", "value", "total"]), "date": ("request", ["date", "day", "when"]),
-                       "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
-    "add_note": {"product_id": ("request", ["product", "account", "id"]), "reason": ("request", ["reason", "why", "code"]), "text": ("request", ["text", "note", "comment"]),
-                 "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
-    "schedule_callback": {"date": ("request", ["date", "day", "when"]), "time": ("request", ["time", "hour", "slot"]), "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
-    "transfer_to_agent": {"queue": ("request", ["queue", "team", "department"]), "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
-    "close_call": {"outcome": ("request", ["outcome", "result", "status"]), "reason": ("request", ["reason", "why", "code"]), "ok": ("response", ["ok", "success"]), "error": ("response", ["error", "message"])},
-}
-
-
-def default_fields():
-    """The role names themselves, the practice API's spelling."""
-    return {t: {r: r for r in roles} for t, roles in FIELD_ROLES.items()}
 
 
 COMMON = """
@@ -243,7 +221,7 @@ try:
             done.append(attempt); vars['promises_recorded'] = json.dumps(done); vars['promise_state'] = 'recorded'; vars['offer_now'] = ''
             d['what_to_do_next'] = 'The bank already holds this promise: ' + str(attempt.get('words') or 'the product') + ', ' + str(attempt.get('amount')) + ' on ' + str(attempt.get('date')) + '. Tell the customer it is recorded, then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
         elif _count('promise_failures') < 3:
-            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call (' + str(d.get(F['error'])) + '). Correct the values and CALL create_promise again. product_id must be exactly the id shown in your facts.'
+            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call (' + str(d.get(F['error'])) + '). Correct the values and CALL create_promise again. ' + F['product_id'] + ' must be exactly the id shown in your facts.'
         else:
             d['what_to_do_next'] = 'NOT recorded: the bank rejected the call three times (' + str(d.get(F['error'])) + '). Never say it is recorded. Tell the customer you could not record it today, then thank them, say goodbye and call transition_to_wrap_up.'
     else:
@@ -286,7 +264,8 @@ except Exception:
     pass
 """
 
-TRANSFER_PRE = """try:
+TRANSFER_PRE = """F = __FIELDS__
+try:
     b = config.get('body') if isinstance(config, dict) else None
     if isinstance(b, dict):
         vars['transfer_queue'] = str(b.get(F['queue']) or '')
@@ -296,7 +275,6 @@ except Exception:
 
 TRANSFER_POST = """import json
 __COMMON__
-F = __FIELDS__
 F = __FIELDS__
 try:
     d = _d(result)
@@ -450,7 +428,7 @@ except Exception:
 
 def all_hooks(policy, recompute="", dates_src="", fields=None):
     """Every hook's source, keyed by tool name and phase, filled from the policy and the API file's field names."""
-    F = lambda t: (fields or default_fields()).get(t) or default_fields()[t]
+    F = (fields or default_fields()).get
     ident, out = policy.get("identity") or {}, policy.get("outcomes") or {}
     default_outcome = (out.get("unclear") or {}).get("outcome", "")
     multi = (policy.get("multi_product") or {}).get("enabled")

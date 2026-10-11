@@ -183,6 +183,21 @@ class Rendered(unittest.TestCase):
         self.assertEqual(close["function"]["parameters"]["properties"]["body"]["properties"]["result"]["default"], "{{outcome}}")
         self.assertEqual(wf["nodes"]["account"]["response_mapping"], [{"path": "data.accounts", "variable": "products"}])
         self.assertIn("account_response.data.accounts.", wf["nodes"]["account_facts"]["pre_actions"][0]["function"]["parameters"]["properties"]["code"]["default"])
+        # a keyword matches a whole word of the name, so "id" cannot pick amount_paid and "date" cannot pick holiday
+        from builder.fields import resolve
+        self.assertEqual(resolve("product_id", "", ["ref", "type", "amount_paid"], ["ref", "type", "amount_paid"], ["product", "account", "id", "ref"]), "ref")
+        self.assertEqual(resolve("date", "", ["holiday", "product_id", "amount"], ["holiday", "amount"], ["date", "day", "when"]), "date")
+
+    def test_transfer_and_note_pre_hooks_keep_the_values(self):
+        transfer = next(t for t in self.wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "transfer_to_agent")
+        vars, config = {}, {"body": {"customer_id": "c1", "queue": "general"}}
+        exec(transfer["pre_process_code"], {"vars": vars, "config": config, "json": json})
+        self.assertEqual(vars["transfer_queue"], "general")
+        wf = render.render(dict(POLICY, multi_product={"enabled": True, "rules": "x"}), SPEC)
+        note = next(t for t in wf["nodes"]["negotiate"]["tools"] if t["function"]["name"] == "add_note")
+        vars, config = {}, {"body": {"customer_id": "c1", "product_id": "p2", "reason": "refused"}}
+        exec(note["pre_process_code"], {"vars": vars, "config": config, "json": json})
+        self.assertEqual(json.loads(vars["note_attempt"]), {"product_id": "p2", "reason": "refused"})
 
     def test_no_null_anywhere(self):
         self.assertNotIn("null", json.dumps(self.wf))

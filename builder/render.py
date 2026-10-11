@@ -1,5 +1,6 @@
 """Render a Freya workflow from a policy and the bank's tool API file. Pure: no network."""
 import json, pathlib
+from builder.fields import deref, field_names, find_path
 from builder import dates, hooks, prompts
 
 DATES_SRC = pathlib.Path(dates.__file__).read_text()
@@ -41,49 +42,6 @@ def end_node(name, spoken):
 
 def extraction(name, values, description):
     return {"name": name, "type": "string", "enum_values": values, "description": description, "min_confidence": 0.6}
-
-
-def find_path(spec, name):
-    """The API file's path for a tool: exact, or the one that ends with the tool name, with its POST (or only) operation."""
-    paths = spec.get("paths") or {}
-    key = "/" + name if "/" + name in paths else next((k for k in paths if k.rstrip("/").endswith("/" + name)), "/" + name)
-    item = paths.get(key) or {}
-    return key, item.get("post") or next((v for v in item.values() if isinstance(v, dict)), {})
-
-
-def deref(spec, schema):
-    """A schema with a $ref replaced by its target under the file's own components."""
-    ref = (schema or {}).get("$ref") if isinstance(schema, dict) else None
-    if ref and ref.startswith("#/"):
-        node = spec
-        for part in ref[2:].split("/"):
-            node = (node or {}).get(part) or {}
-        return node
-    return schema or {}
-
-
-def _properties(spec, op, part):
-    body = (op.get("requestBody") or {}) if part == "request" else ((op.get("responses") or {}).get("200") or {})
-    schema = deref(spec, ((body.get("content") or {}).get("application/json") or {}).get("schema") or {})
-    return {k: deref(spec, v) for k, v in (schema.get("properties") or {}).items()}
-
-
-def field_names(policy, spec):
-    """Each tool's field names by role: the policy's api_fields when the API file has that name, else the role name itself,
-    else the first field whose name contains one of the role's keywords. Hooks, routes and the product facts all read names from here."""
-    out = {}
-    for tool_name, roles in hooks.FIELD_ROLES.items():
-        op = find_path(spec, tool_name)[1]
-        have = {"request": _properties(spec, op, "request"), "response": _properties(spec, op, "response")}
-        arr = next((v for v in have["response"].values() if v.get("type") == "array"), {})
-        have["product"] = (deref(spec, arr.get("items") or {}).get("properties") or {})
-        given, names = (policy.get("api_fields") or {}).get(tool_name) or {}, {}
-        for role, (where, keys) in roles.items():
-            g, free = str(given.get(role) or ""), [n for n in have[where] if n != "customer_id" and n not in names.values()]
-            names[role] = g if g in have[where] else role if role in have[where] or not have[where] else next(
-                (n for k in keys for n in free if k in n.lower()), role)                  # keywords in priority order, then the file's order
-        out[tool_name] = names
-    return out
 
 
 def tool(spec, name, hook_map, descriptions, fields, mapping=None, retries=0, lifecycle=None):
