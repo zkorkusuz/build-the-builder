@@ -10,7 +10,7 @@ from builder import lint, normalize
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 REFERENCE_DOCS = ("workflow-format.md", "tools-and-code.md")
-DESIGN_TIMEOUT_S, REPAIR_TIMEOUT_S = 17 * 60, 8 * 60     # a whole workflow is a long answer; the build budget still caps both
+DESIGN_TIMEOUT_S, REPAIR_TIMEOUT_S = 20 * 60, 6 * 60     # a whole workflow is a long answer; the build budget still caps both
 
 FIT_QUESTION = """Below are a bank's documents for a phone agent. Answer with one JSON object {"outbound_collections": true or false, "summary": "<one sentence in English: what the agent does>"} in a ```json fence and nothing else.
 outbound_collections is true only when the agent makes an OUTBOUND call about a late payment, asks the customer security questions to verify them, and records payment promises with their dates and amounts. Any other kind of call (an inbound inquiry, a service request, an information line) is false."""
@@ -25,8 +25,8 @@ Work like this:
 4. Call variables: use exactly the variables the documents say every call provides, with those names, and put example values for them in test_variables. Never ask the caller for something the documents say the agent already has. Every date or time decision uses the call's own time variable, never the system clock; compute dates in a code node (json, re and datetime only, no double braces, never raises) and give the model finished facts as text through variables.
 5. Prompts: one or two short sentences per turn in the caller's language; say every number, amount, date and time in words in that language; call one tool per message and speak after every tool result; never say an action was done unless the tool result says so; never invent amounts, dates or facts; do only what the documents allow and hand over to a person exactly as the documents say. Rules that hold in every step go in system_prompt.
 6. Routing: deterministic conditions before matches_intent; fork on an extracted enum (min_confidence on every extraction) rather than on several competing intents; every passthrough node ends with an always transition; every node with max_node_turns has a max_turn_transition; no null anywhere; no const; tools only on conversation nodes; pre_actions only on api_request and code nodes; each node's name equals its key; leave agent_config out.
-7. Before answering, walk through every example conversation in the documents and every kind of scenario they mention (ordinary, edge, adversarial) node by node, and make sure the workflow handles each one as the documents require.
-8. Write the JSON compactly: no indentation and no line breaks between keys (line breaks only inside code strings), short hooks of a few lines each, and no comments or prose outside the fence. Length costs time; completeness does not."""
+7. Make sure the workflow handles every example conversation in the documents and every kind of scenario they mention (ordinary, edge, adversarial) as the documents require, but do not write that check out: answer with the workflow only.
+8. Size limits, which matter because a long answer runs out of time: at most 14 nodes; each task_message at most 180 words (put rules that hold everywhere in system_prompt once, never repeated per node; a fixed sentence goes in on_enter as tts text, not in a prompt); each hook at most 10 short lines; transition and tool descriptions one sentence; no comments or prose outside the fence; the JSON compact, with no indentation and no line breaks between keys (line breaks only inside code strings)."""
 
 REPAIR = """The workflow below was rejected. Fix every problem listed, keep everything else exactly as it is, and answer with the complete corrected workflow JSON in a ```json fence and nothing else.
 
