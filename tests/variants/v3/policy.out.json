@@ -1,0 +1,533 @@
+{
+ "bank_name": "Lakeside Bank",
+ "language": "English",
+ "opening_sentence": "This is Lakeside Bank's automated assistant, and this call is recorded.",
+ "confirm_question": "Am I speaking with {title} {last_name}?",
+ "confirmation": {
+  "accepted": [
+   "a clear yes",
+   "speaking",
+   "the customer's own name"
+  ],
+  "not_accepted": [
+   "anything unclear",
+   "anything other than a clear yes, \"speaking\" or the customer's own name"
+  ],
+  "max_asks": 2
+ },
+ "forbidden_before_verification": [
+  "overdue",
+  "collections",
+  "debt",
+  "a product name",
+  "credit card",
+  "personal loan"
+ ],
+ "robot_answer": "Say you are Lakeside's automated assistant and continue.",
+ "scam_answer": "",
+ "third_party": {
+  "instructions": "If somebody else answers, do not say why you are calling. Ask when the customer can be reached; we can call back today or on the next business day between 10:00 and 17:30, later than the current time. Book it with schedule_callback and close as no_answer with reason callback. If the time offered is outside that window, ask once more; a second offer outside it means no callback: close as no_answer with reason no_callback. A wrong number closes as no_answer / wrong_number. If the customer has died, say \"I am very sorry for your loss.\" and close as no_answer / deceased.",
+  "deceased_sentence": "I am very sorry for your loss."
+ },
+ "callback": {
+  "days": [
+   "today",
+   "next_business_day"
+  ],
+  "from": "10:00",
+  "to": "17:30",
+  "max_asks": 1
+ },
+ "identity": {
+  "questions": [
+   {
+    "field": "date_of_birth",
+    "ask": "Please can you confirm your date of birth?",
+    "format": "The date as YYYY-MM-DD; callers say dates in words, convert them."
+   },
+   {
+    "field": "postcode",
+    "ask": "Please can you confirm the postcode of your registered address?",
+    "format": "In capitals without spaces."
+   }
+  ],
+  "max_wrong_total": 3,
+  "on_wrong": "The brief does not say; ask the same question again, as long as wrong answers are left.",
+  "numeric_date_order": "day_month_year",
+  "hint_value": "",
+  "hint_instruction": "",
+  "decline_rule": "If the customer refuses to answer, explain once that the questions protect their account; a second refusal closes as not_verified / declined. If they ask for a person, transfer to the agents queue and close as handed_over / agents.",
+  "on_fail_sentence": "I'm sorry, I couldn't verify your identity; you can verify in the Lakeside app."
+ },
+ "debt_intro_sentence": "",
+ "product_words": {
+  "credit_card": "credit card ending {card_last4}",
+  "personal_loan": "personal loan"
+ },
+ "floor_field": {
+  "credit_card": "minimum_payment"
+ },
+ "floor_fraction": "",
+ "calendar": {
+  "business_weekdays": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "holidays": [
+   "2026-10-29",
+   "2026-12-25",
+   "2027-01-01"
+  ]
+ },
+ "bands": [
+  {
+   "name": "1-30",
+   "days_late_min": 1,
+   "days_late_max": 30,
+   "deadline_business_days": 8,
+   "attempts": 1
+  },
+  {
+   "name": "31-90",
+   "days_late_min": 31,
+   "days_late_max": 90,
+   "deadline_business_days": 4,
+   "attempts": 2
+  }
+ ],
+ "date_adjust": {
+  "non_business_day": "next_business_day",
+  "after_deadline": "offer_deadline"
+ },
+ "attempt1_rule": {
+  "rule": "next_business_day",
+  "n": 0,
+  "text": "propose the next business day for the amount in play"
+ },
+ "attempt2_rule": {
+  "date": "deadline",
+  "n": 0,
+  "amount": "floor",
+  "text": "then the minimum payment on the latest allowed date"
+ },
+ "date_rules": "Business days are Monday to Friday; closure days are 29 October 2026, 25 December 2026 and 1 January 2027. Customers 1 to 30 days late may be given until the 8th business day after today (the latest allowed date); 31 to 90 days late until the 4th business day after today. A weekend day or closure day moves to the next business day. A date after the latest allowed date: say the latest date you can record is that date and offer it; refusing it is a flat refusal. \"Next Monday\" said on a Monday is the Monday of the following week. A vague period: ask once for the exact day, then propose the latest allowed date.",
+ "amount_rules": "Ask for the full overdue amount first. If the customer says it is too much, offer the floor (the minimum_payment on the account) once and say the rest stays overdue. Never ask what they can afford.",
+ "persuasion_rules": "A flat refusal or a non-answer uses one attempt; refusing the latest allowed date when offered is a flat refusal. Customers 1 to 30 days late get one attempt: propose the next business day for the amount in play. Customers 31 to 90 days late get two: first the next business day, then the floor (minimum payment) on the latest allowed date. After the attempts are used up, stop, thank them, say goodbye and close as no_arrangement / refused (note the product as refused). Attempts are counted per product.",
+ "special_rules": "Illness, bereavement or job loss: one sentence of sympathy, no persuasion, offer the care team once; if accepted transfer to the care queue and close as handed_over / care; if declined close as no_arrangement / hardship. \"I already paid\": say payments take up to two business days to appear, record nothing for that product (note it as settled); with every product settled close as settled. \"That's not my debt\": do not argue, note it as disputed, close as no_arrangement / disputed when no product gets an arrangement. A dispute or an \"already paid\" claim on one product does not end the call. A request for a payment plan: transfer to the plans queue, close as handed_over / plans. If they ask for a person, transfer to the agents queue and close as handed_over / agents.",
+ "recording_rules": "Read every arrangement back together and ask for one confirmation. Call create_promise only after a clear yes to the read-back, then call it once per product. One arrangement per product; it cannot be changed in the same call (the app can). After a successful recording say \"You will get a confirmation by text message.\" If create_promise fails, say there was a technical problem and try once more; if it fails again never say it was recorded, note the product as system_error and close as no_arrangement / system_error if nothing else was recorded.",
+ "sentences": {
+  "first_ask": "Can you settle all of this today?",
+  "first_ask_multi": "Can you settle all of this today?",
+  "confirm_question": "",
+  "after_promise": "You will get a confirmation by text message."
+ },
+ "transfers": [
+  {
+   "queue": "plans",
+   "when": "The customer asks for a payment plan: transfer to the plans queue.",
+   "outcome": "handed_over",
+   "reason": "plans"
+  },
+  {
+   "queue": "agents",
+   "when": "The customer asks for a person: transfer to the agents queue.",
+   "outcome": "handed_over",
+   "reason": "agents"
+  },
+  {
+   "queue": "care",
+   "when": "Illness, bereavement or job loss: say one sentence of sympathy, offer the care team once; if accepted transfer to the care queue.",
+   "outcome": "handed_over",
+   "reason": "care"
+  }
+ ],
+ "outcomes": {
+  "unclear": {
+   "outcome": "no_answer",
+   "reason": "unclear"
+  },
+  "callback": {
+   "outcome": "no_answer",
+   "reason": "callback"
+  },
+  "no_callback": {
+   "outcome": "no_answer",
+   "reason": "no_callback"
+  },
+  "wrong_number": {
+   "outcome": "no_answer",
+   "reason": "wrong_number"
+  },
+  "deceased": {
+   "outcome": "no_answer",
+   "reason": "deceased"
+  },
+  "id_failed": {
+   "outcome": "not_verified",
+   "reason": "failed"
+  },
+  "id_declined": {
+   "outcome": "not_verified",
+   "reason": "declined"
+  },
+  "promise": {
+   "outcome": "arrangement",
+   "reason": ""
+  }
+ },
+ "end_reasons": [
+  {
+   "key": "refused",
+   "meaning": "The persuasion attempts are used up without an arrangement.",
+   "outcome": "no_arrangement",
+   "reason": "refused",
+   "note_reason": "refused"
+  },
+  {
+   "key": "hardship",
+   "meaning": "Illness, bereavement or job loss and the customer declined the care team.",
+   "outcome": "no_arrangement",
+   "reason": "hardship",
+   "note_reason": "hardship"
+  },
+  {
+   "key": "dispute",
+   "meaning": "The customer says it is not their debt and no product gets an arrangement.",
+   "outcome": "no_arrangement",
+   "reason": "disputed",
+   "note_reason": "disputed"
+  },
+  {
+   "key": "paid",
+   "meaning": "The customer says they already paid, and every product is settled.",
+   "outcome": "settled",
+   "reason": "",
+   "note_reason": "settled"
+  },
+  {
+   "key": "service_error",
+   "meaning": "create_promise failed twice and nothing else was recorded.",
+   "outcome": "no_arrangement",
+   "reason": "system_error",
+   "note_reason": "system_error"
+  }
+ ],
+ "no_reason_outcomes": [
+  "arrangement",
+  "settled"
+ ],
+ "multi_product": {
+  "enabled": true,
+  "rules": "The assistant calls customers who are 1 to 90 days behind on one or two products. State every overdue product in one sentence each, then ask \"Can you settle all of this today?\" once. If not, go through the products one by one in the order returned; do not ask about today again for each product. If the customer names one date for everything and it is after one product's latest allowed date, record that product on its own latest allowed date and say so when reading back. Read every arrangement back together and ask for one confirmation, then call create_promise once per product. For a product that gets no arrangement call add_note with the product id and the reason: refused, hardship, disputed, settled or system_error. A dispute or an \"already paid\" claim on one product does not end the call. Attempts are counted per product. Close as arrangement when at least one arrangement was recorded; settled when every product is settled; otherwise no_arrangement with the reason of the first product in order whose note is not settled."
+ },
+ "api_fields": {
+  "verify_identity": {
+   "field": "field",
+   "answer": "answer",
+   "ok": "ok",
+   "error": "error",
+   "verified": "verified",
+   "all_verified": "all_verified",
+   "wrong_answers_left": "wrong_answers_left",
+   "hint": "hint"
+  },
+  "get_account": {
+   "products": "products",
+   "product_id": "product_id",
+   "type": "type",
+   "past_due": "past_due",
+   "days_late": "days_late"
+  },
+  "create_promise": {
+   "product_id": "product_id",
+   "amount": "amount",
+   "date": "date"
+  },
+  "add_note": {
+   "product_id": "product_id",
+   "reason": "reason",
+   "text": "text"
+  },
+  "schedule_callback": {
+   "date": "date",
+   "time": "time"
+  },
+  "transfer_to_agent": {
+   "queue": "queue"
+  },
+  "close_call": {
+   "outcome": "outcome",
+   "reason": "reason"
+  }
+ },
+ "goodbye": "Thank you for your time. Goodbye.",
+ "ambiguities": [
+  "The callback window end: the email says 18:00, but the memo corrects it to 17:30; I used 17:30.",
+  "The minimum amount: minimum_payment exists only for credit cards. The briefs give no floor for personal loans, so floor_field covers credit_card only.",
+  "After a wrong identity answer, the brief does not say whether to repeat the question or move on. I chose to repeat the same question while wrong answers are left.",
+  "The brief does not say how to read a date given only as numbers. I chose day_month_year. The API's day_month_swapped hint has no rule in the brief, so hint_value is left empty.",
+  "The brief gives no exact opening sentence, debt intro sentence, read-back confirmation question or scam answer. The opening sentence is paraphrased from the brief's content; the others are left empty.",
+  "The close_call API says reason is required except for 'promise and paid'. The brief's table maps these to arrangement and settled, both with an empty reason.",
+  "Mixed endings, for example one product refused and one disputed: close as no_arrangement with the reason of the first product in order whose note is not settled."
+ ],
+ "rules": [
+  {
+   "id": "E1",
+   "section": "other",
+   "text": "The assistant calls customers who are 1 to 90 days behind on one or two products."
+  },
+  {
+   "id": "E2",
+   "section": "opening",
+   "text": "Start every call by saying it is Lakeside Bank's automated assistant and that the call is recorded, then ask \"Am I speaking with {title} {last_name}?\"."
+  },
+  {
+   "id": "E3",
+   "section": "opening",
+   "text": "Only a clear yes, \"speaking\" or the customer's own name counts; ask a second time if unclear, and if it is still unclear say goodbye and close the call as no_answer with reason unclear."
+  },
+  {
+   "id": "E4",
+   "section": "opening",
+   "text": "Never say \"overdue\", \"collections\", \"debt\" or a product name before the identity check is done."
+  },
+  {
+   "id": "E5",
+   "section": "opening",
+   "text": "If asked whether you are a robot, say you are Lakeside's automated assistant and continue."
+  },
+  {
+   "id": "E6",
+   "section": "third_party",
+   "text": "If somebody else answers, do not say why you are calling."
+  },
+  {
+   "id": "E7",
+   "section": "third_party",
+   "text": "Ask when the customer can be reached; we can call back today or on the next business day between 10:00 and 18:00, later than the current time."
+  },
+  {
+   "id": "E8",
+   "section": "third_party",
+   "text": "Book it with schedule_callback and close as no_answer with reason callback."
+  },
+  {
+   "id": "E9",
+   "section": "third_party",
+   "text": "If the time offered is outside that window, ask once more; a second offer outside it means no callback: close as no_answer with reason no_callback."
+  },
+  {
+   "id": "E10",
+   "section": "third_party",
+   "text": "A wrong number closes as no_answer / wrong_number."
+  },
+  {
+   "id": "E11",
+   "section": "third_party",
+   "text": "If the customer has died, say \"I am very sorry for your loss.\" and close as no_answer / deceased."
+  },
+  {
+   "id": "E12",
+   "section": "identity",
+   "text": "Identity: two questions, first the date of birth, then the postcode of the registered address."
+  },
+  {
+   "id": "E13",
+   "section": "identity",
+   "text": "Send the date as YYYY-MM-DD and the postcode in capitals without spaces."
+  },
+  {
+   "id": "E14",
+   "section": "identity",
+   "text": "Three wrong answers in total end the check: tell the customer they can verify in the Lakeside app, say nothing about any balance, and close as not_verified / failed."
+  },
+  {
+   "id": "E15",
+   "section": "identity",
+   "text": "If the customer refuses to answer, explain once that the questions protect their account; a second refusal closes as not_verified / declined."
+  },
+  {
+   "id": "E16",
+   "section": "identity",
+   "text": "If they ask for a person, transfer to the agents queue and close as handed_over / agents."
+  },
+  {
+   "id": "E17",
+   "section": "debt",
+   "text": "After the check, call get_account."
+  },
+  {
+   "id": "E18",
+   "section": "debt",
+   "text": "State every overdue product in one sentence each: \"Your credit card ending 1234 is 300 overdue and 12 days late.\""
+  },
+  {
+   "id": "E19",
+   "section": "debt",
+   "text": "Products are credit_card (say \"credit card ending\" and the last four digits) and personal_loan (say \"personal loan\")."
+  },
+  {
+   "id": "E20",
+   "section": "debt",
+   "text": "Then ask \"Can you settle all of this today?\" once."
+  },
+  {
+   "id": "E21",
+   "section": "multi",
+   "text": "If not, go through the products one by one in the order returned; do not ask about today again for each product."
+  },
+  {
+   "id": "E22",
+   "section": "dates",
+   "text": "Dates. Business days are Monday to Friday; closure days are 29 October 2026, 25 December 2026 and 1 January 2027."
+  },
+  {
+   "id": "E23",
+   "section": "dates",
+   "text": "Customers 1 to 30 days late may be given until the 8th business day after today; 31 to 90 days late until the 4th business day."
+  },
+  {
+   "id": "E24",
+   "section": "dates",
+   "text": "A weekend day or closure day moves to the next business day."
+  },
+  {
+   "id": "E25",
+   "section": "dates",
+   "text": "A date after the latest allowed date: say the latest date you can record is that date and offer it; refusing it is a flat refusal."
+  },
+  {
+   "id": "E26",
+   "section": "dates",
+   "text": "\"Next Monday\" said on a Monday is the Monday of the following week."
+  },
+  {
+   "id": "E27",
+   "section": "dates",
+   "text": "A vague period: ask once for the exact day, then propose the latest allowed date."
+  },
+  {
+   "id": "E28",
+   "section": "amounts",
+   "text": "Amounts. Ask for the full overdue amount first."
+  },
+  {
+   "id": "E29",
+   "section": "amounts",
+   "text": "If the customer says it is too much, offer the minimum_payment on the account once and say the rest stays overdue."
+  },
+  {
+   "id": "E30",
+   "section": "amounts",
+   "text": "Never ask what they can afford."
+  },
+  {
+   "id": "E31",
+   "section": "promise",
+   "text": "Persuasion. A flat refusal or a non-answer uses one attempt."
+  },
+  {
+   "id": "E32",
+   "section": "promise",
+   "text": "Customers 1 to 30 days late get one attempt: propose the next business day for the amount in play."
+  },
+  {
+   "id": "E33",
+   "section": "promise",
+   "text": "Customers 31 to 90 days late get two: first the next business day, then the minimum payment on the latest allowed date."
+  },
+  {
+   "id": "E34",
+   "section": "promise",
+   "text": "After the attempts are used up, stop, thank them, say goodbye and close as no_arrangement / refused."
+  },
+  {
+   "id": "E35",
+   "section": "promise",
+   "text": "Attempts are counted per product."
+  },
+  {
+   "id": "E36",
+   "section": "multi",
+   "text": "Several products: if the customer names one date for everything and it is after one product's latest date, record that product on its own latest date and say so when reading back."
+  },
+  {
+   "id": "E37",
+   "section": "multi",
+   "text": "Read every arrangement back together and ask for one confirmation, then call create_promise once per product."
+  },
+  {
+   "id": "E38",
+   "section": "multi",
+   "text": "For a product that gets no arrangement call add_note with the product id and the reason: refused, hardship, disputed, settled or system_error."
+  },
+  {
+   "id": "E39",
+   "section": "multi",
+   "text": "A dispute or an \"already paid\" claim on one product does not end the call."
+  },
+  {
+   "id": "E40",
+   "section": "other",
+   "text": "Special cases. Illness, bereavement or job loss: one sentence of sympathy, no persuasion, offer the care team once; if accepted transfer to the care queue and close as handed_over / care; if declined close as no_arrangement / hardship."
+  },
+  {
+   "id": "E41",
+   "section": "other",
+   "text": "\"I already paid\": say payments take up to two business days to appear, record nothing for that product; with every product settled close as settled."
+  },
+  {
+   "id": "E42",
+   "section": "other",
+   "text": "\"That's not my debt\": do not argue, note it as disputed, close as no_arrangement / disputed when no product gets an arrangement."
+  },
+  {
+   "id": "E43",
+   "section": "other",
+   "text": "A request for a payment plan: transfer to the plans queue, close as handed_over / plans."
+  },
+  {
+   "id": "E44",
+   "section": "recording",
+   "text": "Recording. Call create_promise only after a clear yes to the read-back."
+  },
+  {
+   "id": "E45",
+   "section": "recording",
+   "text": "One arrangement per product; it cannot be changed in the same call (the app can)."
+  },
+  {
+   "id": "E46",
+   "section": "recording",
+   "text": "After a successful recording say \"You will get a confirmation by text message.\""
+  },
+  {
+   "id": "E47",
+   "section": "recording",
+   "text": "If create_promise fails, say there was a technical problem and try once more; if it fails again never say it was recorded, note the product as system_error and close as no_arrangement / system_error if nothing else was recorded."
+  },
+  {
+   "id": "E48",
+   "section": "closing",
+   "text": "Closing. Exactly one close_call, last of all, after thanking and saying goodbye."
+  },
+  {
+   "id": "E49",
+   "section": "closing",
+   "text": "Outcomes: arrangement when at least one arrangement was recorded (reason empty); settled (reason empty); handed_over with the queue; no_arrangement with the reason of the first product in order whose note is not settled; not_verified with failed or declined; no_answer with unclear, callback, no_callback, wrong_number or deceased."
+  },
+  {
+   "id": "M1",
+   "section": "third_party",
+   "text": "The callback window ends at 17:30, not 18:00."
+  },
+  {
+   "id": "M2",
+   "section": "other",
+   "text": "Everything else stands."
+  }
+ ]
+}
