@@ -72,8 +72,8 @@ MONTHS = ["january", "february", "march", "april", "may", "june", "july", "augus
 
 
 def parse_day_words(text, today):
-    """A day said in words, as a date, or None. "next <weekday>" is that weekday in the following calendar week; "this <weekday>" and a bare
-    weekday are the one in the current week (a bare weekday that is today means today); a weekday with a day number is the next date that is both."""
+    """A day said in words, as a date, or None. A bare or "this" weekday is its next occurrence, today included; "next <weekday>" is the one in
+    the week after; a weekday with a day number is the next date that is both."""
     t = " " + str(text or "").strip().lower().replace(",", " ") + " "
     if not t.strip():
         return None
@@ -111,12 +111,12 @@ def parse_day_words(text, today):
 
 def _weekday_date(weekday, day, today, is_next):
     """A weekday with a day number ("Monday 2") is the next date that is both, as when the customer accepts a date the agent offered;
-    a bare weekday, or a pair that never matches within two months, is the one in the current week, "next" the following week."""
+    a bare or "this" weekday, or a pair that never matches within two months, is the next occurrence, today included; "next" is the week after."""
     for n in range(62 if day else 0):
         cand = today + datetime.timedelta(days=n)
         if cand.day == day and cand.weekday() == weekday:
             return cand
-    if is_next:                                      # that weekday in the following calendar week, whatever today's weekday is
+    if is_next:                                      # a weekday earlier in the week than today still lands in the week after, not two weeks on
         return today + datetime.timedelta(days=7 - today.weekday() + weekday)
     return today + datetime.timedelta(days=(weekday - today.weekday()) % 7)
 

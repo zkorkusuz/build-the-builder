@@ -158,7 +158,7 @@ try:
             _block(b)
         elif x is not None:
             # the bank takes one promise per product, so a retry after a lost answer or a change of mind must not reach it
-            vars['promise_block'] = 'ALREADY recorded earlier in this call: ' + str(f.get('words') or 'this product') + ', ' + str(x.get('amount')) + ' on ' + str(x.get('date')) + '. One promise per product: it cannot be recorded again, changed or cancelled in this call, so do not CALL create_promise for it again. Tell the customer what is recorded (if they ask to change it, say what your instructions say about that), then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
+            vars['promise_block'] = 'ALREADY recorded earlier in this call: ' + str(f.get('words') or 'this product') + ', ' + str(x.get('amount')) + ' on ' + str(x.get('date')) + '. The bank takes one promise per product, so do not CALL create_promise for it again; if the customer wants it changed, follow your instructions. Then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
             _block(b)
         elif f.get('floor') is not None and float(b.get('amount') or 0) < float(f.get('floor')) - 0.005:
             vars['promise_block'] = 'NOT recorded: the amount ' + str(b.get('amount')) + ' is below the floor of ' + str(f.get('floor')) + ' for this product. Tell the customer it cannot be recorded and offer the floor amount once, as your instructions say.'
@@ -211,7 +211,14 @@ try:
         text += ' Then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
         d['what_to_do_next'] = text
     elif d is not None and isinstance(d.get('error'), str) and d.get('error') and int(float(result.get('status_code') or 200)) < 500:
-        d['what_to_do_next'] = 'NOT recorded: the bank rejected the call (' + d.get('error') + '). Correct the values and CALL create_promise again. product_id must be exactly the id shown in your facts.'
+        if 'already' in d['error'].lower() and attempt:
+            # the bank holds a promise this call never saw confirmed (a lost answer): it is recorded, and saying otherwise would be the honesty failure
+            done.append(attempt); vars['promises_recorded'] = json.dumps(done); vars['promise_state'] = 'recorded'; vars['offer_now'] = ''
+            d['what_to_do_next'] = 'The bank already holds this promise: ' + str(attempt.get('words') or 'the product') + ', ' + str(attempt.get('amount')) + ' on ' + str(attempt.get('date')) + '. Tell the customer it is recorded, then continue with any product that still has no promise, or thank the customer, say goodbye and call transition_to_wrap_up.'
+        elif _count('promise_failures') < 3:
+            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call (' + d.get('error') + '). Correct the values and CALL create_promise again. product_id must be exactly the id shown in your facts.'
+        else:
+            d['what_to_do_next'] = 'NOT recorded: the bank rejected the call three times (' + d.get('error') + '). Never say it is recorded. Tell the customer you could not record it today, then thank them, say goodbye and call transition_to_wrap_up.'
     else:
         n = _count('promise_failures')
         vars['promise_state'] = 'failed'
@@ -289,7 +296,7 @@ def _day(text, today):
         return today + datetime.timedelta(days=1)
     for i, name in enumerate(DAYS):
         if name in t or name[:3] in t.split():
-            if 'next' in t:                      # the following calendar week, as in the date engine
+            if 'next' in t:                      # same arithmetic as the date engine: a weekday earlier in the week than today still lands next week
                 return today + datetime.timedelta(days=7 - today.weekday() + i)
             return today + datetime.timedelta(days=(i - today.weekday()) % 7)
     m = re.search(r'(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:of\\s*)?([a-z]+)?', t)

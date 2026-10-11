@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+
+<rect width="1200" height="760" fill="#ffffff"/>
+<text x="24.0" y="34.0" font-size="22" text-anchor="start" fill="#1c2230" font-weight="bold">Figure 2. Brief A practice set: customers passed in all 3 of 3 repetitions, by agent version</text>
+<text x="24.0" y="56.0" font-size="13" text-anchor="start" fill="#4a5160">21 practice customers (3 public + 18 extra). A customer counts only when all three repetitions pass. Runs 4 to 35, Sat 23:35 to Sun 13:07 (Istanbul).</text>
+<line x1="70.0" y1="440.0" x2="1150.0" y2="440.0" stroke="#e9ebef" stroke-width="1"/>
+<text x="60.0" y="444.0" font-size="11" text-anchor="end" fill="#4a5160">0</text>
+<line x1="70.0" y1="365.7" x2="1150.0" y2="365.7" stroke="#e9ebef" stroke-width="1"/>
+<text x="60.0" y="369.7" font-size="11" text-anchor="end" fill="#4a5160">5</text>
+<line x1="70.0" y1="291.4" x2="1150.0" y2="291.4" stroke="#e9ebef" stroke-width="1"/>
+<text x="60.0" y="295.4" font-size="11" text-anchor="end" fill="#4a5160">10</text>
+<line x1="70.0" y1="217.1" x2="1150.0" y2="217.1" stroke="#e9ebef" stroke-width="1"/>
+<text x="60.0" y="221.1" font-size="11" text-anchor="end" fill="#4a5160">15</text>
+<line x1="70.0" y1="142.9" x2="1150.0" y2="142.9" stroke="#e9ebef" stroke-width="1"/>
+<text x="60.0" y="146.9" font-size="11" text-anchor="end" fill="#4a5160">20</text>
+<line x1="70.0" y1="128.0" x2="1150.0" y2="128.0" stroke="#167a4a" stroke-width="1.2" stroke-dasharray="6,4"/>
+<text x="60.0" y="132.0" font-size="11" text-anchor="end" fill="#4a5160" font-weight="bold">21</text>
+<text x="78.0" y="122.0" font-size="10" text-anchor="start" fill="#4a5160">all 21 customers pass 3 of 3</text>
+<line x1="70.0" y1="440.0" x2="1150.0" y2="440.0" stroke="#c9cdd4" stroke-width="1"/>
+<text x="22.0" y="284.0" font-size="11" text-anchor="middle" fill="#4a5160" transform="rotate(-90 22 284.0)">customers passed 3 of 3</text>
+<rect x="70.0" y="86.0" width="1080.0" height="24.0" rx="4" fill="#f5f6f8" stroke="none" stroke-width="1"/>
+<text x="78.0" y="102.0" font-size="9.5" text-anchor="start" fill="#4a5160">not yet scored</text>
+<path d="M110.0,187.4 L193.3,232.0 L276.7,157.7 L360.0,157.7 L443.3,142.9 L526.7,128.0 L610.0,128.0 L693.3,128.0 L776.7,157.7 L860.0,128.0 L943.3,128.0 L1026.7,142.9" fill="none" stroke="#1f4bd8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="110.0" cy="187.4" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="110.0" cy="187.4" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="110.0" y="207.4" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">18 · 19 · 20</text>
+<text x="110.0" y="175.4" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">1</text>
+<text x="110.0" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v9</text>
+<text x="110.0" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 4</text>
+<text x="110.0" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sat 23:35</text>
+<circle cx="193.3" cy="232.0" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="193.3" cy="232.0" r="5.5" fill="#9a5b00" stroke="none" stroke-width="1"/>
+<text x="193.3" y="252.0" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">20 · 19 · 16</text>
+<text x="193.3" y="220.0" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">2</text>
+<text x="193.3" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v12</text>
+<text x="193.3" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 7</text>
+<text x="193.3" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 00:05</text>
+<circle cx="276.7" cy="157.7" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="276.7" cy="157.7" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="276.7" y="177.7" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">20 · 21 · 20</text>
+<text x="276.7" y="145.7" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">3</text>
+<text x="276.7" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v21</text>
+<text x="276.7" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 10</text>
+<text x="276.7" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 01:05</text>
+<circle cx="360.0" cy="157.7" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="360.0" cy="157.7" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="360.0" y="177.7" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">19 · 20 · 21</text>
+<text x="360.0" y="145.7" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">4</text>
+<text x="360.0" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v25</text>
+<text x="360.0" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 11</text>
+<text x="360.0" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 01:27</text>
+<circle cx="443.3" cy="142.9" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="443.3" cy="142.9" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="443.3" y="162.9" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">21 · 20 · 20</text>
+<text x="443.3" y="130.9" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">5</text>
+<text x="443.3" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v27</text>
+<text x="443.3" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 12</text>
+<text x="443.3" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 01:44</text>
+<circle cx="526.7" cy="128.0" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="526.7" cy="128.0" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="526.7" y="148.0" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">21 · 21 · 21</text>
+<text x="526.7" y="116.0" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">6</text>
+<text x="526.7" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v28</text>
+<text x="526.7" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 13</text>
+<text x="526.7" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 01:57</text>
+<circle cx="610.0" cy="128.0" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="610.0" cy="128.0" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="610.0" y="148.0" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">21 · 21 · 21</text>
+<text x="610.0" y="116.0" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">7</text>
+<text x="610.0" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v40</text>
+<text x="610.0" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 20</text>
+<text x="610.0" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 08:45</text>
+<circle cx="693.3" cy="128.0" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="693.3" cy="128.0" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="693.3" y="148.0" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">21 · 21 · 21</text>
+<text x="693.3" y="116.0" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">8</text>
+<text x="693.3" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v42</text>
+<text x="693.3" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 23</text>
+<text x="693.3" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 09:20</text>
+<circle cx="776.7" cy="157.7" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="776.7" cy="157.7" r="5.5" fill="#9a5b00" stroke="none" stroke-width="1"/>
+<text x="776.7" y="177.7" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">20 · 20 · 21</text>
+<text x="776.7" y="145.7" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">9</text>
+<text x="776.7" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v44</text>
+<text x="776.7" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 24</text>
+<text x="776.7" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 09:55</text>
+<circle cx="860.0" cy="128.0" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="860.0" cy="128.0" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="860.0" y="148.0" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">21 · 21 · 21</text>
+<text x="860.0" y="116.0" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">10</text>
+<text x="860.0" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v46</text>
+<text x="860.0" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 25</text>
+<text x="860.0" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 10:00</text>
+<circle cx="943.3" cy="128.0" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="943.3" cy="128.0" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="943.3" y="148.0" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">21 · 21 · 21</text>
+<text x="943.3" y="116.0" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">11</text>
+<text x="943.3" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v48</text>
+<text x="943.3" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 32</text>
+<text x="943.3" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 10:45</text>
+<circle cx="1026.7" cy="142.9" r="7.5" fill="#ffffff" stroke="none" stroke-width="1"/>
+<circle cx="1026.7" cy="142.9" r="5.5" fill="#9a5b00" stroke="none" stroke-width="1"/>
+<text x="1026.7" y="162.9" font-size="9" text-anchor="middle" fill="#4a5160" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">20 · 21 · 21</text>
+<text x="1026.7" y="130.9" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold" paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">12</text>
+<text x="1026.7" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v50</text>
+<text x="1026.7" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 33</text>
+<text x="1026.7" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 11:00</text>
+<circle cx="1110.0" cy="98.0" r="5.5" fill="#ffffff" stroke="#1f4bd8" stroke-width="2"/>
+<text x="1100.0" y="102.0" font-size="9.5" text-anchor="end" fill="#4a5160">running at the time of drawing</text>
+<text x="1110.0" y="458.0" font-size="11.5" text-anchor="middle" fill="#1c2230" font-weight="bold">v52</text>
+<text x="1110.0" y="471.0" font-size="8.5" text-anchor="middle" fill="#4a5160">run 35</text>
+<text x="1110.0" y="482.0" font-size="8.5" text-anchor="middle" fill="#4a5160">Sun 13:07</text>
+<text x="1110.0" y="80.0" font-size="9.5" text-anchor="middle" fill="#1c2230" font-weight="bold">13</text>
+<line x1="193.3" y1="258.0" x2="193.3" y2="274.0" stroke="#9a5b00" stroke-width="1"/>
+<text x="193.3" y="286.0" font-size="9.5" text-anchor="middle" fill="#1c2230">4 platform losses</text>
+<text x="193.3" y="298.0" font-size="8.5" text-anchor="middle" fill="#4a5160">(not agent errors)</text>
+<line x1="776.7" y1="183.7" x2="776.7" y2="199.7" stroke="#9a5b00" stroke-width="1"/>
+<text x="776.7" y="211.7" font-size="9.5" text-anchor="middle" fill="#1c2230">2 judge-variance losses</text>
+<text x="776.7" y="223.7" font-size="8.5" text-anchor="middle" fill="#4a5160">(not agent errors)</text>
+<line x1="1026.7" y1="168.9" x2="1026.7" y2="184.9" stroke="#9a5b00" stroke-width="1"/>
+<text x="1026.7" y="196.9" font-size="9.5" text-anchor="middle" fill="#1c2230">1 persona-artifact loss</text>
+<text x="1026.7" y="208.9" font-size="8.5" text-anchor="middle" fill="#4a5160">(not agent errors)</text>
+<circle cx="76.0" cy="506.0" r="5.5" fill="#1f4bd8" stroke="none" stroke-width="1"/>
+<text x="88.0" y="510.0" font-size="10.5" text-anchor="start" fill="#1c2230">customers passed in all 3 repetitions</text>
+<circle cx="331.7" cy="506.0" r="5.5" fill="#9a5b00" stroke="none" stroke-width="1"/>
+<text x="343.7" y="510.0" font-size="10.5" text-anchor="start" fill="#1c2230">misses were platform or judge losses, not agent errors</text>
+<circle cx="685.5" cy="506.0" r="5.5" fill="#ffffff" stroke="#1f4bd8" stroke-width="2"/>
+<text x="697.5" y="510.0" font-size="10.5" text-anchor="start" fill="#1c2230">run still in progress</text>
+<text x="70.0" y="528.0" font-size="10.5" text-anchor="start" fill="#4a5160">Numbers above the points: the fix that went in before that run (list below). Under the points: customers right in each of the three repetitions.</text>
+<text x="30.0" y="556.0" font-size="12" text-anchor="start" fill="#1c2230" font-weight="bold">Fix that went in before each run</text>
+<text x="30.0" y="578.0" font-size="10.5" text-anchor="start" fill="#1c2230">1. v9 (run 4, Sat 23:35): full pipeline (normalize, render, adapt)</text>
+<text x="30.0" y="598.0" font-size="10.5" text-anchor="start" fill="#1c2230">2. v12 (run 7, Sun 00:05): refusal count, callback window hook, dispute reason via transitions</text>
+<text x="30.0" y="618.0" font-size="10.5" text-anchor="start" fill="#1c2230">3. v21 (run 10, Sun 01:05): opening ask chain counts asks in structure; callback words</text>
+<text x="30.0" y="632.0" font-size="10.5" text-anchor="start" fill="#1c2230">converted in the hook; weekend table</text>
+<text x="30.0" y="652.0" font-size="10.5" text-anchor="start" fill="#1c2230">4. v25 (run 11, Sun 01:27): close_call moved inside the call flow; refusal count in a code step</text>
+<text x="30.0" y="672.0" font-size="10.5" text-anchor="start" fill="#1c2230">5. v27 (run 12, Sun 01:44): vague period routed to a code step that writes the next instruction</text>
+<text x="30.0" y="692.0" font-size="10.5" text-anchor="start" fill="#1c2230">6. v28 (run 13, Sun 01:57): days said in words resolved in code (never by the model)</text>
+<text x="30.0" y="712.0" font-size="10.5" text-anchor="start" fill="#1c2230">7. v40 (run 20, Sun 08:45): split answers joined in the verify hook; blocked calls send an</text>
+<text x="30.0" y="726.0" font-size="10.5" text-anchor="start" fill="#1c2230">invalid body; wants_person value</text>
+<text x="620.0" y="578.0" font-size="10.5" text-anchor="start" fill="#1c2230">8. v42 (run 23, Sun 09:20): date answers joined by parts; callback day outside the window</text>
+<text x="620.0" y="592.0" font-size="10.5" text-anchor="start" fill="#1c2230">counts; ISO date stripped before time</text>
+<text x="620.0" y="612.0" font-size="10.5" text-anchor="start" fill="#1c2230">9. v44 (run 24, Sun 09:55): identical-promise guard</text>
+<text x="620.0" y="632.0" font-size="10.5" text-anchor="start" fill="#1c2230">10. v46 (run 25, Sun 10:00): promise guard uses the normalized date</text>
+<text x="620.0" y="652.0" font-size="10.5" text-anchor="start" fill="#1c2230">11. v48 (run 32, Sun 10:45): weekday plus day number parser ('Monday 2' = 2 November)</text>
+<text x="620.0" y="672.0" font-size="10.5" text-anchor="start" fill="#1c2230">12. v50 (run 33, Sun 11:00): time of day stripped before day numbers</text>
+<text x="620.0" y="692.0" font-size="10.5" text-anchor="start" fill="#1c2230">13. v52 (run 35, Sun 13:07): identity prompt: never fill in a part the customer did not say</text>
+<text x="620.0" y="706.0" font-size="10.5" text-anchor="start" fill="#1c2230">(running now)</text>
+</svg>
