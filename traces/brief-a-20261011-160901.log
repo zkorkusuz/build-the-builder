@@ -1,0 +1,33 @@
+16:09:01 start 2026-10-11T16:09:01+0300 | briefs briefs/brief-a.md | tool api tools/openapi.json | slot brief-a
+16:10:17 model call: claude-opus-5-5 | normalize: briefs and tool API into policy.json | 76 s | $0.337 | 26659 chars
+16:10:17 normalize: policy with 51 rules, 2 bands, 2 identity questions, 5 end reasons
+16:10:17 policy: identity questions in order: date_of_birth, phone_last4; wrong answers that end the check: 3
+16:10:17 policy: calendar: business weekdays [0, 1, 2, 3, 4], holidays 2026-10-26, 2026-11-11, 2026-11-26, 2026-12-25, 2027-01-01
+16:10:17 policy: callback window: ['today', 'next_business_day'] 10:00-19:00, asks for another time: 1
+16:10:17 policy: confirmation asks allowed: 2
+16:10:17 policy: attempt-1 rule: last_business_day_of_week
+16:10:17 policy: band early: 1-7 days late, latest date the 12th business day, 1 attempt(s)
+16:10:17 policy: band late: 8-45 days late, latest date the 7th business day, 2 attempt(s)
+16:10:17 policy: outcomes: unclear -> not_reached/unclear; callback -> not_reached/callback; no_callback -> not_reached/no_callback; wrong_number -> not_reached/wrong_number; deceased -> not_reached/deceased; id_failed -> not_verified/failed; id_declined -> not_verified/declined; promise -> promise
+16:10:17 policy: end reasons: refused -> no_promise/refused; hardship -> no_promise/hardship; dispute -> no_promise/dispute; paid -> paid; service_error -> no_promise/service_error
+16:10:17 policy: transfers: restructuring -> transferred/restructuring; general -> transferred/human; support -> transferred/support
+16:10:17 policy: multi-product: False; floor fields: {'credit_card': 'minimum_payment', 'personal_loan': 'instalment_amount', 'car_loan': 'instalment_amount'}; no-reason outcomes: ['promise', 'paid']
+16:10:17 policy: ambiguity: Rule 20: a weekend day or holiday that is not after the deadline but whose next business day falls after the deadline. Resolved: offer the latest allowed date instead (rule 23 logic).
+16:10:17 policy: ambiguity: Rule 21: it is unclear whether proposing the deadline after a vague period uses a persuasion attempt. Resolved: it does not; only a flat refusal or non-answer uses an attempt.
+16:10:17 policy: ambiguity: Rules 26/27 say to offer the floor once and to treat a refusal as a flat refusal, while attempt 2 may name the floor again on the deadline. Resolved: attempt 1 uses the floor if the full amount was called too much, and attempt 2 (late band) may repeat the floor on the deadline; never repeat an offer already refused at the same amount and date.
+16:10:17 policy: ambiguity: Rule 3: answering a customer's question (robot or scam) does not count as an ask; the ask after the answer is the second ask.
+16:10:17 policy: ambiguity: The outcome 'paid' takes no reason, and close_call requires a reason for all outcomes except promise and paid.
+16:10:17 policy: ambiguity: Brief A never uses add_note, so note_reason values are left empty although the API defines add_note reasons.
+16:10:17 policy: ambiguity: On_fail_sentence and goodbye wording are not given verbatim; composed from rules 14 and 47.
+16:10:17 policy: ambiguity: Rule 6: a callback must also be later than now; a time earlier than now today counts as outside the window.
+16:10:17 render: 40 steps, 36 tools, lint clean
+16:10:17 render: steps prepare, opening, opening_again, third_party_prep, third_party, mark_confirmed, identity, account, account_facts, negotiate, set_outcome, stop_offers, offer_deadline, resolve_proposal, count_refusal, wrap_up, wrap_up_refused, wrap_up_hardship, wrap_up_dispute, wrap_up_paid, wrap_up_service_error, outcome_unclear, outcome_callback, outcome_no_callback, outcome_wrong_number, outcome_deceased, outcome_id_failed, outcome_id_declined, outcome_unclear_quiet, outcome_no_callback_quiet, outcome_id_declined_quiet, end_goodbye, end_quiet, end_deceased, end_id_failed, close, hang_up_goodbye, hang_up_quiet, hang_up_deceased, hang_up_id_failed; rule homes: dates, floors, offers and outcomes in code steps; tool results and guards in hooks; call flow in routes; the brief's sentences in fixed lines and prompts
+16:10:17 fields: "the role names, as in the practice file"
+16:10:21 freya: workflow 5ceda29d-3c6c-4781-891d-2922435e18f4 agent 70e93e68-4b92-4bdc-bd3d-9b7c64fff946 version 55
+16:10:30 model call: claude-opus-5-5 | adapt: rule-by-rule check of the prompts | 9 s | $0.142 | 671 chars
+16:10:30 adapt: added to opening: If asked "Is this a scam?", say they can verify the call by phoning Freya Bank's customer service number. Then continue.
+16:10:30 adapt: added to identity: Before the check is complete, do not say "collections", "debt", "payment" or the product. If asked whether you are a robot or an AI, say you are Freya Bank's digital assistant and continue. If asked "Is this a scam?", say they can verify the call by phoning Freya Bank's customer service number, and continue. If asked a question you cannot answer from the tools, say you do not have that information. Do not invent figures, dates or reasons.
+16:10:30 adapt: added to negotiate: Never call add_note.
+16:10:32 freya: workflow 5ceda29d-3c6c-4781-891d-2922435e18f4 agent 70e93e68-4b92-4bdc-bd3d-9b7c64fff946 version 56
+16:10:33 export: /Users/zehra/Downloads/build-the-builder/brief-a.workflow.json
+16:10:33 end 2026-10-11T16:10:33+0300 | 92 s | workflow 5ceda29d-3c6c-4781-891d-2922435e18f4 | agent 70e93e68-4b92-4bdc-bd3d-9b7c64fff946
